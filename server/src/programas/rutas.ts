@@ -3,19 +3,20 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { validar } from '../comun/errores.ts'
 import { idDe } from '../comun/parametros.ts'
-import { noImplementado } from '../noImplementado.ts'
 import type { ServicioAutorizacion } from './autorizacion.ts'
 import type { CicloPrograma } from './ciclo.ts'
-import { EdicionPrograma, EntradaPrograma } from './esquemas.ts'
+import { Cierre, EdicionPrograma, EntradaPrograma } from './esquemas.ts'
 import type { ServicioProgramas } from './servicio.ts'
+import type { ServicioTablero } from './tablero.ts'
 
 export interface ServiciosProgramas {
   programas: ServicioProgramas
   autorizacion: ServicioAutorizacion
   ciclo: CicloPrograma
+  tablero: ServicioTablero
 }
 
-export function rutasProgramas({ programas, autorizacion, ciclo }: ServiciosProgramas): Router {
+export function rutasProgramas({ programas, autorizacion, ciclo, tablero }: ServiciosProgramas): Router {
   const r = Router()
 
   r.get('/', async (_req, res) => {
@@ -54,8 +55,13 @@ export function rutasProgramas({ programas, autorizacion, ciclo }: ServiciosProg
     res.json(await ciclo.reanudar(idDe(req)))
   })
 
-  r.get('/:id/tablero', noImplementado) // O7 · autorizado / cobrado / nunca salió (HU-15)
-  r.post('/:id/cerrar', noImplementado) // O8 · revocar el permiso (HU-17)
+  r.get('/:id/tablero', async (req, res) => {
+    res.json(await tablero.tablero(idDe(req)))
+  })
+
+  r.post('/:id/cerrar', async (req, res) => {
+    res.json(await tablero.cerrar(idDe(req), validar(Cierre, req.body).confirmacion))
+  })
 
   return r
 }
