@@ -44,6 +44,8 @@ En Supabase: **SQL Editor → New query**, pegar `db/esquema.sql` completo y **R
 El script corre en una sola transacción: o se crea todo o no se crea nada. Crea 13 tablas, sus
 índices, triggers y RLS. No carga datos.
 
+Para conectarse a la base del proyecto en Supabase, ver [`CONEXION.md`](./CONEXION.md).
+
 ## 3. Convenciones
 
 | Convención | Detalle |
