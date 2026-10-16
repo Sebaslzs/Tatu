@@ -44,7 +44,7 @@ describe('CA-04.01 · solicitud del permiso', () => {
     const { status, cuerpo } = await autorizar()
     expect(status).toBe(200)
     expect(cuerpo.redirect).toBe('https://auth.interledger-test.dev/interact/1')
-    expect(cuerpo.programa).toMatchObject({ estado: 'EsperandoAprobacion', tope: { valor: '69000000', assetCode: 'COP', assetScale: 2 } })
+    expect(cuerpo.programa).toMatchObject({ estado: 'EsperandoAprobacion', tope: '69000000' })
     expect(e.permisos.pedidos[0]).toMatchObject({
       billetera: BILLETERA,
       tope: 69_000_000,
@@ -170,7 +170,7 @@ describe('CA-04.03 · callback correcto', () => {
   it('el programa Activo muestra permisoActivo y el tope, sin exponer el token', async () => {
     await activar()
     const { cuerpo } = await e.pedir('GET', `/programas/${id}`)
-    expect(cuerpo).toMatchObject({ estado: 'Activo', permisoActivo: true, permisoVencido: false, tope: { valor: '69000000' } })
+    expect(cuerpo).toMatchObject({ estado: 'Activo', permisoActivo: true, permisoVencido: false, tope: '69000000' })
     expect(JSON.stringify(cuerpo)).not.toMatch(/token|manage/i)
   })
 })

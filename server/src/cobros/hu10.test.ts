@@ -37,7 +37,8 @@ describe('CA-10.01 · el punto consulta', () => {
       pagos: [
         {
           programa: { id: s.programaId, nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
-          monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+          monto: '23000000',
+          moneda: { codigo: 'COP', escala: 2 },
           vigenciaFin: '2026-12-31',
         },
       ],
@@ -74,7 +75,7 @@ describe('CA-10.02 · la solicitud', () => {
     expect(cuerpo).toMatchObject({
       estado: 'PorConfirmar',
       canal: 'retiro',
-      monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+      monto: '23000000',
       programa: { id: s.programaId },
       punto: { id: s.puntoId, nombre: 'Tienda Marta' },
       persona: { nombre: 'Jorge Ruiz', documento: '******0003', novedad: false },
@@ -122,7 +123,7 @@ describe('CA-10.03 · el monto no viene del navegador (RN-11)', () => {
   it('un monto en el cuerpo se rechaza, y el cobro usa el valor de la liquidación', async () => {
     expect((await retiro(JORGE.documento, { monto: '1' })).status).toBe(400)
     const { cuerpo } = await retiro(JORGE.documento)
-    expect(cuerpo.monto.valor).toBe('23000000')
+    expect(cuerpo.monto).toBe('23000000')
     expect((await cobro(cuerpo.id)).monto).toBe(23_000_000)
   })
 })

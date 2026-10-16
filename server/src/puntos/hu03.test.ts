@@ -92,7 +92,7 @@ describe('CA-03.02 · la billetera se resuelve', () => {
 
   it('devuelve la moneda real de la billetera del punto', async () => {
     const { cuerpo } = await registrar()
-    expect(cuerpo.moneda).toEqual({ assetCode: 'COP', assetScale: 2 })
+    expect(cuerpo.moneda).toEqual({ codigo: 'COP', escala: 2 })
   })
 })
 

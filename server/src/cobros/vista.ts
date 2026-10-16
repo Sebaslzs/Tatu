@@ -3,7 +3,7 @@
 // primero lo que necesitan (una consulta por tabla, en paralelo) y arman cada vista sin ir a la base.
 import { billeteraCorta } from '../comun/billeteras.ts'
 import { enmascararDocumento } from '../comun/log.ts'
-import { montoOpcional, type Moneda, type Monto } from '../comun/montos.ts'
+import { monedaApi, montoOpcional, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
 import type { FilaCuenta } from '../db/repositorios/cuentas.ts'
@@ -35,7 +35,7 @@ export interface VistaCobro {
   persona: { nombre: string; documento: string; novedad: boolean }
   monto: Monto | null
   totalCompra: Monto | null
-  moneda: Moneda
+  moneda: MonedaApi
   estado: EstadoCobro
   motivo: MotivoVisible | null
   /** PIN que le quedan a la persona; solo mientras el cobro espera el PIN. */
@@ -140,9 +140,9 @@ export class VistasCobro {
         documento: enmascararDocumento(persona.numeroDocumento),
         novedad: esNovedad(eventos),
       },
-      monto: montoOpcional(c.monto, moneda),
-      totalCompra: montoOpcional(c.totalCompra, moneda),
-      moneda,
+      monto: montoOpcional(c.monto),
+      totalCompra: montoOpcional(c.totalCompra),
+      moneda: monedaApi(moneda),
       estado: c.estado,
       motivo: motivoDesdeBd(c.motivoRechazo),
       intentosRestantes: c.estado === 'PorConfirmar' ? Math.max(0, pinMaxIntentos - c.intentosPin) : null,

@@ -107,12 +107,12 @@ describe('CA-01.03 · moneda copiada de la billetera', () => {
   it('assetCode y assetScale vienen de la billetera, no del formulario', async () => {
     const usd = e.billeteras.registrar('$ilp.interledger-test.dev/tatu-usd', USD)
     const { cuerpo } = await crear({ billetera: usd, assetCode: 'COP', assetScale: 0, codigoMoneda: 'EUR' })
-    expect(cuerpo.moneda).toEqual({ assetCode: 'USD', assetScale: 2 })
+    expect(cuerpo.moneda).toEqual({ codigo: 'USD', escala: 2 })
   })
 
   it('el monto por persona se guarda en unidades mínimas con la escala de la billetera', async () => {
     const { cuerpo } = await crear({ montoPorPersona: '230000' })
-    expect(cuerpo.montoPorPersona).toEqual({ valor: '23000000', assetCode: 'COP', assetScale: 2 })
+    expect(cuerpo.montoPorPersona).toEqual('23000000')
   })
 })
 
@@ -130,8 +130,8 @@ describe('CA-01.04 · vigencia', () => {
   it('un mismo día completo es una vigencia válida (de 00:00 a 23:59 en Bogotá)', async () => {
     const { status, cuerpo } = await crear({ vigenciaInicio: '2026-10-16', vigenciaFin: '2026-10-16' })
     expect(status).toBe(201)
-    expect(cuerpo.vigenciaInicio).toBe('2026-10-16T05:00:00.000Z')
-    expect(cuerpo.vigenciaFin).toBe('2026-10-17T04:59:59.999Z')
+    expect(cuerpo.vigenciaInicio).toBe('2026-10-16')
+    expect(cuerpo.vigenciaFin).toBe('2026-10-16')
   })
 
   it('también se valida al editar, contra la vigencia guardada', async () => {
@@ -203,8 +203,8 @@ describe('CA-01.06 · edición', () => {
       destino: 'restringido',
       categorias: ['educacion'],
       billetera: usd,
-      moneda: { assetCode: 'USD', assetScale: 2 },
-      montoPorPersona: { valor: '6050', assetCode: 'USD' },
+      moneda: { codigo: 'USD', escala: 2 },
+      montoPorPersona: '6050',
       estado: 'Borrador',
     })
   })
@@ -271,7 +271,7 @@ describe('CA-01.08 · listado', () => {
       permisoActivo: false,
       permisoVencido: false,
       tope: null,
-      montoPorPersona: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+      montoPorPersona: '23000000',
     })
   })
 
@@ -289,7 +289,7 @@ describe('CA-01.08 · listado', () => {
     await pedirAprobacion(cuerpo.id, DIEZ_MINUTOS - 1000)
     const lista = await e.pedir('GET', '/programas')
     expect(lista.cuerpo[0].estado).toBe('EsperandoAprobacion')
-    expect(lista.cuerpo[0].tope).toMatchObject({ valor: '69000000' })
+    expect(lista.cuerpo[0].tope).toMatchObject('69000000')
   })
 
   it('el vencimiento depende del reloj: al pasar el tiempo, vence', async () => {

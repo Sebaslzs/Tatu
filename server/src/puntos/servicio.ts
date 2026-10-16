@@ -1,7 +1,7 @@
 // Casos de uso de puntos de retiro (HU-03).
 import { resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, noEncontrado } from '../comun/errores.ts'
-import { mismaMoneda, type Moneda } from '../comun/montos.ts'
+import { mismaMoneda, monedaApi, type Moneda } from '../comun/montos.ts'
 import type { FilaPunto } from '../db/repositorios/puntos.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { monedaDe } from '../programas/vista.ts'
@@ -62,7 +62,7 @@ export class ServicioPuntos {
       if (entrada.programaId) await tx.puntos.asociarPrograma(entrada.programaId, nuevo.id)
       return nuevo
     })
-    return { ...vistaPunto(punto), moneda: { assetCode: billetera.assetCode, assetScale: billetera.assetScale } }
+    return { ...vistaPunto(punto), moneda: monedaApi(billetera) }
   }
 
   async listar(): Promise<VistaPunto[]> {

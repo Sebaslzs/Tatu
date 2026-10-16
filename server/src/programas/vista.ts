@@ -1,5 +1,6 @@
 // Lo que la API muestra de un programa. Tokens, URLs de gestión y nonces nunca salen (RNF-01).
-import { montoOpcional, type Moneda, type Monto } from '../comun/montos.ts'
+import { diaEnBogota } from '../comun/fechas.ts'
+import { monedaApi, montoOpcional, type Moneda, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaPrograma } from '../db/repositorios/programas.ts'
 import type { Destino, EstadoPrograma, TipoPrograma } from './estados.ts'
 import { canalesDe, permisoActivo, permisoVencido, type Canal } from './reglas.ts'
@@ -13,7 +14,7 @@ export interface VistaPrograma {
   canales: Canal[]
   categorias: string[]
   billetera: string
-  moneda: Moneda
+  moneda: MonedaApi
   vigenciaInicio: string
   vigenciaFin: string
   estado: EstadoPrograma
@@ -38,12 +39,12 @@ export function vistaPrograma(p: FilaPrograma, categorias: string[]): VistaProgr
     canales: canalesDe(p.tipo),
     categorias,
     billetera: p.billeteraPrograma,
-    moneda,
-    vigenciaInicio: new Date(p.vigenciaInicio).toISOString(),
-    vigenciaFin: new Date(p.vigenciaFin).toISOString(),
+    moneda: monedaApi(moneda),
+    vigenciaInicio: diaEnBogota(p.vigenciaInicio),
+    vigenciaFin: diaEnBogota(p.vigenciaFin),
     estado: p.estado,
-    montoPorPersona: montoOpcional(p.montoPorPersona, moneda),
-    tope: montoOpcional(p.topeTotal, moneda),
+    montoPorPersona: montoOpcional(p.montoPorPersona),
+    tope: montoOpcional(p.topeTotal),
     permisoActivo: permisoActivo(p),
     permisoVencido: permisoVencido(p),
   }

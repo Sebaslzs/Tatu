@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto'
 import { billeteraCorta, resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, noEncontrado } from '../comun/errores.ts'
 import type { Reloj } from '../comun/fechas.ts'
-import type { Moneda } from '../comun/montos.ts'
+import { monedaApi, type Moneda, type MonedaApi } from '../comun/montos.ts'
 import { esViolacionUnica } from '../db/errores.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { FilaCuenta } from '../db/repositorios/cuentas.ts'
@@ -34,7 +34,7 @@ export interface VistaBeneficiario {
   nombre: string
   billetera: string | null
   billeteraCorta: string | null
-  moneda: Moneda | null
+  moneda: MonedaApi | null
   estadoCuenta: FilaCuenta['estado'] | null
   tienePin: boolean
   registrado: string
@@ -169,7 +169,7 @@ export class ServicioBeneficiarios {
       nombre: nombreDe(persona.numeroDocumento, personas),
       billetera: cuenta?.billetera ?? null,
       billeteraCorta: cuenta ? billeteraCorta(cuenta.billetera) : null,
-      moneda,
+      moneda: moneda ? monedaApi(moneda) : null,
       estadoCuenta: cuenta?.estado ?? null,
       tienePin: personas.get(persona.numeroDocumento)?.tienePin ?? false,
       registrado: persona.creadoEn,

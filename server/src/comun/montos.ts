@@ -5,18 +5,20 @@ export interface Moneda {
   assetScale: number
 }
 
-/** Lo que viaja en JSON: el valor va como texto para no perder precisión en el cliente. */
-export interface Monto extends Moneda {
-  valor: string
+/** Moneda tal como la muestra la API (Endpoints.md): `{ codigo, escala }`. */
+export interface MonedaApi {
+  codigo: string
+  escala: number
 }
 
-export function monto(valor: number, moneda: Moneda): Monto {
-  return { valor: String(valor), assetCode: moneda.assetCode, assetScale: moneda.assetScale }
-}
+export const monedaApi = (m: Moneda): MonedaApi => ({ codigo: m.assetCode, escala: m.assetScale })
 
-export function montoOpcional(valor: number | null, moneda: Moneda): Monto | null {
-  return valor === null ? null : monto(valor, moneda)
-}
+/** Lo que viaja en JSON: unidades mínimas como texto (no pierde precisión); la moneda va aparte. */
+export type Monto = string
+
+export const monto = (valor: number): Monto => String(valor)
+
+export const montoOpcional = (valor: number | null): Monto | null => (valor === null ? null : monto(valor))
 
 export const mismaMoneda = (a: Moneda, b: Moneda) => a.assetCode === b.assetCode && a.assetScale === b.assetScale
 
