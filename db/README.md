@@ -664,6 +664,62 @@ En PostgreSQL 17, sobre una base con la estructura inicial y datos (34 pruebas, 
 | Historias: RN-02 pasa a "un cobro en vuelo y nunca más de lo asignado"; RN-05 permite elegir el monto; CA-10.03 deja de decir "monto no mutable" | Producto |
 | Probar en la Test Wallet varios pagos pequeños contra el mismo permiso y que `getGrantSpentAmounts` sume bien | Open Payments |
 
+### 11.7 Impacto en HU-14 y en el backend
+
+**La protección contra el doble cobro se mantiene.** En los programas no parciales (todos los que
+existen hoy) el comportamiento es idéntico: un segundo cobro se rechaza con «Este subsidio ya está
+en proceso o fue cobrado». En los parciales, `sin_sobregiro` impide que la suma de los cobros pase
+de lo asignado, aunque las solicitudes lleguen al mismo tiempo. Lo que quedó desactualizado es el
+texto de la historia y dos archivos del backend.
+
+#### HU-14 · Impedir el doble cobro
+
+| Criterio | ¿Se cumple? | Detalle |
+|---|---|---|
+| Intención: "que una cédula no cobre dos veces el mismo subsidio" | ✅ La meta · ⚠️ la redacción | En un programa parcial, cobrar varias veces es legítimo; lo que no puede pasar es cobrar **más de lo asignado** |
+| CA-14.01: dos puntos a la vez, gana uno | ✅ El resultado · ⚠️ el mecanismo | Ya no lo hace `un_cobro_vivo_por_persona` (que incluía `Pagado`), sino `un_cobro_en_vuelo_por_persona` más la regla RN-02 del trigger o el saldo de `asignacion` |
+| CA-14.02: cuenta y retiro al mismo tiempo | ✅ | El índice de cobro en vuelo no distingue canal |
+| CA-14.03: confirmación duplicada | ✅ | Idempotencia y `version` intactas; además, el monto no cambia después de creado |
+| CA-14.04: un `Rechazado` libera la cédula | ✅ | Ahora también devuelve el saldo reservado |
+| CA-14.05: test de la carrera | ⚠️ | Falta el caso de dos retiros que **juntos** superan el saldo |
+
+**Redacción propuesta** (no se editó `HU-Criterios.md`; la decide quien mantiene las historias):
+
+> **Como** entidad, **quiero** que una persona nunca cobre más de lo que le corresponde en un
+> programa, ni en dos puntos a la vez ni en un punto y en su cuenta al mismo tiempo, **para** que
+> cada peso que sale corresponda a un cobro real.
+>
+> - **CA-14.01:** Dado dos solicitudes simultáneas de la misma persona en el mismo programa, solo
+>   una queda en proceso; la otra ve «Este subsidio ya está en proceso o fue cobrado».
+> - **CA-14.01b (programa no parcial):** Dado un cobro `Pagado`, un nuevo cobro se rechaza con
+>   «Este subsidio ya fue cobrado».
+> - **CA-14.01c (programa parcial):** Dado cobros que juntos superan el saldo asignado, el que
+>   sobrepasa se rechaza con «saldo insuficiente».
+> - CA-14.02 a CA-14.04: sin cambios.
+> - **CA-14.05:** El test reproduce las dos carreras: dos solicitudes simultáneas, y dos retiros
+>   que juntos superan el saldo.
+
+#### Otras historias que nombran la regla anterior
+
+| Historia | Qué dice hoy | Ajuste para programas parciales |
+|---|---|---|
+| CA-10.03 | El monto no es mutable: el backend calcula `monto = valor_disponible` | El monto lo elige la persona, entre `monto_minimo_cobro` y su saldo |
+| CA-10.07 | "índice único parcial programa+cédula en estados activos" | Índice de cobro en vuelo + saldo de `asignacion` |
+| HU-13 | No tiene un mensaje para el saldo | Agregar «Saldo insuficiente» y «El monto es menor que el mínimo» (RN-19 y RN-20), estado `Rechazado` |
+
+#### Archivos del backend que hay que ajustar al adoptar la actualización
+
+Revisado en la rama `produccion` del backend del equipo.
+
+| Archivo | Qué pasa | Ajuste |
+|---|---|---|
+| `server/src/db/esquema.test.ts`, prueba "1 · nadie cobra dos veces" | Espera un error que mencione `un_cobro_vivo_por_persona`. Con la actualización el segundo cobro se sigue rechazando, pero con el mensaje `RN-02: este subsidio ya está en proceso o fue cobrado`: la prueba fallaría aunque la protección funciona | Esperar `/RN-02\|un_cobro_en_vuelo_por_persona/` y agregar la carrera de dos retiros que superan el saldo |
+| `server/src/db/schema.ts` (Drizzle) | Todavía declara `un_cobro_vivo_por_persona` con `Pagado`. Si se regeneran las migraciones con Drizzle, el índice viejo podría volver a crearse y bloquearía cualquier segundo cobro parcial | Reemplazarlo por `un_cobro_en_vuelo_por_persona` (sin `Pagado`) y agregar `asignacion` y las columnas nuevas |
+| `server/src/cobros/estados.ts` | El comentario de los estados que cuentan para RN-02 nombra el índice anterior | Actualizar el comentario; la lógica no cambia |
+
+El manejo de errores del backend ya es compatible: ante cualquier rechazo de la base (`23xxx` o
+`P0001`) busca el cobro existente de la persona y responde "ya cobrado" o "en proceso".
+
 ## Origen del esquema
 
 `esquema.sql` consolida, en un solo script para base nueva:

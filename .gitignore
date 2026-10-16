@@ -13,3 +13,6 @@ build/
 # Sistema y editores
 .DS_Store
 Thumbs.db
+
+# Registro de prompts (local, no se sube)
+prompts/
