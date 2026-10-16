@@ -2,8 +2,10 @@
 import { Router } from 'express'
 import { noImplementado } from '../noImplementado.ts'
 
-export const rutasCobros = Router()
-
-rutasCobros.post('/', noImplementado) // O4/O5 · solicitar cobro (canal cuenta o retiro)
-rutasCobros.post('/:id/confirmar', noImplementado) // O5 · PIN y pago
-rutasCobros.get('/:id', noImplementado) // O6 · consultar estado
+export function rutasCobros(): Router {
+  const r = Router()
+  r.post('/', noImplementado) // O4/O5 · solicitar cobro (canal cuenta o retiro)
+  r.post('/:id/confirmar', noImplementado) // O5 · PIN y pago
+  r.get('/:id', noImplementado) // O6 · consultar estado
+  return r
+}

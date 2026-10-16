@@ -1,14 +1,20 @@
-// Arma la app Express y monta los módulos bajo /api (Arquitectura § 3.6).
-// La usan main.ts (proceso local) y, más adelante, la función de Vercel.
-import express, { type ErrorRequestHandler } from 'express'
-import { rutasProgramas, rutasCallbackProgramas } from './programas/rutas.ts'
-import { rutasCuentas } from './cuentas/rutas.ts'
+// Arma la app Express y monta los módulos bajo /api (Arquitectura § 3.6). No crea dependencias:
+// las recibe del contenedor.
+import express from 'express'
+import { manejarErrores, rutaNoEncontrada } from './comun/errores.ts'
+import type { Contenedor } from './contenedor.ts'
 import { rutasCobros } from './cobros/rutas.ts'
-import { routerLiquidacion } from './liquidacion/router.ts'
-import { routerPuente } from './puente/router.ts'
+import { rutasCuentas } from './cuentas/rutas.ts'
+import { rutasEntidades } from './entidades/rutas.ts'
 import { rutasExtras } from './extras.ts'
+import { routerLiquidacion } from './liquidacion/router.ts'
+import { construirDocumentoOpenApi } from './openapi/documento.ts'
+import { rutasDocumentacion } from './openapi/rutas.ts'
+import { rutasCallbackProgramas, rutasProgramas } from './programas/rutas.ts'
+import { routerPuente } from './puente/router.ts'
+import { rutasPuntos } from './puntos/rutas.ts'
 
-export function crearApp() {
+export function crearApp(c: Contenedor) {
   const app = express()
   app.disable('x-powered-by')
   app.use(express.json())
@@ -17,21 +23,19 @@ export function crearApp() {
   api.get('/salud', (_req, res) => {
     res.json({ estado: 'ok' })
   })
-  api.use('/programas', rutasProgramas)
-  api.use('/callback', rutasCallbackProgramas)
-  api.use('/cuentas', rutasCuentas)
-  api.use('/cobros', rutasCobros)
-  api.use('/liquidacion', routerLiquidacion)
-  api.use('/puente', routerPuente)
-  api.use(rutasExtras)
+  api.use('/entidades', rutasEntidades(c.uow.repos.entidades))
+  api.use('/programas', rutasProgramas(c.programas))
+  api.use('/callback', rutasCallbackProgramas())
+  api.use('/puntos', rutasPuntos(c.puntos))
+  api.use('/cuentas', rutasCuentas())
+  api.use('/cobros', rutasCobros())
+  api.use('/liquidacion', routerLiquidacion(c.simuladorLiquidacion))
+  api.use('/puente', routerPuente())
+  api.use(rutasExtras(c.config))
+  api.use(rutasDocumentacion(construirDocumentoOpenApi()))
+  api.use(rutaNoEncontrada)
 
   app.use('/api', api)
-
-  const manejarError: ErrorRequestHandler = (err, _req, res, _next) => {
-    console.error(err)
-    res.status(500).json({ error: 'ErrorInterno' })
-  }
-  app.use(manejarError)
-
+  app.use(manejarErrores)
   return app
 }

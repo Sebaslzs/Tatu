@@ -3,6 +3,8 @@
 import { Router } from 'express'
 import { noImplementado } from '../noImplementado.ts'
 
-export const routerPuente = Router()
-
-routerPuente.get('/llaves/:tipo/:llave', noImplementado) // resolver llave → wallet + titular enmascarado
+export function routerPuente(): Router {
+  const r = Router()
+  r.get('/llaves/:tipo/:llave', noImplementado) // resolver llave → wallet + titular enmascarado
+  return r
+}

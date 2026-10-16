@@ -1,43 +1,39 @@
-import type { AddressInfo } from 'node:net'
+// Plataforma: salud, configuración pública y formato de errores.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { crearApp } from './app.ts'
-import { abrirBase, type Base } from './db/conexion.ts'
+import { crearEntorno, type Entorno } from './pruebas/entorno.ts'
 
-let base: Base
-let servidor: ReturnType<ReturnType<typeof crearApp>['listen']>
-let url: string
+let e: Entorno
 
 beforeAll(async () => {
-  base = await abrirBase({ enMemoria: true })
-  servidor = crearApp().listen(0)
-  await new Promise((r) => servidor.once('listening', r))
-  url = `http://localhost:${(servidor.address() as AddressInfo).port}/api`
+  e = await crearEntorno()
 })
+afterAll(() => e.cerrar())
 
-afterAll(async () => {
-  servidor.close()
-  await base.cerrar()
-})
-
-describe('esqueleto de la API', () => {
-  it('la base PGlite en memoria abre y migra', () => {
-    expect(base.tipo).toBe('pglite')
-  })
-
+describe('API', () => {
   it('GET /api/salud responde', async () => {
-    const res = await fetch(`${url}/salud`)
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ estado: 'ok' })
+    expect(await e.pedir('GET', '/salud')).toEqual({ status: 200, cuerpo: { estado: 'ok' } })
   })
 
-  it('GET /api/config expone las banderas EXTRA_*', async () => {
-    const res = await fetch(`${url}/config`)
-    const cuerpo = (await res.json()) as { extras: Record<string, boolean> }
-    expect(cuerpo.extras).toHaveProperty('bono')
+  it('GET /api/config expone las banderas EXTRA_* (RNF-10)', async () => {
+    const { cuerpo } = await e.pedir('GET', '/config')
+    expect(cuerpo).toEqual({ pollIntervaloMs: 1000, extras: { bono: true, qr: false, pdf417: false, contrato: false, deploy: false } })
   })
 
-  it('las rutas del mapa existen y responden 501 mientras no tengan lógica', async () => {
-    const res = await fetch(`${url}/cobros`, { method: 'POST' })
-    expect(res.status).toBe(501)
+  it('una ruta inexistente responde 404 con el formato de error', async () => {
+    const { status, cuerpo } = await e.pedir('GET', '/no-existe')
+    expect(status).toBe(404)
+    expect(cuerpo.error.codigo).toBe('NoEncontrado')
+  })
+
+  it('un JSON mal formado es 400 EntradaInvalida', async () => {
+    const res = await fetch(`${e.url}/programas`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{' })
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { error: { codigo: string } }).error.codigo).toBe('EntradaInvalida')
+  })
+
+  it('las rutas de épicas siguientes responden 501 NoImplementado', async () => {
+    const { status, cuerpo } = await e.pedir('POST', '/cobros', {})
+    expect(status).toBe(501)
+    expect(cuerpo.error.codigo).toBe('NoImplementado')
   })
 })

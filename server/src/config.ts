@@ -1,4 +1,4 @@
-// Única lectura de process.env (Estructura § 2). Todo el resto importa `config`.
+// Única lectura de process.env (Estructura § 2). El resto recibe la configuración ya validada.
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { z } from 'zod'
@@ -17,15 +17,20 @@ const vacioComoIndefinido = z
   .optional()
   .transform((v) => (v ? v : undefined))
 
+const entero = (porDefecto: number) => z.coerce.number().int().positive().default(porDefecto)
+
 const esquema = z.object({
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: entero(3000),
   DATABASE_URL: vacioComoIndefinido,
 
   APP_BASE_URL: z.url().default('http://localhost:5173'),
   API_BASE_URL: z.url().default('http://localhost:3000/api'),
   LIQUIDACION_URL: z.url().default('http://localhost:3000/api/liquidacion'),
+  LIQUIDACION_TIMEOUT_MS: entero(5000),
   PUENTE_URL: z.url().default('http://localhost:3000/api/puente'),
-  POLL_INTERVALO_MS: z.coerce.number().int().positive().default(1000),
+  POLL_INTERVALO_MS: entero(1000),
+  /** Minutos que espera una aprobación antes de volver a Borrador (CA-01.08, HU-05). */
+  APROBACION_TTL_MIN: entero(10),
 
   OP_CLIENT_WALLET_ADDRESS: vacioComoIndefinido,
   OP_KEY_ID: vacioComoIndefinido,
@@ -39,8 +44,14 @@ const esquema = z.object({
   EXTRA_DEPLOY: bandera,
 })
 
-export const config = esquema.parse(process.env)
-export type Config = typeof config
+export type Config = z.infer<typeof esquema>
+
+/** Valida un entorno; se exporta para poder probar la configuración sin tocar process.env. */
+export function leerConfig(entorno: Record<string, string | undefined>): Config {
+  return esquema.parse(entorno)
+}
+
+export const config = leerConfig(process.env)
 
 /** Carpeta de la base PGlite cuando no hay DATABASE_URL (AD-23). */
 export const PGLITE_DIR = resolve(raizRepo, 'server/data/pglite')
