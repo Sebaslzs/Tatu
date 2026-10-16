@@ -70,6 +70,23 @@ const pool = new pg.Pool({
 **pgAdmin:** *Add New Server* → pestaña **Connection** con los datos de la tabla; en
 **Parameters**, *SSL mode* = `require`.
 
+## Variables del frontend (Next.js)
+
+Para el cliente de Supabase en el frontend, en `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://ihbhwslbudtczcxrpefr.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_z0Q6Y1140wYiV1bhOyEgjA_3gD5KiAh
+```
+
+- **La publishable key es pública por diseño:** va dentro del código que descarga el navegador, por
+  eso puede estar aquí. Supabase la protege con RLS.
+- **La secret key (`sb_secret_…`, antes `service_role`) nunca va al frontend ni al repo:** salta
+  todo el RLS. Solo en el `.env` del backend, si alguna vez se necesita.
+- **Con esta llave el navegador no ve ninguna tabla de Tatú:** todas tienen RLS sin políticas.
+  Sirve para servicios de Supabase como Storage o Realtime, no para leer o escribir programas,
+  cobros ni beneficiarios. Esos datos se piden siempre a nuestro backend.
+
 ## Skills de Supabase para asistentes de IA
 
 Si programas con un asistente de IA (Claude Code, Cursor u otro compatible con *agent skills*),
@@ -90,8 +107,8 @@ políticas de RLS, no aplica para Tatú.
 
 - **Todas las tablas tienen RLS** sin políticas: la API pública de Supabase (`supabase-js` con la
   llave `anon`) no ve nada, a propósito. Todo pasa por nuestro backend con esta cadena de conexión.
-- **No compartas las llaves `anon` ni `service_role`** del proyecto: no se usan, y la `service_role`
-  salta toda la seguridad.
+- **Solo la publishable key es pública.** La secret key (`service_role`) nunca se comparte: salta
+  toda la seguridad.
 - **Los cambios de esquema van en un script nuevo** en `db/`, nunca editando a mano en Supabase:
   así la base y el repo no se desalinean.
 - **El usuario `postgres` tiene todos los permisos.** Antes de producción, el backend debe usar un
