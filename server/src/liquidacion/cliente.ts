@@ -1,8 +1,8 @@
 // Cliente HTTP de la liquidación (LIQUIDACION_URL). Cualquier falla de red, 5xx, timeout o
 // respuesta fuera de contrato es `LiquidacionNoResponde` (CA-02.06).
 import { ErrorApi } from '../comun/errores.ts'
-import { Pago, Resumen, type ConsultaPago, type PuertoLiquidacion } from './contrato.ts'
 import type { z } from 'zod'
+import { Pago, Persona, Personas, RespuestaPin, Resumen, type ConsultaPago, type PuertoLiquidacion } from './contrato.ts'
 
 export class LiquidacionNoResponde extends ErrorApi {
   constructor() {
@@ -38,13 +38,43 @@ export class ClienteLiquidacion implements PuertoLiquidacion {
     const { status, cuerpo } = await this.pedir(ruta)
     if (status === 404) return { tipo: 'noExiste' }
     const p = leer(Pago, cuerpo)
-    return p.disponible ? { tipo: 'disponible', monto: Number(p.monto) } : { tipo: 'pagado' }
+    return p.disponible ? { tipo: 'disponible', monto: Number(p.monto), novedad: p.novedad } : { tipo: 'pagado' }
   }
 
-  private async pedir(ruta: string): Promise<{ status: number; cuerpo: unknown }> {
+  async personas(cedulas: readonly string[]): Promise<Map<string, Persona>> {
+    const unicas = [...new Set(cedulas)]
+    if (!unicas.length) return new Map()
+    const { cuerpo } = await this.pedir(`/personas?cedulas=${encodeURIComponent(unicas.join(','))}`)
+    return new Map(leer(Personas, cuerpo).map((p) => [p.cedula, p]))
+  }
+
+  async validarPin(cedula: string, pin: string): Promise<boolean> {
+    const { cuerpo } = await this.pedir('/pin/validar', 'POST', { cedula, pin })
+    return leer(RespuestaPin, cuerpo).valido
+  }
+
+  async inscribir(cedula: string, nombre: string, pin?: string): Promise<Persona> {
+    const { status, cuerpo } = await this.pedir('/personas', 'POST', { cedula, nombre, ...(pin ? { pin } : {}) })
+    if (status !== 200) throw new LiquidacionNoResponde()
+    return leer(Persona, cuerpo)
+  }
+
+  async ponerPin(cedula: string, pin: string): Promise<boolean> {
+    const { status } = await this.pedir(`/personas/${encodeURIComponent(cedula)}/pin`, 'POST', { pin })
+    if (status === 404) return false
+    if (status !== 200) throw new LiquidacionNoResponde()
+    return true
+  }
+
+  private async pedir(ruta: string, metodo = 'GET', cuerpo?: unknown): Promise<{ status: number; cuerpo: unknown }> {
     let res: Response
     try {
-      res = await this.fetch(`${this.baseUrl}${ruta}`, { signal: AbortSignal.timeout(this.timeoutMs) })
+      res = await this.fetch(`${this.baseUrl}${ruta}`, {
+        method: metodo,
+        headers: cuerpo === undefined ? undefined : { 'content-type': 'application/json' },
+        body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      })
     } catch {
       throw new LiquidacionNoResponde()
     }

@@ -1,10 +1,39 @@
-// O3 · Enlazar la cuenta del beneficiario (llave Bre-B o wallet Open Payments).
+// /cuentas · O3 y HU-07. Las rutas reciben y validan; el servicio decide.
 import { Router } from 'express'
-import { noImplementado } from '../noImplementado.ts'
+import { z } from 'zod'
+import { validar } from '../comun/errores.ts'
+import { cedula } from '../liquidacion/contrato.ts'
+import { TipoLlave } from '../puente/contrato.ts'
+import { EntradaCuenta } from './esquemas.ts'
+import type { ServicioCuentas } from './servicio.ts'
 
-export function rutasCuentas(): Router {
+const ParametrosCallback = z.object({
+  hash: z.string().optional(),
+  interact_ref: z.string().optional(),
+  result: z.string().optional(),
+})
+
+export function rutasCuentas(servicio: ServicioCuentas): Router {
   const r = Router()
-  r.post('/', noImplementado) // O3 · enlazar cuenta (HU-07)
-  r.get('/callback/:id', noImplementado) // O3 · callback de verificación (P-11)
+
+  r.post('/', async (req, res) => {
+    res.status(201).json(await servicio.enlazar(validar(EntradaCuenta, req.body)))
+  })
+
+  // «¿Eres Ana M*** R***?» antes de enlazar una llave (CA-07.01)
+  r.get('/llaves/:tipo/:valor', async (req, res) => {
+    res.json(await servicio.consultarLlave(validar(TipoLlave, req.params.tipo), req.params.valor ?? ''))
+  })
+
+  // Va antes de /:cedula para que «callback» no se lea como cédula
+  r.get('/callback/:id', async (req, res) => {
+    const q = ParametrosCallback.safeParse(req.query)
+    res.redirect(302, await servicio.callback(req.params.id ?? '', q.success ? q.data : {}))
+  })
+
+  r.get('/:cedula', async (req, res) => {
+    res.json(await servicio.estado(validar(cedula, req.params.cedula)))
+  })
+
   return r
 }

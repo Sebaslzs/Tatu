@@ -44,3 +44,7 @@ Necesito que apliques todo de acuerdo a como esta el branch [de referencia], per
 ```text
 No debes tocar las ramas producción, ni develop
 ```
+
+```text
+No lo hagas de acuerdo a [la rama de referencia] hazlo desde la carpeta que adjunte
+```

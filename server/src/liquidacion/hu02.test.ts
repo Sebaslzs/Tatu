@@ -51,8 +51,8 @@ describe('CA-02.02 · cédula con pago', () => {
   it('la liquidación responde disponible y el monto', async () => {
     const { status, cuerpo } = await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/${ANA}`)
     expect(status).toBe(200)
-    expect(cuerpo).toEqual({ cedula: ANA, disponible: true, monto: '23000000' })
-    expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'disponible', monto: 23_000_000 })
+    expect(cuerpo).toEqual({ cedula: ANA, disponible: true, monto: '23000000', novedad: false })
+    expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'disponible', monto: 23_000_000, novedad: false })
   })
 })
 
@@ -67,7 +67,7 @@ describe('CA-02.03 · cédula ya pagada', () => {
 
   it('pagada en un programa no afecta a otro', async () => {
     e.simulador.marcarPagada('otro-programa', ANA)
-    expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'disponible', monto: 23_000_000 })
+    expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'disponible', monto: 23_000_000, novedad: false })
   })
 })
 
@@ -135,10 +135,18 @@ describe('CA-02.06 · la liquidación no responde', () => {
 })
 
 describe('CA-02.07 · novedad retroactiva', () => {
-  it('una novedad cargada después aparece en la liquidación (el tope fijado al aprobar no cambia: RN-08)', async () => {
+  it('una novedad cargada después es cobrable, pero no entra al tope que se aprobó (RN-08)', async () => {
+    const antes = await cliente.resumen(programaId)
     e.simulador.cargarNovedad({ cedula: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
-    expect(await cliente.pago(programaId, '1000000004')).toEqual({ tipo: 'disponible', monto: 46_000_000 })
-    expect(await cliente.resumen(programaId)).toEqual({ cedulas: 4, total: 115_000_000 })
+    expect(await cliente.pago(programaId, '1000000004')).toEqual({ tipo: 'disponible', monto: 46_000_000, novedad: true })
+    expect(await cliente.resumen(programaId)).toEqual(antes)
+    expect(antes).toEqual({ cedulas: 3, total: 69_000_000 })
+  })
+
+  it('el resumen del programa tampoco cambia con la novedad: el tope fijado sigue siendo $690.000', async () => {
+    e.simulador.cargarNovedad({ cedula: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
+    const { cuerpo } = await e.pedir('GET', `/programas/${programaId}/liquidacion`)
+    expect(cuerpo).toEqual({ cedulas: 3, total: { valor: '69000000', assetCode: 'COP', assetScale: 2 } })
   })
 
   it.todo('la plataforma no frena por el tope: el banco responde InsufficientGrant y el cobro queda Fallido (HU-12)')

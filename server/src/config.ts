@@ -30,6 +30,9 @@ const esquema = z.object({
   LIQUIDACION_URL: z.url().default('http://localhost:3000/api/liquidacion'),
   LIQUIDACION_TIMEOUT_MS: entero(5000),
   PUENTE_URL: z.url().default('http://localhost:3000/api/puente'),
+  PUENTE_TIMEOUT_MS: entero(5000),
+  /** CA-07.05: `subject` pide un permiso en la billetera; `simulada` (plan B) la da por verificada. */
+  VERIFICACION_CUENTA: z.enum(['subject', 'simulada']).default('subject'),
   POLL_INTERVALO_MS: entero(1000),
   /** Minutos que espera una aprobación antes de volver a Borrador (CA-01.08, HU-05). */
   APROBACION_TTL_MIN: entero(10),

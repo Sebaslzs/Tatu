@@ -4,6 +4,7 @@ import express from 'express'
 import { manejarErrores, rutaNoEncontrada } from './comun/errores.ts'
 import type { Contenedor } from './contenedor.ts'
 import { rutasCobros } from './cobros/rutas.ts'
+import { rutasBeneficiarios } from './beneficiarios/rutas.ts'
 import { rutasCuentas } from './cuentas/rutas.ts'
 import { rutasEntidades } from './entidades/rutas.ts'
 import { rutasExtras } from './extras.ts'
@@ -27,10 +28,11 @@ export function crearApp(c: Contenedor) {
   api.use('/programas', rutasProgramas(c.programas))
   api.use('/callback', rutasCallbackProgramas(c.programas.autorizacion))
   api.use('/puntos', rutasPuntos(c.puntos))
-  api.use('/cuentas', rutasCuentas())
+  api.use('/cuentas', rutasCuentas(c.cuentas))
+  api.use('/beneficiarios', rutasBeneficiarios(c.beneficiarios))
   api.use('/cobros', rutasCobros())
   api.use('/liquidacion', routerLiquidacion(c.simuladorLiquidacion))
-  api.use('/puente', routerPuente())
+  api.use('/puente', routerPuente(c.simuladorPuente))
   api.use(rutasExtras(c.config))
   api.use(rutasDocumentacion(construirDocumentoOpenApi()))
   api.use(rutaNoEncontrada)

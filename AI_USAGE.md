@@ -46,7 +46,27 @@ módulo; cada módulo se entregó en su propio commit.
   cuerpos de entrada salen de los mismos esquemas Zod que validan la API; las pruebas de contrato
   comparan las respuestas reales con los modelos publicados.
 
-### 5. Módulos siguientes del backend
+### 5. Backend — autorización con Open Payments (`server/src/programas/`, `server/src/openPaymentsService.ts`)
+
+* Claude Code implementó HU-04 y HU-05 (permiso con tope, callback con verificación del hash,
+  aprobación rechazada, vencida o cancelada) y HU-18 (pausar y reanudar): `autorizacion.ts`,
+  `ciclo.ts`, `transiciones.ts`, `lector.ts`, `hash.ts` y las rutas.
+* El adaptador `openPaymentsService.ts` (único archivo que importa el SDK) lo escribió Claude Code a
+  partir de la documentación de Open Payments y de lo que ya definía la arquitectura del equipo.
+  **Debe revisarse y probarse contra la Test Wallet real**: hasta ahora solo se probó con dobles.
+* Pruebas por criterio de aceptación en `hu04.test.ts`.
+
+### 6. Backend — cuentas, beneficiarios y banco puente (`server/src/cuentas`, `beneficiarios`, `puente`, `liquidacion`)
+
+* Claude Code implementó HU-07: enlazar una llave Bre-B (cédula, celular, correo o alfanumérica) o
+  una billetera, con PIN, verificación de titularidad y una sola cuenta vigente por persona; el
+  registro del equipo de prueba; el banco puente de Bre-B simulado (contrato, enmascarado,
+  simulador, router y cliente); y los nombres y el PIN de la liquidación (el PIN solo se guarda como
+  hash y la plataforma nunca lo recibe de vuelta).
+* Pruebas por criterio de aceptación en `hu07.test.ts`, `puente.test.ts`, `personas.test.ts` y
+  `registro.test.ts`, más los modelos y rutas del Swagger de cada módulo.
+
+### 7. Módulos siguientes del backend
 
 Cada módulo se registra aquí al entregarse (ver el historial de commits de `server/`).
 

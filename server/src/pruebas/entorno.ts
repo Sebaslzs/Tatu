@@ -12,8 +12,9 @@ import type { FilaEntidad } from '../db/repositorios/entidades.ts'
 import type { Repos } from '../db/unidadDeTrabajo.ts'
 import { LiquidacionSimulada, type PersonaLiquidada } from '../liquidacion/simulador.ts'
 import { candidatos } from '../programas/hash.ts'
+import { PuenteSimulado } from '../puente/simulador.ts'
 import { BilleterasFalsas } from './billeterasFalsas.ts'
-import { PermisosFalsos } from './permisosFalsos.ts'
+import { PermisosFalsos, URL_AUTORIZACION } from './permisosFalsos.ts'
 
 export interface Respuesta<T> {
   status: number
@@ -42,19 +43,22 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
   const billeteras = new BilleterasFalsas()
   const permisos = new PermisosFalsos()
   const simulador = new LiquidacionSimulada(liquidacion)
+  const puente = new PuenteSimulado()
   let ahora = INICIO_DE_PRUEBA
 
   const servidor = createServer()
   await new Promise<void>((listo) => servidor.listen(0, '127.0.0.1', listo))
   const url = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api`
 
-  const config = leerConfig({ LIQUIDACION_URL: `${url}/liquidacion`, EXTRA_BONO: 'true', ...entorno })
+  const config = leerConfig({ LIQUIDACION_URL: `${url}/liquidacion`, PUENTE_URL: `${url}/puente`, API_BASE_URL: url, EXTRA_BONO: 'true', ...entorno })
   const contenedor: Contenedor = crearContenedor({
     db: base.db,
     config,
     billeteras,
     permisos,
+    verificacion: permisos,
     simuladorLiquidacion: simulador,
+    simuladorPuente: puente,
     reloj: () => ahora,
     nuevoNonce: () => 'nonce-cliente-de-prueba',
   })
@@ -80,6 +84,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
     billeteras,
     permisos,
     simulador,
+    puente,
     contenedor,
     repos: contenedor.uow.repos as Repos,
     pedir,
@@ -98,10 +103,22 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
       await base.db.execute(sql.raw(`TRUNCATE ${TABLAS.map((t) => `public.${t}`).join(', ')} CASCADE`))
       billeteras.limpiar()
       permisos.reiniciar()
+      simulador.reiniciar()
+      puente.reiniciar()
       ahora = INICIO_DE_PRUEBA
     },
     crearEntidad(nombre = 'Alcaldía de Prueba'): Promise<FilaEntidad> {
       return contenedor.uow.repos.entidades.crear({ documento: `900${Math.floor(Math.random() * 1e6)}`, nombre, tipo: 'gobierno' })
+    },
+    /** El `hash` que mandaría la Test Wallet al volver de verificar esta cuenta. */
+    async hashCuenta(cuentaId: string, interactRef: string): Promise<string> {
+      const c = (await contenedor.uow.repos.cuentas.obtener(cuentaId))!
+      return candidatos({
+        nonceCliente: c.nonceCliente!,
+        nonceCierre: c.nonceCierre!,
+        interactRef,
+        urlPermiso: URL_AUTORIZACION,
+      })[0]!.valor
     },
     /** El `hash` que mandaría la Test Wallet al volver del consentimiento de este programa. */
     async hashValido(programaId: string, interactRef: string): Promise<string> {

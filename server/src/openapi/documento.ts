@@ -5,15 +5,18 @@ import type { Json } from './ayudas.ts'
 import { jsonSchema } from './ayudas.ts'
 import { MODELOS } from './modelos.ts'
 import { rutasAutorizacion } from './rutas/autorizacion.ts'
+import { rutasBeneficiarios } from './rutas/beneficiarios.ts'
+import { rutasCuentas } from './rutas/cuentas.ts'
 import { rutasLiquidacion } from './rutas/liquidacion.ts'
 import { rutasProgramas } from './rutas/programas.ts'
+import { rutasPuente } from './rutas/puente.ts'
 import { rutasPuntos } from './rutas/puntos.ts'
 import { rutasSistema } from './rutas/sistema.ts'
 
 const DESCRIPCION = [
   'Tatú convierte una liquidación ya aprobada de un subsidio en pagos bajo demanda con **Open Payments** (Interledger).',
   '',
-  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05) y pausar el programa (HU-18). Las rutas de los módulos siguientes (cuentas, cobros, tablero, cierre) existen pero responden `501 NoImplementado`.',
+  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18) y las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B. Las rutas de los módulos siguientes (cobros, tablero, cierre) existen pero responden `501 NoImplementado`.',
   '',
   '### Convenciones',
   '- **Errores**: siempre `{ "error": { "codigo", "mensaje" } }`. Decide con `codigo`; `mensaje` es para la persona.',
@@ -30,7 +33,10 @@ const ETIQUETAS = [
   { name: 'Autorización', description: 'HU-04 y HU-05 · Permiso con tope en el banco, su callback y la cancelación.' },
   { name: 'Ciclo de vida', description: 'HU-18 · Pausar y reanudar.' },
   { name: 'Puntos', description: 'HU-03 · Puntos de retiro y sedes de comercio.' },
-  { name: 'Liquidación', description: 'HU-02 · Liquidación de la entidad (la plataforma consulta, no copia).' },
+  { name: 'Cuentas', description: 'HU-07 · Enlazar y verificar la cuenta del beneficiario (llave Bre-B o billetera).' },
+  { name: 'Beneficiarios', description: 'Registro del equipo de prueba: personas y su PIN.' },
+  { name: 'Liquidación', description: 'HU-02 · Liquidación de la entidad (la plataforma consulta, no copia): pagos, personas y PIN.' },
+  { name: 'Banco puente', description: 'AD-21 · Banco puente de Bre-B simulado: resuelve llaves a billeteras, sin revelar al titular.' },
 ]
 
 function componentes(): Json {
@@ -45,7 +51,16 @@ export function construirDocumentoOpenApi(): Json {
     info: { title: 'API de Tatú', version: '0.1.0', description: DESCRIPCION },
     servers: [{ url: '/api', description: 'Esta instancia' }],
     tags: ETIQUETAS,
-    paths: { ...rutasSistema(), ...rutasProgramas(), ...rutasAutorizacion(), ...rutasPuntos(), ...rutasLiquidacion() },
+    paths: {
+      ...rutasSistema(),
+      ...rutasProgramas(),
+      ...rutasAutorizacion(),
+      ...rutasPuntos(),
+      ...rutasCuentas(),
+      ...rutasBeneficiarios(),
+      ...rutasLiquidacion(),
+      ...rutasPuente(),
+    },
     components: componentes(),
   }
 }

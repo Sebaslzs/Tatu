@@ -12,6 +12,10 @@ export type TipoEntidadEvento = 'programa' | 'cuenta' | 'cobro' | 'beneficiario'
  */
 export type Actor = 'sistema' | 'entidad' | 'banco' | 'punto' | 'beneficiario' | `punto:${string}` | `beneficiario:${string}`
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const actorPunto = (id: string): Actor => (UUID.test(id) ? `punto:${id.toLowerCase()}` : 'sistema')
+export const actorBeneficiario = (id: string): Actor => (UUID.test(id) ? `beneficiario:${id.toLowerCase()}` : 'sistema')
+
 export interface NuevoEvento {
   tipoEntidad: TipoEntidadEvento
   idEntidad: string
@@ -33,12 +37,14 @@ export interface RepoEventos {
 
 /** Ninguna clave del detalle puede parecer un secreto (CA-01.07, CA-16.03, RNF-09). */
 const CLAVE_PROHIBIDA = /token|pin|llave|secret|private|password|nonce/i
+/** El tipo de llave (celular, correo…) no es un secreto: solo la llave misma lo sería. */
+const CLAVES_PERMITIDAS = new Set(['tipoLlave'])
 
 export function exigirDetalleSeguro(detalle: unknown, ruta = 'detalle'): void {
   if (Array.isArray(detalle)) return detalle.forEach((v, i) => exigirDetalleSeguro(v, `${ruta}[${i}]`))
   if (detalle === null || typeof detalle !== 'object') return
   for (const [clave, valor] of Object.entries(detalle)) {
-    if (CLAVE_PROHIBIDA.test(clave)) throw new Error(`El evento no puede guardar «${ruta}.${clave}»`)
+    if (!CLAVES_PERMITIDAS.has(clave) && CLAVE_PROHIBIDA.test(clave)) throw new Error(`El evento no puede guardar «${ruta}.${clave}»`)
     exigirDetalleSeguro(valor, `${ruta}.${clave}`)
   }
 }

@@ -1,7 +1,7 @@
 // HU-04 · Aprobar el permiso con tope en el banco, HU-05 · aprobación rechazada o vencida y
 // HU-18 · pausar el programa. Un bloque por criterio de aceptación.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { detalleDe } from '../db/repositorios/eventos.ts'
+import { detalleDe, exigirDetalleSeguro } from '../db/repositorios/eventos.ts'
 import { COP } from '../pruebas/billeterasFalsas.ts'
 import { crearEntorno, type Entorno } from '../pruebas/entorno.ts'
 
@@ -236,6 +236,14 @@ describe('CA-04.05 · idempotencia del callback', () => {
     expect((await programa()).estado).toBe('Activo')
     const activaciones = (await e.repos.eventos.de('programa', id)).filter((x) => x.estadoNuevo === 'Activo')
     expect(activaciones).toHaveLength(1)
+  })
+})
+
+describe('CA-16.03 · los eventos no guardan secretos', () => {
+  it('el tipo de llave no es un secreto, pero la llave sí lo sería', () => {
+    expect(() => exigirDetalleSeguro({ tipoLlave: 'celular' })).not.toThrow()
+    expect(() => exigirDetalleSeguro({ llave: '3001234567' })).toThrow()
+    expect(() => exigirDetalleSeguro({ datos: { llavePrivada: 'x' } })).toThrow()
   })
 })
 

@@ -16,6 +16,25 @@ export function normalizarBilletera(entrada: string): string {
   return `https://${url.host}${url.pathname}`.replace(/\/+$/, '')
 }
 
+/** Dos URLs de billetera son la misma aunque una tenga `$`, mayúsculas o barra final. */
+export function mismaBilletera(a: string, b: string): boolean {
+  const normalizar = (v: string) => {
+    try {
+      return normalizarBilletera(v)
+    } catch {
+      return null
+    }
+  }
+  const na = normalizar(a)
+  return na !== null && na === normalizar(b)
+}
+
+/** «…/tatu-punto1»: lo que muestran las pantallas. */
+export function billeteraCorta(url: string): string {
+  const partes = url.replace(/\/+$/, '').split('/')
+  return `…/${partes[partes.length - 1] ?? ''}`
+}
+
 /** Campo Zod que valida el formato y entrega la billetera ya normalizada. */
 export const billeteraTexto = z
   .string()

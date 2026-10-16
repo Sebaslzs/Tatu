@@ -10,6 +10,12 @@ import { ClienteLiquidacion } from './liquidacion/cliente.ts'
 import type { PuertoLiquidacion } from './liquidacion/contrato.ts'
 import { LiquidacionSimulada } from './liquidacion/simulador.ts'
 import { OpenPaymentsService } from './openPaymentsService.ts'
+import { ServicioBeneficiarios } from './beneficiarios/servicio.ts'
+import { ServicioCuentas } from './cuentas/servicio.ts'
+import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
+import { ClientePuente } from './puente/cliente.ts'
+import type { PuertoPuente } from './puente/contrato.ts'
+import { PuenteSimulado } from './puente/simulador.ts'
 import { ServicioAutorizacion } from './programas/autorizacion.ts'
 import { CicloPrograma } from './programas/ciclo.ts'
 import { LectorProgramas } from './programas/lector.ts'
@@ -24,7 +30,10 @@ export interface Contenedor {
   uow: UnidadDeTrabajo
   programas: ServiciosProgramas
   puntos: ServicioPuntos
+  cuentas: ServicioCuentas
+  beneficiarios: ServicioBeneficiarios
   simuladorLiquidacion: LiquidacionSimulada
+  simuladorPuente: PuenteSimulado
 }
 
 export interface PiezasContenedor {
@@ -32,8 +41,11 @@ export interface PiezasContenedor {
   config: Config
   billeteras?: PuertoBilleteras
   permisos?: PuertoPermisos
+  verificacion?: PuertoVerificacionCuenta
   liquidacion?: PuertoLiquidacion
+  puente?: PuertoPuente
   simuladorLiquidacion?: LiquidacionSimulada
+  simuladorPuente?: PuenteSimulado
   reloj?: Reloj
   nuevoNonce?: () => string
 }
@@ -45,8 +57,10 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const openPayments = new OpenPaymentsService(config)
   const billeteras = piezas.billeteras ?? openPayments
   const permisos = piezas.permisos ?? openPayments
+  const verificacion = piezas.verificacion ?? openPayments
   const liquidacion =
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
+  const puente = piezas.puente ?? new ClientePuente({ baseUrl: config.PUENTE_URL, timeoutMs: config.PUENTE_TIMEOUT_MS })
 
   const lector = new LectorProgramas(uow)
   const transiciones = new Transiciones({ uow, lector, permisos, reloj, aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000 })
@@ -55,6 +69,20 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     config,
     uow,
     simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
+    simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
+    cuentas: new ServicioCuentas({
+      uow,
+      puente,
+      liquidacion,
+      billeteras,
+      verificacion,
+      reloj,
+      modoVerificacion: config.VERIFICACION_CUENTA,
+      verificacionTtlMs: config.APROBACION_TTL_MIN * 60_000,
+      apiBaseUrl: config.API_BASE_URL,
+      appBaseUrl: config.APP_BASE_URL,
+    }),
+    beneficiarios: new ServicioBeneficiarios({ uow, liquidacion, puente, billeteras, reloj }),
     programas: {
       programas: new ServicioProgramas({ uow, billeteras, liquidacion, lector, transiciones, bonoHabilitado: config.EXTRA_BONO }),
       autorizacion: new ServicioAutorizacion({

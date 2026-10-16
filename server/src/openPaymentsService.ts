@@ -7,15 +7,17 @@ import {
   createAuthenticatedClient,
   createUnauthenticatedClient,
   isFinalizedGrantWithAccessToken,
+  isFinalizedGrantWithSubject,
   isPendingGrant,
   OpenPaymentsClientError,
   type AuthenticatedClient,
   type UnauthenticatedClient,
   type WalletAddress,
 } from '@interledger/open-payments'
-import { ErrorBilletera, normalizarBilletera, type BilleteraResuelta, type PuertoBilleteras } from './comun/billeteras.ts'
+import { ErrorBilletera, mismaBilletera, normalizarBilletera, type BilleteraResuelta, type PuertoBilleteras } from './comun/billeteras.ts'
 import { log } from './comun/log.ts'
 import { ErrorOpenPayments, montoOP } from './comun/openPayments.ts'
+import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
 import type { PedidoPermiso, PermisoPendiente, PuertoPermisos, TokenPermiso } from './programas/puertos.ts'
 
 export interface ConfigOpenPayments {
@@ -80,7 +82,7 @@ function interaccion({ nonce, urlRetorno }: Pick<PedidoPermiso, 'nonce' | 'urlRe
   return { start: ['redirect' as const], finish: { method: 'redirect' as const, uri: urlRetorno, nonce } }
 }
 
-export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos {
+export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, PuertoVerificacionCuenta {
   private readonly config: ConfigOpenPayments
   private publico?: Promise<UnauthenticatedClient>
   private autenticado?: Promise<AuthenticatedClient>
@@ -182,6 +184,37 @@ export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos {
     const wallet = await this.walletOP(args.billeteraPrograma)
     const r = await this.llamar('otra', (c) => c.outgoingPayment.getGrantSpentAmounts({ url: wallet.resourceServer, accessToken: args.token }))
     return r.spentDebitAmount ? Number(r.spentDebitAmount.value) : null
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Verificación de la cuenta del beneficiario (HU-07)
+  // ---------------------------------------------------------------------------------------------
+
+  async pedirVerificacionCuenta(args: { billetera: string; nonce: string; urlRetorno: string }): Promise<PermisoPendiente> {
+    const wallet = await this.walletOP(args.billetera)
+    const g = await this.llamar('otra', (c) =>
+      c.grant.request({ url: wallet.authServer }, { subject: { sub_ids: [{ id: wallet.id, format: 'uri' }] }, interact: interaccion(args) }),
+    )
+    if (!isPendingGrant(g)) throw new ErrorOpenPayments('ErrorOpenPayments', undefined, undefined, 'La verificación no quedó pendiente')
+    return {
+      redirect: g.interact.redirect,
+      nonceCierre: g.interact.finish,
+      uriContinuacion: g.continue.uri,
+      tokenContinuacion: g.continue.access_token.value,
+      urlPermiso: wallet.authServer,
+    }
+  }
+
+  async continuarVerificacion(args: { uriContinuacion: string; tokenContinuacion: string; interactRef: string; billetera: string }): Promise<boolean> {
+    const g = await this.llamar('otra', (c) =>
+      c.grant.continue({ url: args.uriContinuacion, accessToken: args.tokenContinuacion }, { interact_ref: args.interactRef }),
+    )
+    if (!isFinalizedGrantWithSubject(g)) return false
+    return g.subject.sub_ids.some((s) => mismaBilletera(s.id, args.billetera))
+  }
+
+  async urlAutorizacion(billetera: string): Promise<string> {
+    return (await this.walletOP(billetera)).authServer
   }
 
   // ---------------------------------------------------------------------------------------------
