@@ -10,9 +10,9 @@ export const BILLETERA_ANA = 'https://ilp.interledger-test.dev/prueba-ana'
 export const BILLETERA_LUIS = 'https://ilp.interledger-test.dev/prueba-luis'
 
 /** Las personas de la liquidación de prueba: cada una con $230.000 y su PIN. */
-export const ANA = { cedula: '1000000001', pin: '1111' }
-export const LUIS = { cedula: '1000000002', pin: '2222' }
-export const JORGE = { cedula: '1000000003', pin: '3333' }
+export const ANA = { documento: '1000000001', pin: '1111' }
+export const LUIS = { documento: '1000000002', pin: '2222' }
+export const JORGE = { documento: '1000000003', pin: '3333' }
 
 export interface Escenario {
   programaId: string
@@ -46,10 +46,10 @@ export async function escenarioDeCobro(e: Entorno): Promise<Escenario> {
   const puntoId = (await e.pedir('POST', '/puntos', { nombre: 'Tienda Marta', billetera: BILLETERA_PUNTO })).cuerpo.id as string
   const punto2Id = (await e.pedir('POST', '/puntos', { nombre: 'Droguería El Centro', billetera: BILLETERA_PUNTO_2 })).cuerpo.id as string
 
-  await e.pedir('POST', '/beneficiarios', { cedula: ANA.cedula, billetera: BILLETERA_ANA, nombre: 'Ana Pérez', pin: ANA.pin })
-  await e.pedir('POST', '/beneficiarios', { cedula: LUIS.cedula, billetera: BILLETERA_LUIS, nombre: 'Luis Gómez', pin: LUIS.pin })
+  await e.pedir('POST', '/beneficiarios', { documento: ANA.documento, billetera: BILLETERA_ANA, nombre: 'Ana Pérez', pin: ANA.pin })
+  await e.pedir('POST', '/beneficiarios', { documento: LUIS.documento, billetera: BILLETERA_LUIS, nombre: 'Luis Gómez', pin: LUIS.pin })
   // Jorge: sin cuenta ni llave; solo cobra en un punto
-  await e.repos.beneficiarios.crear(JORGE.cedula)
+  await e.repos.beneficiarios.crear(JORGE.documento)
   return { programaId, puntoId, punto2Id }
 }
 

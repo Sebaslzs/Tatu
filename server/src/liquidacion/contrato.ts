@@ -5,7 +5,7 @@
 // lo recibe de vuelta.
 import { z } from 'zod'
 
-export const cedula = z.string().regex(/^\d{5,12}$/, 'cédula inválida').meta({ description: 'Número de cédula (5 a 12 dígitos).', examples: ['1000000001'] })
+export const documento = z.string().regex(/^\d{5,12}$/, 'cédula inválida').meta({ description: 'Número de cédula (5 a 12 dígitos).', examples: ['1000000001'] })
 const unidades = z.string().regex(/^\d+$/, 'monto en unidades mínimas')
 export const pin = z.string().regex(/^\d{4}$/, 'el PIN tiene 4 dígitos').meta({ description: 'PIN de 4 dígitos.', examples: ['1234'] })
 
@@ -18,13 +18,13 @@ export type Resumen = z.infer<typeof Resumen>
 /** CA-02.02 y CA-02.03: `disponible` con su monto, o ya pagado con `monto=null`. */
 export const Pago = z.union([
   z.strictObject({
-    cedula,
+    documento,
     disponible: z.literal(true).meta({ description: 'La cédula tiene un pago por cobrar.' }),
     monto: unidades.meta({ description: 'Monto a pagar en unidades mínimas.', examples: ['23000000'] }),
     novedad: z.boolean().meta({ description: 'Es un retroactivo cargado después de aprobar el permiso: el tope no lo incluye (CA-02.07).' }),
   }),
   z.strictObject({
-    cedula,
+    documento,
     disponible: z.literal(false).meta({ description: 'El pago de esta cédula ya fue cobrado.' }),
     monto: z.null(),
   }),
@@ -33,7 +33,7 @@ export type Pago = z.infer<typeof Pago>
 
 /** Lo que la plataforma puede saber de una persona: su nombre y si tiene PIN (nunca el PIN). */
 export const Persona = z.strictObject({
-  cedula,
+  documento,
   nombre: z.string().meta({ examples: ['Ana Pérez'] }),
   tienePin: z.boolean(),
 })
@@ -42,12 +42,12 @@ export const Personas = z.array(Persona)
 
 /** «Equipo de prueba» hace el papel del gobierno: inscribe a la persona o la actualiza. */
 export const Inscripcion = z.strictObject({
-  cedula,
+  documento,
   nombre: z.string().trim().min(1).max(120).meta({ examples: ['Ana Pérez'] }),
   pin: pin.optional(),
 })
 
-export const PedidoPin = z.strictObject({ cedula, pin })
+export const PedidoPin = z.strictObject({ documento, pin })
 export const RespuestaPin = z.strictObject({ valido: z.boolean() })
 export const NuevoPin = z.strictObject({ pin })
 
@@ -60,13 +60,13 @@ export type ConsultaPago = { tipo: 'disponible'; monto: number; novedad: boolean
 /** Puerto hacia la liquidación: la plataforma consulta, nunca copia la lista (CA-02.05). */
 export interface PuertoLiquidacion {
   resumen(programaId: string): Promise<{ cedulas: number; total: number }>
-  pago(programaId: string, cedula: string): Promise<ConsultaPago>
+  pago(programaId: string, documento: string): Promise<ConsultaPago>
   /** Nombre y si tiene PIN de varias cédulas; las que no están, no vienen. */
   personas(cedulas: readonly string[]): Promise<Map<string, Persona>>
   /** ¿Es este el PIN de la persona? false también si no tiene PIN. */
-  validarPin(cedula: string, pin: string): Promise<boolean>
+  validarPin(documento: string, pin: string): Promise<boolean>
   /** Inscribe a la persona o, si ya estaba, le cambia el nombre (y el PIN, si llega). */
-  inscribir(cedula: string, nombre: string, pin?: string): Promise<Persona>
+  inscribir(documento: string, nombre: string, pin?: string): Promise<Persona>
   /** Pone o cambia el PIN; false si la cédula no está en la liquidación. */
-  ponerPin(cedula: string, pin: string): Promise<boolean>
+  ponerPin(documento: string, pin: string): Promise<boolean>
 }

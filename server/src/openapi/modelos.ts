@@ -93,7 +93,7 @@ export const ConfigPublica = z.strictObject({
 
 export const Cuenta = z.strictObject({
   id: uuid('Identificador de la cuenta.'),
-  cedula: z.string().meta({ examples: ['1000000002'] }),
+  documento: z.string().meta({ examples: ['1000000002'] }),
   estado: z.enum(['SinEnlazar', 'PorVerificar', 'Verificada']),
   billetera: z.url().meta({ description: 'Billetera a la que llega el pago.' }),
   billeteraCorta: z.string().meta({ examples: ['…/prueba-luis'] }),
@@ -114,7 +114,7 @@ export const LlaveConsultada = z.strictObject({
 })
 
 export const Beneficiario = z.strictObject({
-  cedula: z.string(),
+  documento: z.string(),
   nombre: z.string().meta({ description: 'Lo trae la liquidación; Tatú no lo guarda. Si no responde: «Persona 1234».' }),
   billetera: z.string().nullable(),
   billeteraCorta: z.string().nullable(),
@@ -124,7 +124,7 @@ export const Beneficiario = z.strictObject({
   registrado: z.string(),
 })
 
-export const PinRegistrado = z.strictObject({ cedula: z.string(), tienePin: z.literal(true) })
+export const PinRegistrado = z.strictObject({ documento: z.string(), tienePin: z.literal(true) })
 
 export { Coincidencia, Llave, Pago, Persona, RespuestaPin, Resolucion, Resumen }
 

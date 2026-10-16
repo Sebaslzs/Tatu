@@ -80,7 +80,7 @@ export class ServicioCuentas {
 
   /** CA-07.01 a CA-07.07. */
   async enlazar(entrada: EntradaCuenta): Promise<ResultadoEnlace> {
-    const persona = await this.persona(entrada.cedula)
+    const persona = await this.persona(entrada.documento)
     if ('tipoLlave' in entrada) return this.enlazarLlave(persona, entrada.tipoLlave, entrada.llave, entrada.pin)
     return this.enlazarBilletera(persona, entrada.billetera, entrada.pin)
   }
@@ -214,8 +214,8 @@ export class ServicioCuentas {
   }
 
   /** Estado de la cuenta, que la web consulta mientras la persona aprueba. 404 si nunca enlazó una. */
-  async estado(cedula: string): Promise<VistaCuenta> {
-    const persona = await this.persona(cedula)
+  async estado(documento: string): Promise<VistaCuenta> {
+    const persona = await this.persona(documento)
     const encontrada = await this.deps.uow.repos.cuentas.ultimaDe(persona.id)
     const cuenta = encontrada && (await this.aplicarVencimiento(encontrada))
     if (!cuenta) throw noEncontrado('Todavía no has enlazado una cuenta', 'CuentaNoEncontrada')
@@ -358,14 +358,14 @@ export class ServicioCuentas {
   }
 
   /** Sin PIN registrado no hay qué validar; si lo tiene, es obligatorio y debe coincidir (CA-07.03). */
-  private async exigirPin(cedula: string, pin: string | undefined): Promise<void> {
+  private async exigirPin(documento: string, pin: string | undefined): Promise<void> {
     const { liquidacion } = this.deps
-    const tienePin = (await liquidacion.personas([cedula])).get(cedula)?.tienePin
-    if (tienePin && !(pin && (await liquidacion.validarPin(cedula, pin)))) throw new ErrorApi(422, 'PinIncorrecto', 'PIN incorrecto')
+    const tienePin = (await liquidacion.personas([documento])).get(documento)?.tienePin
+    if (tienePin && !(pin && (await liquidacion.validarPin(documento, pin)))) throw new ErrorApi(422, 'PinIncorrecto', 'PIN incorrecto')
   }
 
-  private async persona(cedula: string): Promise<FilaBeneficiario> {
-    const persona = await this.deps.uow.repos.beneficiarios.porCedula(cedula)
+  private async persona(documento: string): Promise<FilaBeneficiario> {
+    const persona = await this.deps.uow.repos.beneficiarios.porCedula(documento)
     if (!persona) throw noEncontrado('Esa cédula no está registrada', 'PersonaNoEncontrada')
     return persona
   }

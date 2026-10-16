@@ -2,7 +2,7 @@
 // el resumen «tengo $230.000» (HU-08).
 import { Router } from 'express'
 import { validar } from '../comun/errores.ts'
-import { cedula } from '../liquidacion/contrato.ts'
+import { documento } from '../liquidacion/contrato.ts'
 import { EntradaPersona, EntradaPin } from './esquemas.ts'
 import type { ConsultaResumenBeneficiario } from './resumen.ts'
 import type { ServicioBeneficiarios } from './servicio.ts'
@@ -10,14 +10,14 @@ import type { ServicioBeneficiarios } from './servicio.ts'
 export function rutasBeneficiarios(servicio: ServicioBeneficiarios, resumen: ConsultaResumenBeneficiario): Router {
   const r = Router()
 
-  // Para el selector de la entrada; va antes de /:cedula para que «demo» no se lea como cédula
+  // Para el selector de la entrada; va antes de /:documento para que «demo» no se lea como cédula
   r.get('/demo', async (_req, res) => {
     res.json(await servicio.demo())
   })
 
   // HU-08: «Tienes $230.000», su cuenta, los puntos y el historial
-  r.get('/:cedula/resumen', async (req, res) => {
-    res.json(await resumen.de(validar(cedula, req.params.cedula)))
+  r.get('/:documento/resumen', async (req, res) => {
+    res.json(await resumen.de(validar(documento, req.params.documento)))
   })
 
   r.get('/', async (_req, res) => {
@@ -28,8 +28,8 @@ export function rutasBeneficiarios(servicio: ServicioBeneficiarios, resumen: Con
     res.status(201).json(await servicio.registrar(validar(EntradaPersona, req.body)))
   })
 
-  r.post('/:cedula/pin', async (req, res) => {
-    res.json(await servicio.ponerPin(validar(cedula, req.params.cedula), validar(EntradaPin, req.body).pin))
+  r.post('/:documento/pin', async (req, res) => {
+    res.json(await servicio.ponerPin(validar(documento, req.params.documento), validar(EntradaPin, req.body).pin))
   })
 
   return r

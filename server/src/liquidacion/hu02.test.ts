@@ -51,7 +51,7 @@ describe('CA-02.02 · cédula con pago', () => {
   it('la liquidación responde disponible y el monto', async () => {
     const { status, cuerpo } = await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/${ANA}`)
     expect(status).toBe(200)
-    expect(cuerpo).toEqual({ cedula: ANA, disponible: true, monto: '23000000', novedad: false })
+    expect(cuerpo).toEqual({ documento: ANA, disponible: true, monto: '23000000', novedad: false })
     expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'disponible', monto: 23_000_000, novedad: false })
   })
 })
@@ -61,7 +61,7 @@ describe('CA-02.03 · cédula ya pagada', () => {
     e.simulador.marcarPagada(programaId, ANA)
     const { status, cuerpo } = await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/${ANA}`)
     expect(status).toBe(200)
-    expect(cuerpo).toEqual({ cedula: ANA, disponible: false, monto: null })
+    expect(cuerpo).toEqual({ documento: ANA, disponible: false, monto: null })
     expect(await cliente.pago(programaId, ANA)).toEqual({ tipo: 'pagado' })
   })
 
@@ -72,11 +72,11 @@ describe('CA-02.03 · cédula ya pagada', () => {
 })
 
 describe('CA-02.04 · cédula inexistente', () => {
-  it.each([['9999999999'], ['no-es-cedula']])('«%s» responde 404 «Esta cédula no está en la liquidación»', async (cedula) => {
-    const { status, cuerpo } = await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/${cedula}`)
+  it.each([['9999999999'], ['no-es-cedula']])('«%s» responde 404 «Esta cédula no está en la liquidación»', async (documento) => {
+    const { status, cuerpo } = await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/${documento}`)
     expect(status).toBe(404)
     expect(cuerpo.error.mensaje).toBe(MENSAJE_CEDULA_NO_ENCONTRADA)
-    expect(await cliente.pago(programaId, cedula)).toEqual({ tipo: 'noExiste' })
+    expect(await cliente.pago(programaId, documento)).toEqual({ tipo: 'noExiste' })
   })
 
   it.todo('el punto ve el rechazo único de HU-13 sin saber si la cédula existía (se prueba con HU-10/HU-13)')
@@ -85,7 +85,7 @@ describe('CA-02.04 · cédula inexistente', () => {
 describe('CA-02.05 · la plataforma no copia la lista', () => {
   it('consultar resumen y pagos no guarda beneficiarios en la base', async () => {
     await e.pedir('GET', `/programas/${programaId}/liquidacion`)
-    for (const cedula of ['1000000001', '1000000002', '1000000003']) await cliente.pago(programaId, cedula)
+    for (const documento of ['1000000001', '1000000002', '1000000003']) await cliente.pago(programaId, documento)
     expect(await e.contar('beneficiario')).toBe(0)
     expect(await e.contar('cobro')).toBe(0)
   })
@@ -137,14 +137,14 @@ describe('CA-02.06 · la liquidación no responde', () => {
 describe('CA-02.07 · novedad retroactiva', () => {
   it('una novedad cargada después es cobrable, pero no entra al tope que se aprobó (RN-08)', async () => {
     const antes = await cliente.resumen(programaId)
-    e.simulador.cargarNovedad({ cedula: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
+    e.simulador.cargarNovedad({ documento: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
     expect(await cliente.pago(programaId, '1000000004')).toEqual({ tipo: 'disponible', monto: 46_000_000, novedad: true })
     expect(await cliente.resumen(programaId)).toEqual(antes)
     expect(antes).toEqual({ cedulas: 3, total: 69_000_000 })
   })
 
   it('el resumen del programa tampoco cambia con la novedad: el tope fijado sigue siendo $690.000', async () => {
-    e.simulador.cargarNovedad({ cedula: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
+    e.simulador.cargarNovedad({ documento: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
     const { cuerpo } = await e.pedir('GET', `/programas/${programaId}/liquidacion`)
     expect(cuerpo).toEqual({ cedulas: 3, total: { valor: '69000000', assetCode: 'COP', assetScale: 2 } })
   })

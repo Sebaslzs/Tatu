@@ -32,7 +32,7 @@ export interface VistaCobro {
   canal: Canal
   punto: { id: string; nombre: string; billeteraCorta: string } | null
   cuenta: { billeteraCorta: string } | null
-  persona: { nombre: string; cedula: string; novedad: boolean }
+  persona: { nombre: string; documento: string; novedad: boolean }
   monto: Monto | null
   totalCompra: Monto | null
   moneda: Moneda
@@ -137,7 +137,7 @@ export class VistasCobro {
       cuenta: cuenta ? { billeteraCorta: billeteraCorta(cuenta.billetera) } : null,
       persona: {
         nombre: ctx.personas.get(persona.numeroDocumento)?.nombre ?? `Persona ${persona.numeroDocumento.slice(-4)}`,
-        cedula: enmascararDocumento(persona.numeroDocumento),
+        documento: enmascararDocumento(persona.numeroDocumento),
         novedad: esNovedad(eventos),
       },
       monto: montoOpcional(c.monto, moneda),

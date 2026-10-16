@@ -3,7 +3,7 @@ import { EntradaPersona, EntradaPin } from '../../beneficiarios/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json } from '../ayudas.ts'
 
 const BENEFICIARIO_EJEMPLO = {
-  cedula: '1000000010',
+  documento: '1000000010',
   nombre: 'Rosa Díaz',
   billetera: 'https://ilp.interledger-test.dev/prueba-rosa',
   billeteraCorta: '…/prueba-rosa',
@@ -38,7 +38,7 @@ export function rutasBeneficiarios(): Json {
         requestBody: {
           required: true,
           content: contenidoJson(jsonSchema(EntradaPersona, 'input'), {
-            cedula: '1000000010',
+            documento: '1000000010',
             billetera: '$ilp.interledger-test.dev/prueba-rosa',
             nombre: 'Rosa Díaz',
             pin: '4444',
@@ -53,8 +53,8 @@ export function rutasBeneficiarios(): Json {
         },
       },
     },
-    '/beneficiarios/{cedula}/pin': {
-      parameters: [{ name: 'cedula', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000010' }],
+    '/beneficiarios/{documento}/pin': {
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000010' }],
       post: {
         tags: ['Beneficiarios'],
         operationId: 'ponerPinBeneficiario',
@@ -62,7 +62,7 @@ export function rutasBeneficiarios(): Json {
         description: 'El PIN de alguien ya registrado; hace falta para retirar en un punto. Lo guarda la liquidación (solo su hash): Tatú nunca lo guarda ni lo devuelve (CA-11.06).',
         requestBody: { required: true, content: contenidoJson(jsonSchema(EntradaPin, 'input'), { pin: '5555' }) },
         responses: {
-          200: ok('PIN registrado.', ref('PinRegistrado'), { cedula: '1000000010', tienePin: true }),
+          200: ok('PIN registrado.', ref('PinRegistrado'), { documento: '1000000010', tienePin: true }),
           400: entradaInvalida,
           404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
         },

@@ -11,8 +11,8 @@ export class PuenteSimulado {
     return this.llaves.get(this.clave(tipo, valor))
   }
 
-  deTitular(cedula: string): Llave[] {
-    return [...this.llaves.values()].filter((l) => l.cedulaTitular === cedula)
+  deTitular(documento: string): Llave[] {
+    return [...this.llaves.values()].filter((l) => l.documentoTitular === documento)
   }
 
   /**
@@ -21,7 +21,7 @@ export class PuenteSimulado {
    */
   registrar(llave: Llave): ResultadoRegistro {
     const previa = this.obtener(llave.tipo, llave.valor)
-    if (previa && previa.cedulaTitular !== llave.cedulaTitular) return 'deOtro'
+    if (previa && previa.documentoTitular !== llave.documentoTitular) return 'deOtro'
     this.llaves.set(this.clave(llave.tipo, llave.valor), { ...llave })
     return previa ? 'actualizada' : 'creada'
   }

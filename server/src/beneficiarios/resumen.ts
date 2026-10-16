@@ -16,7 +16,7 @@ export interface PuntoDeRetiro {
 }
 
 export interface ResumenBeneficiario {
-  persona: { nombre: string; cedula: string; tienePin: boolean }
+  persona: { nombre: string; documento: string; tienePin: boolean }
   /** CA-08.01: todos los subsidios y bonos pendientes, cada uno con su monto y su moneda. */
   pagos: PagoPendiente[]
   /** El primero, para quien solo mira un pago. */
@@ -42,24 +42,24 @@ export class ConsultaResumenBeneficiario {
     this.vistas = deps.vistas
   }
 
-  async de(cedula: string): Promise<ResumenBeneficiario> {
+  async de(documento: string): Promise<ResumenBeneficiario> {
     const { repos } = this.uow
-    const persona = await repos.beneficiarios.porCedula(cedula)
+    const persona = await repos.beneficiarios.porCedula(documento)
     if (!persona) throw noEncontrado('Esa cédula no está registrada', 'PersonaNoEncontrada')
     const [propios, pendientes, cuenta, personas, puntos] = await Promise.all([
       repos.cobros.deBeneficiario(persona.id),
       this.pagosPendientes.de(persona),
       repos.cuentas.ultimaDe(persona.id),
-      this.vistas.personas([cedula]),
+      this.vistas.personas([documento]),
       repos.puntos.listar(),
     ])
     const historial = await this.vistas.de(propios, { eventos: false })
     const { pagos, liquidacionDisponible } = pendientes
     return {
       persona: {
-        nombre: personas.get(cedula)?.nombre ?? `Persona ${cedula.slice(-4)}`,
-        cedula: persona.numeroDocumento,
-        tienePin: personas.get(cedula)?.tienePin ?? false,
+        nombre: personas.get(documento)?.nombre ?? `Persona ${documento.slice(-4)}`,
+        documento: persona.numeroDocumento,
+        tienePin: personas.get(documento)?.tienePin ?? false,
       },
       pagos,
       pago: pagos[0] ?? null,

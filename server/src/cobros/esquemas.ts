@@ -1,10 +1,10 @@
 // Validación en la frontera de lo que llega a /cobros. Las descripciones alimentan OpenAPI.
 import { z } from 'zod'
-import { cedula, pin } from '../liquidacion/contrato.ts'
+import { documento, pin } from '../liquidacion/contrato.ts'
 
 export const EntradaCobro = z.strictObject({
   programaId: z.uuid().optional().meta({ description: 'Programa a cobrar. Opcional: el punto no elige; se toma el programa activo con un pago disponible para la cédula (CA-10.04).' }),
-  cedula,
+  documento,
   canal: z.enum(['cuenta', 'retiro', 'compra']).meta({
     description: '`cuenta` paga a la cuenta de la persona sin PIN; `retiro` en un punto de retiro, con PIN; `compra` es un bono en un comercio autorizado (extra HU-21).',
   }),

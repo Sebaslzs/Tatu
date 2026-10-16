@@ -5,7 +5,7 @@ import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json }
 const LLAVE_EJEMPLO = {
   tipo: 'celular',
   valor: '3001234567',
-  cedulaTitular: '1000000002',
+  documentoTitular: '1000000002',
   nombreTitular: 'Luis Gómez',
   billetera: 'https://ilp.interledger-test.dev/prueba-luis',
 }
@@ -47,7 +47,7 @@ export function rutasPuente(): Json {
         operationId: 'puentePertenece',
         summary: '¿Esta llave es de esta cédula? (RN-16)',
         description: 'Responde sí o no **sin revelar de quién es**. Tatú nunca guarda ni pide el nombre del titular.',
-        requestBody: { required: true, content: contenidoJson(jsonSchema(PedidoPertenece, 'input'), { cedula: '1000000002' }) },
+        requestBody: { required: true, content: contenidoJson(jsonSchema(PedidoPertenece, 'input'), { documento: '1000000002' }) },
         responses: { 200: ok('Coincidencia.', ref('Coincidencia'), { pertenece: true }), 404: noExiste },
       },
     },
@@ -56,7 +56,7 @@ export function rutasPuente(): Json {
         tags: ['Banco puente'],
         operationId: 'puenteLlavesDe',
         summary: 'Llaves de una cédula (equipo de prueba)',
-        parameters: [{ name: 'cedula', in: 'query', required: true, description: 'Cédula del titular.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000002' }],
+        parameters: [{ name: 'documento', in: 'query', required: true, description: 'Cédula del titular.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000002' }],
         responses: { 200: ok('Las llaves del titular.', { type: 'array', items: ref('Llave') }, [LLAVE_EJEMPLO]), 400: entradaInvalida },
       },
       post: {

@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { validar } from '../comun/errores.ts'
 import { idDe } from '../comun/parametros.ts'
-import { cedula } from '../liquidacion/contrato.ts'
+import { documento } from '../liquidacion/contrato.ts'
 import type { ConsultasPunto } from './consultas.ts'
 import { EntradaPunto } from './esquemas.ts'
 import type { ServicioPuntos } from './servicio.ts'
@@ -23,7 +23,7 @@ export function rutasPuntos(servicio: ServicioPuntos, consultas: ConsultasPunto)
 
   // CA-10.01: el punto digita la cédula y ve qué subsidios puede pagarle hoy
   r.get('/:id/pagos', async (req, res) => {
-    const { cedula: c } = validar(z.object({ cedula }), req.query)
+    const { documento: c } = validar(z.object({ documento }), req.query)
     res.json(await consultas.pagosDe(idDe(req), c))
   })
 

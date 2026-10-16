@@ -17,10 +17,10 @@ export function rutasLiquidacion(): Json {
         responses: { 200: ok('Resumen.', ref('ResumenPagos'), { cedulas: 3, total: '69000000' }) },
       },
     },
-    '/liquidacion/programas/{programaId}/pagos/{cedula}': {
+    '/liquidacion/programas/{programaId}/pagos/{documento}': {
       parameters: [
         programaId,
-        { name: 'cedula', in: 'path', required: true, description: 'Cédula a consultar.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000001' },
+        { name: 'documento', in: 'path', required: true, description: 'Cédula a consultar.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000001' },
       ],
       get: {
         tags: ['Liquidación'],
@@ -35,8 +35,8 @@ export function rutasLiquidacion(): Json {
               'application/json': {
                 schema: ref('PagoCedula'),
                 examples: {
-                  disponible: { summary: 'Con pago', value: { cedula: '1000000001', disponible: true, monto: '23000000' } },
-                  pagada: { summary: 'Ya cobrada', value: { cedula: '1000000001', disponible: false, monto: null } },
+                  disponible: { summary: 'Con pago', value: { documento: '1000000001', disponible: true, monto: '23000000' } },
+                  pagada: { summary: 'Ya cobrada', value: { documento: '1000000001', disponible: false, monto: null } },
                 },
               },
             },
@@ -56,7 +56,7 @@ export function rutasLiquidacion(): Json {
           { name: 'cedulas', in: 'query', required: true, description: 'Cédulas separadas por coma (hasta 500).', schema: { type: 'string' }, example: '1000000001,1000000002' },
         ],
         responses: {
-          200: ok('Las personas encontradas, por cédula.', { type: 'array', items: ref('Persona') }, [{ cedula: '1000000001', nombre: 'Ana Pérez', tienePin: true }]),
+          200: ok('Las personas encontradas, por cédula.', { type: 'array', items: ref('Persona') }, [{ documento: '1000000001', nombre: 'Ana Pérez', tienePin: true }]),
           400: entradaInvalida,
         },
       },
@@ -65,19 +65,19 @@ export function rutasLiquidacion(): Json {
         operationId: 'liquidacionInscribir',
         summary: 'Simulador de la entidad · inscribir a una persona',
         description: '«Equipo de prueba» hace el papel de la entidad: inscribe a la persona o, si ya estaba, le cambia el nombre (y el PIN, si llega). Es idempotente.',
-        requestBody: { required: true, content: contenidoJson(jsonSchema(Inscripcion, 'input'), { cedula: '1000000010', nombre: 'Rosa Díaz', pin: '4444' }) },
-        responses: { 200: ok('La persona inscrita.', ref('Persona'), { cedula: '1000000010', nombre: 'Rosa Díaz', tienePin: true }), 400: entradaInvalida },
+        requestBody: { required: true, content: contenidoJson(jsonSchema(Inscripcion, 'input'), { documento: '1000000010', nombre: 'Rosa Díaz', pin: '4444' }) },
+        responses: { 200: ok('La persona inscrita.', ref('Persona'), { documento: '1000000010', nombre: 'Rosa Díaz', tienePin: true }), 400: entradaInvalida },
       },
     },
-    '/liquidacion/personas/{cedula}/pin': {
-      parameters: [{ name: 'cedula', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000001' }],
+    '/liquidacion/personas/{documento}/pin': {
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000001' }],
       post: {
         tags: ['Liquidación'],
         operationId: 'liquidacionPonerPin',
         summary: 'Simulador de la entidad · poner o cambiar el PIN',
         requestBody: { required: true, content: contenidoJson(jsonSchema(NuevoPin, 'input'), { pin: '5555' }) },
         responses: {
-          200: ok('PIN registrado.', ref('PinRegistrado'), { cedula: '1000000001', tienePin: true }),
+          200: ok('PIN registrado.', ref('PinRegistrado'), { documento: '1000000001', tienePin: true }),
           400: entradaInvalida,
           404: falla('404 · La cédula no está en la liquidación.', 'CedulaNoEncontrada', MENSAJE_CEDULA_NO_ENCONTRADA),
         },
@@ -90,7 +90,7 @@ export function rutasLiquidacion(): Json {
         summary: 'Simulador de la entidad · ¿es este el PIN? (AD-14)',
         description:
           'El PIN lo valida el servicio de la entidad y la plataforma no lo guarda (CA-11.06): solo pregunta «¿es este?». Un pedido inválido, una cédula sin PIN o inexistente responden `valido=false`, sin error.',
-        requestBody: { required: true, content: contenidoJson(jsonSchema(PedidoPin, 'input'), { cedula: '1000000001', pin: '1111' }) },
+        requestBody: { required: true, content: contenidoJson(jsonSchema(PedidoPin, 'input'), { documento: '1000000001', pin: '1111' }) },
         responses: { 200: ok('Resultado.', ref('RespuestaPin'), { valido: true }) },
       },
     },

@@ -37,14 +37,14 @@ export class ClientePuente implements PuertoPuente {
     return leer(Resolucion, cuerpo)
   }
 
-  async pertenece(tipo: TipoLlave, valor: string, cedula: string) {
-    const { status, cuerpo } = await this.pedir(`${ruta(tipo, valor)}/pertenece`, 'POST', { cedula })
+  async pertenece(tipo: TipoLlave, valor: string, documento: string) {
+    const { status, cuerpo } = await this.pedir(`${ruta(tipo, valor)}/pertenece`, 'POST', { documento })
     if (status === 404) return null
     return leer(Coincidencia, cuerpo).pertenece
   }
 
-  async llavesDe(cedula: string) {
-    const { status, cuerpo } = await this.pedir(`/llaves?cedula=${encodeURIComponent(cedula)}`)
+  async llavesDe(documento: string) {
+    const { status, cuerpo } = await this.pedir(`/llaves?documento=${encodeURIComponent(documento)}`)
     if (status !== 200) throw new PuenteNoResponde()
     return leer(Llaves, cuerpo)
   }

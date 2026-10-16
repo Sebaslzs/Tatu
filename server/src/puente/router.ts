@@ -2,7 +2,7 @@
 // Mismo patrón que la liquidación: /api/puente, consultado en PUENTE_URL. Las rutas de registro las
 // usa «Equipo de prueba», que hace de banco de cada persona.
 import { Router, type Response } from 'express'
-import { cedula } from '../liquidacion/contrato.ts'
+import { documento } from '../liquidacion/contrato.ts'
 import { Coincidencia, Llave, normalizarLlave, PedidoPertenece, TipoLlave, type Resolucion } from './contrato.ts'
 import { enmascararNombre } from './enmascarar.ts'
 import type { PuenteSimulado } from './simulador.ts'
@@ -39,13 +39,13 @@ export function routerPuente(puente: PuenteSimulado): Router {
     const l = k && puente.obtener(k.tipo, k.valor)
     if (!l) return error(res, 404, 'LlaveNoExiste', NO_EXISTE)
     const pedido = PedidoPertenece.safeParse(req.body)
-    res.json(Coincidencia.parse({ pertenece: pedido.success && pedido.data.cedula === l.cedulaTitular }))
+    res.json(Coincidencia.parse({ pertenece: pedido.success && pedido.data.documento === l.documentoTitular }))
   })
 
   // «Equipo de prueba» hace de banco: las llaves de una persona
   r.get('/llaves', (req, res) => {
-    const doc = cedula.safeParse(req.query.cedula)
-    if (!doc.success) return error(res, 400, 'EntradaInvalida', 'Falta ?cedula= válida')
+    const doc = documento.safeParse(req.query.documento)
+    if (!doc.success) return error(res, 400, 'EntradaInvalida', 'Falta ?documento= válida')
     res.json(puente.deTitular(doc.data))
   })
 
@@ -55,7 +55,7 @@ export function routerPuente(puente: PuenteSimulado): Router {
     if (!e.success || !valor) {
       return error(res, 400, 'EntradaInvalida', e.success ? `No es una llave de tipo ${e.data.tipo} válida` : e.error.issues.map((i) => i.message).join('; '))
     }
-    if (e.data.tipo === 'cedula' && valor !== e.data.cedulaTitular) {
+    if (e.data.tipo === 'cedula' && valor !== e.data.documentoTitular) {
       return error(res, 422, 'CedulaAjena', 'Una llave tipo cédula solo la registra su titular')
     }
     const llave = { ...e.data, valor }

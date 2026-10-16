@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { validar } from '../comun/errores.ts'
-import { cedula } from '../liquidacion/contrato.ts'
+import { documento } from '../liquidacion/contrato.ts'
 import { TipoLlave } from '../puente/contrato.ts'
 import { EntradaCuenta } from './esquemas.ts'
 import type { ServicioCuentas } from './servicio.ts'
@@ -25,14 +25,14 @@ export function rutasCuentas(servicio: ServicioCuentas): Router {
     res.json(await servicio.consultarLlave(validar(TipoLlave, req.params.tipo), req.params.valor ?? ''))
   })
 
-  // Va antes de /:cedula para que «callback» no se lea como cédula
+  // Va antes de /:documento para que «callback» no se lea como cédula
   r.get('/callback/:id', async (req, res) => {
     const q = ParametrosCallback.safeParse(req.query)
     res.redirect(302, await servicio.callback(req.params.id ?? '', q.success ? q.data : {}))
   })
 
-  r.get('/:cedula', async (req, res) => {
-    res.json(await servicio.estado(validar(cedula, req.params.cedula)))
+  r.get('/:documento', async (req, res) => {
+    res.json(await servicio.estado(validar(documento, req.params.documento)))
   })
 
   return r
