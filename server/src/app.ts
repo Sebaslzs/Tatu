@@ -5,6 +5,7 @@ import { manejarErrores, rutaNoEncontrada } from './comun/errores.ts'
 import type { Contenedor } from './contenedor.ts'
 import { rutasCobros } from './cobros/rutas.ts'
 import { rutasBeneficiarios } from './beneficiarios/rutas.ts'
+import { rutasBilleteras } from './billeteras/rutas.ts'
 import { rutasCuentas } from './cuentas/rutas.ts'
 import { rutasEntidades } from './entidades/rutas.ts'
 import { rutasExtras } from './extras.ts'
@@ -27,6 +28,7 @@ export function crearApp(c: Contenedor) {
   api.use('/entidades', rutasEntidades(c.uow.repos.entidades))
   api.use('/programas', rutasProgramas(c.programas))
   api.use('/callback', rutasCallbackProgramas(c.programas.autorizacion))
+  api.use('/billeteras', rutasBilleteras(c.billeteras))
   api.use('/puntos', rutasPuntos(c.puntos, c.consultasPunto))
   api.use('/cuentas', rutasCuentas(c.cuentas))
   api.use('/beneficiarios', rutasBeneficiarios(c.beneficiarios, c.resumenBeneficiario))

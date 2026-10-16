@@ -10,6 +10,11 @@ import type { ServicioBeneficiarios } from './servicio.ts'
 export function rutasBeneficiarios(servicio: ServicioBeneficiarios, resumen: ConsultaResumenBeneficiario): Router {
   const r = Router()
 
+  // Para el selector de la entrada; va antes de /:cedula para que «demo» no se lea como cédula
+  r.get('/demo', async (_req, res) => {
+    res.json(await servicio.demo())
+  })
+
   // HU-08: «Tienes $230.000», su cuenta, los puntos y el historial
   r.get('/:cedula/resumen', async (req, res) => {
     res.json(await resumen.de(validar(cedula, req.params.cedula)))

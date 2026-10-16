@@ -47,6 +47,7 @@ export interface Contenedor {
   resumenBeneficiario: ConsultaResumenBeneficiario
   cobros: ServicioCobros
   token: ServicioPermisoToken
+  billeteras: PuertoBilleteras
   simuladorLiquidacion: LiquidacionSimulada
   simuladorPuente: PuenteSimulado
 }
@@ -120,6 +121,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     config,
     uow,
     token,
+    billeteras,
     simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
     simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
     cuentas,

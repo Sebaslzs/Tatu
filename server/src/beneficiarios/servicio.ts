@@ -119,6 +119,17 @@ export class ServicioBeneficiarios {
     )
   }
 
+  /** Para el selector de la entrada: nombre, etiqueta y cédula de prueba de cada persona registrada. */
+  async demo(): Promise<{ nombre: string; etiqueta: string; documento: string }[]> {
+    const lista = await this.deps.uow.repos.beneficiarios.listar()
+    const personas = await this.nombres(lista.map((b) => b.numeroDocumento))
+    return lista.map((b) => ({
+      nombre: nombreDe(b.numeroDocumento, personas),
+      etiqueta: `${b.tipoDocumento === 'CC' ? 'C.C.' : b.tipoDocumento} de prueba ${Number(b.numeroDocumento.slice(-3))}`,
+      documento: b.numeroDocumento,
+    }))
+  }
+
   /** El PIN de alguien ya registrado: hace falta para retirar en un punto (lo guarda la liquidación). */
   async ponerPin(cedula: string, pin: string): Promise<{ cedula: string; tienePin: true }> {
     const registrada = await this.deps.uow.repos.beneficiarios.porCedula(cedula)
