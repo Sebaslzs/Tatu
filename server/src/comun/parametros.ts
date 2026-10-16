@@ -5,8 +5,10 @@ import { noEncontrado } from './errores.ts'
 
 const uuid = z.uuid()
 
+export const esUuid = (valor: unknown): valor is string => uuid.safeParse(valor).success
+
 export function idDe(req: Request, nombre = 'id'): string {
-  const r = uuid.safeParse(req.params[nombre])
-  if (!r.success) throw noEncontrado('No existe')
-  return r.data
+  const valor = req.params[nombre]
+  if (!esUuid(valor)) throw noEncontrado('No existe')
+  return valor
 }

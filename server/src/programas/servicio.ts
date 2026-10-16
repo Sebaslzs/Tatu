@@ -1,24 +1,26 @@
-// Casos de uso del programa (HU-01, HU-02). Recibe sus dependencias por constructor: la base
-// (unidad de trabajo), la billetera (Open Payments), la liquidación y el reloj.
+// Casos de uso del programa (HU-01, HU-02): crear, editar, leer, listar y consultar su liquidación.
+// Recibe sus dependencias por constructor: la base (unidad de trabajo), la billetera (Open Payments),
+// la liquidación y los colaboradores del ciclo de vida.
 import { resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, entradaInvalida, noEncontrado } from '../comun/errores.ts'
-import { finDelDia, inicioDelDia, type Reloj } from '../comun/fechas.ts'
+import { finDelDia, inicioDelDia } from '../comun/fechas.ts'
 import { desdeDecimal, monto, type Monto } from '../comun/montos.ts'
-import type { CamposPrograma, FilaPrograma } from '../db/repositorios/programas.ts'
-import type { Repos, UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
+import type { CamposPrograma } from '../db/repositorios/programas.ts'
+import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import type { PuertoLiquidacion } from '../liquidacion/contrato.ts'
 import type { EdicionPrograma, EntradaPrograma } from './esquemas.ts'
 import type { TipoPrograma } from './estados.ts'
-import { aprobacionVencida, destinoDe, exigirEditable, exigirVigencia } from './reglas.ts'
-import { monedaDe, vistaPrograma, type VistaPrograma } from './vista.ts'
+import type { LectorProgramas } from './lector.ts'
+import { destinoDe, exigirEditable, exigirVigencia } from './reglas.ts'
+import type { Transiciones } from './transiciones.ts'
+import { monedaDe, type VistaPrograma } from './vista.ts'
 
 export interface DependenciasProgramas {
   uow: UnidadDeTrabajo
   billeteras: PuertoBilleteras
   liquidacion: PuertoLiquidacion
-  reloj: Reloj
-  /** CA-01.08: minutos que espera una aprobación, en ms. */
-  aprobacionTtlMs: number
+  lector: LectorProgramas
+  transiciones: Transiciones
   /** RNF-10: el bono es el extra HU-21. */
   bonoHabilitado: boolean
 }
@@ -29,15 +31,6 @@ export interface ResumenLiquidacion {
 }
 
 const MENSAJE_BILLETERA = 'No encontramos esa cuenta'
-
-/** CA-01.08: lo que se limpia cuando una aprobación vence. */
-const SIN_APROBACION_PENDIENTE = {
-  aprobacionSolicitadaEn: null,
-  uriContinuacion: null,
-  tokenContinuacion: null,
-  nonceCliente: null,
-  nonceCierre: null,
-} satisfies CamposPrograma
 
 export class ServicioProgramas {
   private readonly deps: DependenciasProgramas
@@ -79,13 +72,14 @@ export class ServicioProgramas {
         detalle: { billetera: p.billeteraPrograma, codigoMoneda: p.codigoMoneda },
         actor: 'entidad',
       })
-      return vistaPrograma(p, categorias)
+      return this.deps.lector.vista(p, repos)
     })
   }
 
   /** CA-01.06: en Borrador se cambia todo; fuera de Borrador, 409 EstadoNoPermite. */
   async editar(id: string, cambios: EdicionPrograma): Promise<VistaPrograma> {
-    const actual = await this.exigir(this.deps.uow.repos, id)
+    const { lector, uow } = this.deps
+    const actual = await lector.exigir(id)
     exigirEditable(actual.estado)
     const tipo = cambios.tipo ?? actual.tipo
     if (cambios.tipo) this.exigirTipoHabilitado(cambios.tipo)
@@ -115,61 +109,37 @@ export class ServicioProgramas {
     }
     if (cambios.montoPorPersona) campos.montoPorPersona = this.montoOpcional(cambios.montoPorPersona, escala)
 
-    return this.deps.uow.transaccion(async (repos) => {
+    return uow.transaccion(async (repos) => {
       const p = (await repos.programas.actualizar(id, campos, 'Borrador')) ?? this.yaNoEsBorrador()
       if (cambios.categorias || cambios.tipo) {
-        await repos.programas.ponerCategorias(id, tipo === 'bono' ? (cambios.categorias ?? (await this.categorias(repos, id))) : [])
+        await repos.programas.ponerCategorias(id, tipo === 'bono' ? (cambios.categorias ?? (await lector.categorias(id, repos))) : [])
       }
-      return vistaPrograma(p, await this.categorias(repos, id))
+      return lector.vista(p, repos)
     })
   }
 
   async leer(id: string): Promise<VistaPrograma> {
-    const p = await this.aplicarVencimiento(await this.exigir(this.deps.uow.repos, id))
-    return vistaPrograma(p, await this.categorias(this.deps.uow.repos, id))
+    const { lector, transiciones } = this.deps
+    return lector.vista(await transiciones.aplicarVencimiento(await lector.exigir(id)))
   }
 
   /** CA-01.08: estado, permiso, tope y monto por persona, con el vencimiento ya aplicado. */
   async listar(): Promise<VistaPrograma[]> {
-    const { repos } = this.deps.uow
-    const programas = await Promise.all((await repos.programas.listar()).map((p) => this.aplicarVencimiento(p)))
-    const categorias = await repos.programas.categoriasDe(programas.map((p) => p.id))
-    return programas.map((p) => vistaPrograma(p, categorias.get(p.id) ?? []))
+    const { uow, lector, transiciones } = this.deps
+    const programas = await Promise.all((await uow.repos.programas.listar()).map((p) => transiciones.aplicarVencimiento(p)))
+    return lector.vistas(programas)
   }
 
   /** CA-02.01: cuántas cédulas y el total, consultados a la liquidación sin copiarla (CA-02.05). */
   async resumenLiquidacion(id: string): Promise<ResumenLiquidacion> {
-    const p = await this.exigir(this.deps.uow.repos, id)
+    const p = await this.deps.lector.exigir(id)
     const r = await this.deps.liquidacion.resumen(p.id)
     return { cedulas: r.cedulas, total: monto(r.total, monedaDe(p)) }
   }
 
-  /** CA-01.08 / HU-05: una aprobación vencida vuelve a Borrador con su evento. */
-  private async aplicarVencimiento(p: FilaPrograma): Promise<FilaPrograma> {
-    if (!aprobacionVencida(p, this.deps.reloj(), this.deps.aprobacionTtlMs)) return p
-    return this.deps.uow.transaccion(async (repos) => {
-      const cambiado = await repos.programas.actualizar(p.id, { ...SIN_APROBACION_PENDIENTE, estado: 'Borrador' }, 'EsperandoAprobacion')
-      if (!cambiado) return this.exigir(repos, p.id)
-      await repos.eventos.registrar({
-        tipoEntidad: 'programa',
-        idEntidad: p.id,
-        estadoAnterior: 'EsperandoAprobacion',
-        estadoNuevo: 'Borrador',
-        detalle: { resultado: 'vencido' },
-        actor: 'sistema',
-      })
-      return cambiado
-    })
-  }
-
-  private async exigir(repos: Repos, id: string): Promise<FilaPrograma> {
-    const p = await repos.programas.obtener(id)
-    if (!p) throw noEncontrado('Ese programa no existe')
-    return p
-  }
-
   private async exigirEntidad(id: string): Promise<void> {
-    if (!(await this.deps.uow.repos.entidades.obtener(id))) throw noEncontrado('Esa entidad no existe', 'EntidadNoEncontrada')
+    const { uow } = this.deps
+    if (!(await uow.repos.entidades.obtener(id))) throw noEncontrado('Esa entidad no existe', 'EntidadNoEncontrada')
   }
 
   private exigirTipoHabilitado(tipo: TipoPrograma): void {
@@ -190,10 +160,6 @@ export class ServicioProgramas {
     }
     if (unidades <= 0) throw entradaInvalida('montoPorPersona: debe ser mayor que cero')
     return unidades
-  }
-
-  private async categorias(repos: Repos, id: string): Promise<string[]> {
-    return (await repos.programas.categoriasDe([id])).get(id) ?? []
   }
 
   private yaNoEsBorrador(): never {

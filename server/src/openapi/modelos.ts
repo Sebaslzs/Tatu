@@ -56,6 +56,14 @@ export const ResumenLiquidacion = z.strictObject({
   total: Monto.meta({ description: 'Total de la liquidación en la moneda del programa; será el tope al autorizar.' }),
 })
 
+export const Autorizacion = z.strictObject({
+  redirect: z.url().meta({
+    description: 'Enlace de consentimiento en el banco. Se devuelve y no se guarda: la persona va ahí a aprobar.',
+    examples: ['https://auth.interledger-test.dev/interact/1'],
+  }),
+  programa: Programa.meta({ description: 'El programa, ya en `EsperandoAprobacion` y con su tope fijado.' }),
+})
+
 export const Punto = z.strictObject({
   id: uuid('Identificador del punto.'),
   nombre: z.string(),
@@ -92,6 +100,7 @@ export const MODELOS = {
   Entidad,
   Programa,
   ResumenLiquidacion,
+  Autorizacion,
   Punto,
   PuntoRegistrado,
   Salud,

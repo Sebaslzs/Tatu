@@ -17,14 +17,16 @@ const vacioComoIndefinido = z
   .optional()
   .transform((v) => (v ? v : undefined))
 
+const sinBarraFinal = (url: string) => url.replace(/\/+$/, '')
+
 const entero = (porDefecto: number) => z.coerce.number().int().positive().default(porDefecto)
 
 const esquema = z.object({
   PORT: entero(3000),
   DATABASE_URL: vacioComoIndefinido,
 
-  APP_BASE_URL: z.url().default('http://localhost:5173'),
-  API_BASE_URL: z.url().default('http://localhost:3000/api'),
+  APP_BASE_URL: z.url().default('http://localhost:5173').transform(sinBarraFinal),
+  API_BASE_URL: z.url().default('http://localhost:3000/api').transform(sinBarraFinal),
   LIQUIDACION_URL: z.url().default('http://localhost:3000/api/liquidacion'),
   LIQUIDACION_TIMEOUT_MS: entero(5000),
   PUENTE_URL: z.url().default('http://localhost:3000/api/puente'),

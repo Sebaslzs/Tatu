@@ -11,7 +11,8 @@ afterAll(() => e.cerrar())
 
 describe('API', () => {
   it('GET /api/salud responde', async () => {
-    expect(await e.pedir('GET', '/salud')).toEqual({ status: 200, cuerpo: { estado: 'ok' } })
+    const { status, cuerpo } = await e.pedir('GET', '/salud')
+    expect({ status, cuerpo }).toEqual({ status: 200, cuerpo: { estado: 'ok' } })
   })
 
   it('GET /api/config expone las banderas EXTRA_* (RNF-10)', async () => {

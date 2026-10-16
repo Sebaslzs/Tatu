@@ -272,7 +272,7 @@ export const cobro = pgTable("cobro", {
 ]);
 
 export const evento = pgTable("evento", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
 	tipoEntidad: text("tipo_entidad").notNull(),
 	idEntidad: text("id_entidad").notNull(),
 	estadoAnterior: text("estado_anterior"),

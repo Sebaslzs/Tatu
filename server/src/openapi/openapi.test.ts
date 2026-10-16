@@ -7,7 +7,7 @@ import { COP } from '../pruebas/billeterasFalsas.ts'
 import { crearEntorno, type Entorno } from '../pruebas/entorno.ts'
 import { construirDocumentoOpenApi } from './documento.ts'
 import { RUTA_DOCUMENTO } from './rutas.ts'
-import { ConfigPublica, Entidad, ErrorApi, Pago, Programa, PuntoRegistrado, Punto, ResumenLiquidacion, Resumen, Salud } from './modelos.ts'
+import { Autorizacion, ConfigPublica, Entidad, ErrorApi, Pago, Programa, PuntoRegistrado, Punto, ResumenLiquidacion, Resumen, Salud } from './modelos.ts'
 
 const BILLETERA = 'https://ilp.interledger-test.dev/tatu-programa'
 const PUNTO = 'https://ilp.interledger-test.dev/tatu-punto1'
@@ -70,6 +70,25 @@ describe('el documento OpenAPI', () => {
     expect(texto('/programas/{id}/liquidacion', 'get')).toContain('CA-02.01')
     for (const ca of ['CA-03.01', 'CA-03.02', 'CA-03.03', 'CA-03.04']) expect(texto('/puntos', 'post')).toContain(ca)
     for (const ca of ['CA-02.02', 'CA-02.03', 'CA-02.04']) expect(texto('/liquidacion/programas/{programaId}/pagos/{cedula}', 'get')).toContain(ca)
+  })
+
+  it('las operaciones de autorización y ciclo de vida citan sus criterios', () => {
+    const texto = (ruta: string, metodo: string) => {
+      const op = documento.paths[ruta]![metodo]!
+      return `${op.summary} ${op.description}`
+    }
+    for (const ca of ['CA-04.01', 'CA-04.02', 'CA-04.06']) expect(texto('/programas/{id}/autorizar', 'post')).toContain(ca)
+    for (const ca of ['CA-04.03', 'CA-04.04', 'CA-04.05', 'CA-05.01', 'CA-05.02']) expect(texto('/callback/{id}', 'get')).toContain(ca)
+    expect(texto('/programas/{id}/cancelar-aprobacion', 'post')).toContain('CA-05.03')
+    expect(texto('/programas/{id}/pausar', 'post')).toContain('CA-18.01')
+    expect(texto('/programas/{id}/reanudar', 'post')).toContain('CA-18.02')
+  })
+
+  it('el callback documenta sus parámetros y la redirección, sin cuerpo JSON', () => {
+    const op = documento.paths['/callback/{id}']!.get! as { parameters: { name: string }[]; responses: Record<string, { headers?: unknown; content?: unknown }> }
+    expect(op.parameters.map((p) => p.name).sort()).toEqual(['hash', 'interact_ref', 'result'])
+    expect(op.responses['302']).toHaveProperty('headers.Location')
+    expect(op.responses['302']).not.toHaveProperty('content')
   })
 
   it('el cuerpo de entrada sale de la validación real (billetera, vigencia y categorías documentadas)', () => {
@@ -165,6 +184,19 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     ResumenLiquidacion.parse((await e.pedir('GET', `/programas/${programaId}/liquidacion`)).cuerpo)
   })
 
+  it('autorizar, cancelar, pausar y reanudar cumplen sus modelos y no filtran secretos', async () => {
+    const autorizacion = Autorizacion.parse((await e.pedir('POST', `/programas/${programaId}/autorizar`)).cuerpo)
+    expect(autorizacion.programa.estado).toBe('EsperandoAprobacion')
+    Programa.parse((await e.pedir('POST', `/programas/${programaId}/cancelar-aprobacion`)).cuerpo)
+
+    await e.pedir('POST', `/programas/${programaId}/autorizar`)
+    const callback = await e.pedir('GET', `/callback/${programaId}?${new URLSearchParams({ interact_ref: 'r', hash: await e.hashValido(programaId, 'r') })}`)
+    expect(callback.status).toBe(302)
+    expect(callback.ubicacion).toContain('resultado=aprobado')
+    expect(Programa.parse((await e.pedir('POST', `/programas/${programaId}/pausar`)).cuerpo).estado).toBe('Pausado')
+    expect(Programa.parse((await e.pedir('POST', `/programas/${programaId}/reanudar`)).cuerpo).estado).toBe('Activo')
+  })
+
   it('POST y GET /puntos', async () => {
     PuntoRegistrado.parse((await e.pedir('POST', '/puntos', { nombre: 'Droguería El Centro', billetera: PUNTO })).cuerpo)
     for (const p of (await e.pedir('GET', '/puntos')).cuerpo) Punto.parse(p)
@@ -196,6 +228,6 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     for (const item of Object.values(documento.paths)) {
       for (const metodo of METODOS.filter((m) => item[m])) for (const s of Object.keys(item[metodo]!.responses)) documentados.add(s)
     }
-    expect([...documentados].sort()).toEqual(['200', '201', '400', '404', '409', '503'])
+    expect([...documentados].sort()).toEqual(['200', '201', '302', '400', '404', '409', '502', '503'])
   })
 })

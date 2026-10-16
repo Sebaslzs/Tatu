@@ -1,5 +1,5 @@
 // Raíz de composición: el único lugar que decide qué implementación recibe cada servicio.
-// main.ts y las pruebas lo usan con distintas piezas (p. ej. billeteras falsas).
+// main.ts y las pruebas lo usan con distintas piezas (p. ej. billeteras y permisos falsos).
 import type { PuertoBilleteras } from './comun/billeteras.ts'
 import { relojDelSistema, type Reloj } from './comun/fechas.ts'
 import type { Config } from './config.ts'
@@ -10,13 +10,19 @@ import { ClienteLiquidacion } from './liquidacion/cliente.ts'
 import type { PuertoLiquidacion } from './liquidacion/contrato.ts'
 import { LiquidacionSimulada } from './liquidacion/simulador.ts'
 import { OpenPaymentsService } from './openPaymentsService.ts'
+import { ServicioAutorizacion } from './programas/autorizacion.ts'
+import { CicloPrograma } from './programas/ciclo.ts'
+import { LectorProgramas } from './programas/lector.ts'
+import type { PuertoPermisos } from './programas/puertos.ts'
+import type { ServiciosProgramas } from './programas/rutas.ts'
 import { ServicioProgramas } from './programas/servicio.ts'
+import { Transiciones } from './programas/transiciones.ts'
 import { ServicioPuntos } from './puntos/servicio.ts'
 
 export interface Contenedor {
   config: ConfigPublica
   uow: UnidadDeTrabajo
-  programas: ServicioProgramas
+  programas: ServiciosProgramas
   puntos: ServicioPuntos
   simuladorLiquidacion: LiquidacionSimulada
 }
@@ -25,30 +31,45 @@ export interface PiezasContenedor {
   db: Db
   config: Config
   billeteras?: PuertoBilleteras
+  permisos?: PuertoPermisos
   liquidacion?: PuertoLiquidacion
   simuladorLiquidacion?: LiquidacionSimulada
   reloj?: Reloj
+  nuevoNonce?: () => string
 }
 
 export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const { config } = piezas
+  const reloj = piezas.reloj ?? relojDelSistema
   const uow = crearUnidadDeTrabajo(piezas.db)
-  const billeteras = piezas.billeteras ?? new OpenPaymentsService(config)
+  const openPayments = new OpenPaymentsService(config)
+  const billeteras = piezas.billeteras ?? openPayments
+  const permisos = piezas.permisos ?? openPayments
   const liquidacion =
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
+
+  const lector = new LectorProgramas(uow)
+  const transiciones = new Transiciones({ uow, lector, permisos, reloj, aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000 })
 
   return {
     config,
     uow,
     simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
-    programas: new ServicioProgramas({
-      uow,
-      billeteras,
-      liquidacion,
-      reloj: piezas.reloj ?? relojDelSistema,
-      aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000,
-      bonoHabilitado: config.EXTRA_BONO,
-    }),
+    programas: {
+      programas: new ServicioProgramas({ uow, billeteras, liquidacion, lector, transiciones, bonoHabilitado: config.EXTRA_BONO }),
+      autorizacion: new ServicioAutorizacion({
+        uow,
+        lector,
+        transiciones,
+        permisos,
+        liquidacion,
+        reloj,
+        apiBaseUrl: config.API_BASE_URL,
+        appBaseUrl: config.APP_BASE_URL,
+        ...(piezas.nuevoNonce ? { nuevoNonce: piezas.nuevoNonce } : {}),
+      }),
+      ciclo: new CicloPrograma({ lector, transiciones }),
+    },
     puntos: new ServicioPuntos({ uow, billeteras }),
   }
 }

@@ -3,6 +3,7 @@
 //   1. `bytea` sale como `unknown(...)`, que no existe: se define como customType.
 //   2. Las clases de operador de los índices salen cruzadas (p. ej. timestamptz_ops sobre uuid):
 //      se quitan y PostgreSQL usa la de cada tipo.
+//   3. El id bigserial de `evento` pasa de bigint a number (ver abajo).
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -14,6 +15,8 @@ codigo = codigo
   .replace(/\s*\/\/ TODO: failed to parse database type 'bytea'\n/g, '\n')
   .replace(/unknown\("(\w+)"\)/g, 'bytea("$1")')
   .replace(/\.op\("[a-z0-9_]+"\)/g, '')
+  // 3. bigserial sale como `bigint`, que JSON no sabe serializar; un id de evento cabe en un number.
+  .replace(/bigserial\(\{ mode: "bigint" \}\)/g, 'bigserial({ mode: "number" })')
 
 if (codigo.includes('bytea("')) {
   codigo = codigo

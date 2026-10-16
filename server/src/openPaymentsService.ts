@@ -1,13 +1,22 @@
-// ÚNICO archivo que importa @interledger/open-payments (AD-07).
-// El resto del backend depende de los puertos (p. ej. PuertoBilleteras), nunca del SDK.
+// Adaptador de Open Payments: el ÚNICO archivo que importa @interledger/open-payments (AD-07).
+// El resto del backend depende de los puertos (PuertoBilleteras, PuertoPermisos), nunca del SDK.
+import { createPrivateKey, type KeyObject } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   createAuthenticatedClient,
   createUnauthenticatedClient,
+  isFinalizedGrantWithAccessToken,
+  isPendingGrant,
   OpenPaymentsClientError,
   type AuthenticatedClient,
   type UnauthenticatedClient,
+  type WalletAddress,
 } from '@interledger/open-payments'
 import { ErrorBilletera, normalizarBilletera, type BilleteraResuelta, type PuertoBilleteras } from './comun/billeteras.ts'
+import { log } from './comun/log.ts'
+import { ErrorOpenPayments, montoOP } from './comun/openPayments.ts'
+import type { PedidoPermiso, PermisoPendiente, PuertoPermisos, TokenPermiso } from './programas/puertos.ts'
 
 export interface ConfigOpenPayments {
   OP_CLIENT_WALLET_ADDRESS?: string | undefined
@@ -16,52 +25,223 @@ export interface ConfigOpenPayments {
   OP_PRIVATE_KEY_BASE64?: string | undefined
 }
 
-const TIMEOUT_MS = 10_000
+const TIMEOUT_MS = 15_000
+const CINCO_MIN = 5 * 60_000
+const RAIZ_SERVER = resolve(import.meta.dirname, '..')
 
-/** 4xx del servidor de la billetera = no existe; lo demás (red, 5xx, timeout) = no respondió. */
-function esNoEncontrada(e: unknown): boolean {
-  return e instanceof OpenPaymentsClientError && e.status !== undefined && e.status >= 400 && e.status < 500
+type Operacion = 'pagoSaliente' | 'otra'
+
+/**
+ * Traduce un fallo del SDK al error del dominio. Solo conserva status, code y description: nunca
+ * tokens (RNF-09).
+ */
+export function traducir(e: unknown, operacion: Operacion): ErrorOpenPayments {
+  if (e instanceof ErrorOpenPayments) return e
+  if (e instanceof OpenPaymentsClientError) {
+    const { status, code, description } = e
+    log.warn('Error de Open Payments', { status, code, description, operacion })
+    // La Test Wallet responde 403 «Inactive Token» (no 401) cuando el token del permiso venció: es
+    // TokenVencido y se rota; confundirlo con el tope dejaría el programa sin pagar.
+    if (status === 401 || (status === 403 && /inactive token/i.test(description ?? ''))) {
+      return new ErrorOpenPayments('TokenVencido', status, code, description)
+    }
+    // Cualquier otro 403 al crear el pago saliente es el candidato a InsufficientGrant (el tope)
+    if (status === 403 && operacion === 'pagoSaliente') return new ErrorOpenPayments('TopeSuperado', status, code, description)
+    // Sin status (tiempo agotado, red) o un 5xx: no se sabe si pasó; nunca se marca Fallido por esto
+    if (status === undefined || status >= 500) return new ErrorOpenPayments('SinRespuesta', status, code, description)
+    return new ErrorOpenPayments('ErrorOpenPayments', status, code, description)
+  }
+  log.warn('Error sin respuesta de Open Payments', { error: e, operacion })
+  return new ErrorOpenPayments('SinRespuesta', undefined, undefined, (e as Error)?.message)
 }
 
-export class OpenPaymentsService implements PuertoBilleteras {
+/** 4xx del servidor de la billetera = no existe; lo demás (red, 5xx, timeout) = no respondió. */
+const esNoEncontrada = (e: unknown) => e instanceof OpenPaymentsClientError && e.status !== undefined && e.status >= 400 && e.status < 500
+
+interface WalletOP {
+  id: string
+  codigoMoneda: string
+  escala: number
+  authServer: string
+  resourceServer: string
+  nombre: string | null
+}
+
+const aWallet = (w: WalletAddress): WalletOP => ({
+  id: w.id,
+  codigoMoneda: w.assetCode,
+  escala: w.assetScale,
+  authServer: w.authServer,
+  resourceServer: w.resourceServer,
+  nombre: w.publicName ?? null,
+})
+
+function interaccion({ nonce, urlRetorno }: Pick<PedidoPermiso, 'nonce' | 'urlRetorno'>) {
+  return { start: ['redirect' as const], finish: { method: 'redirect' as const, uri: urlRetorno, nonce } }
+}
+
+export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos {
   private readonly config: ConfigOpenPayments
   private publico?: Promise<UnauthenticatedClient>
   private autenticado?: Promise<AuthenticatedClient>
+  private readonly wallets = new Map<string, { wallet: WalletOP; vence: number }>()
 
   constructor(config: ConfigOpenPayments) {
     this.config = config
   }
 
-  /** O1, CA-01.02/03 y CA-03.02: lee la billetera y su moneda (no requiere llaves). */
+  // ---------------------------------------------------------------------------------------------
+  // Billeteras (HU-01, HU-03)
+  // ---------------------------------------------------------------------------------------------
+
   async resolver(url: string): Promise<BilleteraResuelta> {
-    const cliente = await (this.publico ??= createUnauthenticatedClient({ requestTimeoutMs: TIMEOUT_MS, logLevel: 'silent' }))
     try {
-      const w = await cliente.walletAddress.get({ url: normalizarBilletera(url) })
-      return { url: normalizarBilletera(w.id), assetCode: w.assetCode, assetScale: w.assetScale, nombre: w.publicName ?? null }
+      const w = await this.leerWallet(url)
+      return { url: normalizarBilletera(w.id), assetCode: w.codigoMoneda, assetScale: w.escala, nombre: w.nombre }
     } catch (e) {
       if (esNoEncontrada(e)) throw new ErrorBilletera('NoEncontrada', 'La billetera no existe')
       throw new ErrorBilletera('SinRespuesta', 'El servidor de la billetera no respondió')
     }
   }
 
+  /** walletAddress.get con caché de 5 minutos. Es público: no necesita la llave. */
+  private async leerWallet(direccion: string): Promise<WalletOP> {
+    const url = normalizarBilletera(direccion)
+    const guardada = this.wallets.get(url)
+    if (guardada && guardada.vence > Date.now()) return guardada.wallet
+    const cliente = await this.clientePublico()
+    const wallet = aWallet(await cliente.walletAddress.get({ url }))
+    this.wallets.set(url, { wallet, vence: Date.now() + CINCO_MIN })
+    return wallet
+  }
+
+  private clientePublico(): Promise<UnauthenticatedClient> {
+    this.publico ??= createUnauthenticatedClient({ requestTimeoutMs: TIMEOUT_MS, logLevel: 'silent' })
+    this.publico.catch(() => (this.publico = undefined))
+    return this.publico
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Permiso del programa (HU-04 a HU-06, HU-17)
+  // ---------------------------------------------------------------------------------------------
+
+  async pedirPermisoPrograma(pedido: PedidoPermiso): Promise<PermisoPendiente> {
+    const wallet = await this.walletOP(pedido.billetera)
+    const g = await this.llamar('otra', (c) =>
+      c.grant.request(
+        { url: wallet.authServer },
+        {
+          access_token: {
+            access: [
+              {
+                type: 'outgoing-payment',
+                actions: ['create', 'read'],
+                identifier: wallet.id,
+                limits: { debitAmount: montoOP(pedido.tope, pedido.moneda) },
+              },
+            ],
+          },
+          interact: interaccion(pedido),
+        },
+      ),
+    )
+    if (!isPendingGrant(g)) throw new ErrorOpenPayments('ErrorOpenPayments', undefined, undefined, 'El permiso no quedó pendiente de aprobación')
+    return {
+      redirect: g.interact.redirect,
+      nonceCierre: g.interact.finish,
+      uriContinuacion: g.continue.uri,
+      tokenContinuacion: g.continue.access_token.value,
+      urlPermiso: wallet.authServer,
+    }
+  }
+
+  async continuarPermiso(args: { uriContinuacion: string; tokenContinuacion: string; interactRef: string }): Promise<TokenPermiso> {
+    const g = await this.llamar('otra', (c) =>
+      c.grant.continue({ url: args.uriContinuacion, accessToken: args.tokenContinuacion }, { interact_ref: args.interactRef }),
+    )
+    if (!isFinalizedGrantWithAccessToken(g)) {
+      throw new ErrorOpenPayments('ErrorOpenPayments', undefined, undefined, 'La continuación no entregó un token de acceso')
+    }
+    return { token: g.access_token.value, urlGestion: g.access_token.manage, expiraEnSeg: g.access_token.expires_in }
+  }
+
+  async cancelarPermisoPendiente(args: { uriContinuacion: string; tokenContinuacion: string }): Promise<void> {
+    await this.llamar('otra', (c) => c.grant.cancel({ url: args.uriContinuacion, accessToken: args.tokenContinuacion }))
+  }
+
+  async rotarToken(args: { urlGestion: string; token: string }): Promise<TokenPermiso> {
+    const r = await this.llamar('otra', (c) => c.token.rotate({ url: args.urlGestion, accessToken: args.token }))
+    return { token: r.access_token.value, urlGestion: r.access_token.manage, expiraEnSeg: r.access_token.expires_in }
+  }
+
+  async revocarPermiso(args: { urlGestion: string; token: string }): Promise<void> {
+    await this.llamar('otra', (c) => c.token.revoke({ url: args.urlGestion, accessToken: args.token }))
+  }
+
+  async gastadoDelPermiso(args: { billeteraPrograma: string; token: string }): Promise<number | null> {
+    const wallet = await this.walletOP(args.billeteraPrograma)
+    const r = await this.llamar('otra', (c) => c.outgoingPayment.getGrantSpentAmounts({ url: wallet.resourceServer, accessToken: args.token }))
+    return r.spentDebitAmount ? Number(r.spentDebitAmount.value) : null
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Cliente autenticado y llave
+  // ---------------------------------------------------------------------------------------------
+
+  /** Los servidores de una billetera, traduciendo el fallo al error del dominio. */
+  private async walletOP(direccion: string): Promise<WalletOP> {
+    try {
+      return await this.leerWallet(direccion)
+    } catch (e) {
+      throw traducir(e, 'otra')
+    }
+  }
+
+  private async llamar<T>(operacion: Operacion, fn: (c: AuthenticatedClient) => Promise<T>): Promise<T> {
+    const cliente = await this.clienteAutenticado()
+    try {
+      return await fn(cliente)
+    } catch (e) {
+      throw traducir(e, operacion)
+    }
+  }
+
   /** Cliente que firma cada petición con Ed25519; se crea una sola vez y solo cuando se usa. */
   clienteAutenticado(): Promise<AuthenticatedClient> {
-    const { OP_CLIENT_WALLET_ADDRESS, OP_KEY_ID } = this.config
-    if (!OP_CLIENT_WALLET_ADDRESS || !OP_KEY_ID) throw new Error('Faltan OP_CLIENT_WALLET_ADDRESS u OP_KEY_ID')
-    this.autenticado ??= createAuthenticatedClient({
-      walletAddressUrl: OP_CLIENT_WALLET_ADDRESS,
-      keyId: OP_KEY_ID,
-      privateKey: this.llavePrivada(),
-      requestTimeoutMs: TIMEOUT_MS,
-      logLevel: 'silent',
-    })
+    if (!this.autenticado) {
+      this.autenticado = (async () => {
+        const { OP_CLIENT_WALLET_ADDRESS, OP_KEY_ID } = this.config
+        const faltan = [!OP_CLIENT_WALLET_ADDRESS && 'OP_CLIENT_WALLET_ADDRESS', !OP_KEY_ID && 'OP_KEY_ID'].filter(Boolean)
+        if (faltan.length) throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, `Faltan en el .env: ${faltan.join(', ')}`)
+        return createAuthenticatedClient({
+          walletAddressUrl: OP_CLIENT_WALLET_ADDRESS!,
+          keyId: OP_KEY_ID!,
+          privateKey: this.cargarLlave(),
+          requestTimeoutMs: TIMEOUT_MS,
+          logLevel: 'silent',
+        })
+      })()
+      this.autenticado.catch(() => (this.autenticado = undefined))
+    }
     return this.autenticado
   }
 
-  private llavePrivada(): string {
+  /** La llave privada: OP_PRIVATE_KEY_BASE64 (el PEM en base64, o el DER pkcs8) u OP_PRIVATE_KEY_PATH. */
+  private cargarLlave(): KeyObject {
     const { OP_PRIVATE_KEY_BASE64, OP_PRIVATE_KEY_PATH } = this.config
-    if (OP_PRIVATE_KEY_BASE64) return Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64').toString('utf8')
-    if (OP_PRIVATE_KEY_PATH) return OP_PRIVATE_KEY_PATH
-    throw new Error('Falta OP_PRIVATE_KEY_PATH u OP_PRIVATE_KEY_BASE64')
+    let llave: KeyObject
+    if (OP_PRIVATE_KEY_BASE64) {
+      const bytes = Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64')
+      const texto = bytes.toString('utf8')
+      llave = texto.includes('-----BEGIN') ? createPrivateKey(texto) : createPrivateKey({ key: bytes, format: 'der', type: 'pkcs8' })
+    } else if (OP_PRIVATE_KEY_PATH) {
+      llave = createPrivateKey(readFileSync(resolve(RAIZ_SERVER, OP_PRIVATE_KEY_PATH)))
+    } else {
+      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'Falta OP_PRIVATE_KEY_BASE64 u OP_PRIVATE_KEY_PATH en el .env')
+    }
+    if (llave.asymmetricKeyType !== 'ed25519') {
+      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'La llave privada no es Ed25519')
+    }
+    return llave
   }
 }

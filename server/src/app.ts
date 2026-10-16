@@ -25,7 +25,7 @@ export function crearApp(c: Contenedor) {
   })
   api.use('/entidades', rutasEntidades(c.uow.repos.entidades))
   api.use('/programas', rutasProgramas(c.programas))
-  api.use('/callback', rutasCallbackProgramas())
+  api.use('/callback', rutasCallbackProgramas(c.programas.autorizacion))
   api.use('/puntos', rutasPuntos(c.puntos))
   api.use('/cuentas', rutasCuentas())
   api.use('/cobros', rutasCobros())
