@@ -26,3 +26,6 @@ coverage/
 !.vscode/extensions.json
 .idea/
 *.tsbuildinfo
+
+# Prototipo HTML del equipo: material de trabajo local, no se sube
+tatu-prototipo-2.html

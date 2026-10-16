@@ -1,15 +1,14 @@
-// Selector de rol sin login (HU-19, AD-15) y montaje del grupo de vistas de cada rol.
-import { Button } from '@/componentes/ui/button'
+// Rutas de la web (Especificación § 9.5). Se entra eligiendo un rol, sin cuentas (HU-19, AD-15).
+import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { useRol, type Rol } from '@/contexto/Rol'
+import { ElegirRol } from '@/vistas/inicio/ElegirRol'
+import { EntrarBeneficiario } from '@/vistas/inicio/EntrarBeneficiario'
+import { EntrarEntidad } from '@/vistas/inicio/EntrarEntidad'
+import { EntrarPunto } from '@/vistas/inicio/EntrarPunto'
+import { CabeceraCelular } from '@/vistas/inicio/piezas'
 import { VistaBeneficiario } from '@/vistas/beneficiario/VistaBeneficiario'
 import { VistaEntidad } from '@/vistas/entidad/VistaEntidad'
 import { VistaPunto } from '@/vistas/punto/VistaPunto'
-
-const OPCIONES: { rol: Rol; etiqueta: string }[] = [
-  { rol: 'entidad', etiqueta: 'Entidad' },
-  { rol: 'beneficiario', etiqueta: 'Beneficiario' },
-  { rol: 'punto', etiqueta: 'Punto de pago' },
-]
 
 const VISTAS: Record<Rol, () => React.JSX.Element> = {
   entidad: VistaEntidad,
@@ -17,33 +16,40 @@ const VISTAS: Record<Rol, () => React.JSX.Element> = {
   punto: VistaPunto,
 }
 
-export default function App() {
-  const { rol, elegirRol } = useRol()
-  const Vista = rol ? VISTAS[rol] : null
+/** Lo que hay después de Entrar. Por ahora solo el marcador de cada rol. */
+function AreaRol({ rol }: { rol: Rol }) {
+  const { rol: elegido } = useRol()
+  const navegar = useNavigate()
+  if (elegido !== rol) return <Navigate to={`/entrar/${rol}`} replace />
+  const Vista = VISTAS[rol]
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-6 p-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Tatú</h1>
-        {rol && (
-          <Button variant="ghost" size="sm" onClick={() => elegirRol(null)}>
-            Cambiar rol
-          </Button>
-        )}
-      </header>
-
-      {Vista ? (
-        <Vista />
-      ) : (
-        <section className="flex flex-col gap-3">
-          <p className="text-muted-foreground">¿Con qué rol quieres entrar?</p>
-          {OPCIONES.map(({ rol, etiqueta }) => (
-            <Button key={rol} size="lg" onClick={() => elegirRol(rol)}>
-              {etiqueta}
-            </Button>
-          ))}
-        </section>
-      )}
+    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col gap-6 px-5 pt-[18px] pb-6">
+      <CabeceraCelular />
+      {/* El rol se borra al llegar a "/" (ElegirRol), no aquí: si se borrara antes, esta guardia redirigiría a /entrar */}
+      <button
+        type="button"
+        onClick={() => navegar('/')}
+        className="-ml-2 inline-flex min-h-11 cursor-pointer items-center self-start border-0 bg-transparent px-2 font-sans text-base font-semibold text-noche"
+      >
+        ← Cambiar de rol
+      </button>
+      <Vista />
     </main>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<ElegirRol />} />
+      <Route path="/entrar/entidad" element={<EntrarEntidad />} />
+      <Route path="/entrar/beneficiario" element={<EntrarBeneficiario />} />
+      <Route path="/entrar/punto" element={<EntrarPunto />} />
+      <Route path="/entidad/*" element={<AreaRol rol="entidad" />} />
+      <Route path="/beneficiario/*" element={<AreaRol rol="beneficiario" />} />
+      <Route path="/punto/*" element={<AreaRol rol="punto" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

@@ -31,3 +31,14 @@ export interface ConfigPublica {
 
 /** Banderas EXTRA_* y cadencia de consulta del estado (AD-16, RNF-10). */
 export const obtenerConfig = () => api<ConfigPublica>('/config')
+
+export interface PuntoRegistrado {
+  id: string
+  nombre: string
+  direccion: string
+  billetera: string
+  tipo: 'retiro' | 'compra'
+}
+
+/** Puntos registrados por el equipo (HU-03). El punto elige el suyo para entrar. */
+export const listarPuntos = () => api<PuntoRegistrado[]>('/puntos')

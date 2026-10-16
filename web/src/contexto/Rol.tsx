@@ -1,6 +1,6 @@
 // Rol elegido en el selector (HU-19). Se recuerda en sessionStorage al recargar
 // (CA-19.02) y nunca guarda datos sensibles.
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 
 export type Rol = 'entidad' | 'beneficiario' | 'punto'
 
@@ -22,11 +22,11 @@ const ContextoRol = createContext<ValorRol | null>(null)
 export function ProveedorRol({ children }: { children: ReactNode }) {
   const [rol, setRol] = useState<Rol | null>(leerRol)
 
-  const elegirRol = (nuevo: Rol | null) => {
+  const elegirRol = useCallback((nuevo: Rol | null) => {
     if (nuevo) sessionStorage.setItem(CLAVE, nuevo)
     else sessionStorage.removeItem(CLAVE)
     setRol(nuevo)
-  }
+  }, [])
 
   return <ContextoRol value={{ rol, elegirRol }}>{children}</ContextoRol>
 }
