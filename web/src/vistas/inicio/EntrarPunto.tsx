@@ -1,17 +1,17 @@
-// Acceso del punto de retiro eligiendo su tienda (prototipo "L2" en celular y "LD2" en computador).
+// Acceso del punto de retiro eligiendo su tienda, en celular o en computador.
 import { useCallback, useEffect, useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { listarPuntos, type PuntoRegistrado } from '@/api/client'
 import { useRol } from '@/contexto/Rol'
 import { cn } from '@/lib/utils'
-import { BotonEntrar, CabeceraCelular, Icono, PantallaCelular, PantallaPartida, VolverARol } from './piezas'
+import { BotonEntrar, CabeceraCelular, Icono, PantallaCelular, PantallaPartida, VolverARol } from '@/componentes/piezas'
 
 // Punto elegido al entrar: solo su id, para que la caja sepa desde dónde se atiende.
 const CLAVE_PUNTO = 'tatu.punto'
 
 type Carga = { estado: 'cargando' } | { estado: 'error' } | { estado: 'listo'; puntos: PuntoRegistrado[] }
 
-// El prototipo cambia a la versión de computador desde 960 px de ancho.
+// Desde 960 px de ancho se usa la versión de computador.
 const COMPUTADOR = '(min-width: 960px)'
 const suscribir = (aviso: () => void) => {
   const mq = window.matchMedia(COMPUTADOR)

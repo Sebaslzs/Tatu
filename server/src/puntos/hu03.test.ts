@@ -129,3 +129,21 @@ describe('CA-03.04 · canal del punto', () => {
 
   it.todo('POST /cobros aplica la regla al solicitar en un punto (HU-10, HU-21)')
 })
+
+describe('GET /puntos y pagos en caja', () => {
+  it('sin puntos registrados el listado es vacío', async () => {
+    const { status, cuerpo } = await e.pedir('GET', '/puntos')
+    expect({ status, cuerpo }).toEqual({ status: 200, cuerpo: [] })
+  })
+
+  it('rechaza un tipo que no es retiro ni compra', async () => {
+    expect((await registrar({ tipo: 'cuenta' })).status).toBe(400)
+  })
+
+  it('GET /puntos/:id/pagos: punto inexistente 404; cédula inválida 400', async () => {
+    const puntoId = (await registrar()).cuerpo.id
+    expect((await e.pedir('GET', `/puntos/00000000-0000-4000-8000-000000000000/pagos?cedula=1000000001`)).status).toBe(404)
+    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?cedula=abc`)).status).toBe(400)
+    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?cedula=1000000077`)).status).toBe(404)
+  })
+})

@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { detalleDe } from '../db/repositorios/eventos.ts'
 import { crearEntorno, type Entorno } from '../pruebas/entorno.ts'
-import { activarPrograma, ANA, escenarioDeCobro, JORGE, llaveNueva, LUIS, type Escenario } from '../pruebas/escenario.ts'
+import { activarPrograma, ANA, BILLETERA_PROGRAMA, escenarioDeCobro, JORGE, llaveNueva, LUIS, type Escenario } from '../pruebas/escenario.ts'
 
 let e: Entorno
 let s: Escenario
@@ -359,3 +359,123 @@ describe('CA-11.06 · privacidad: la plataforma no guarda el PIN', () => {
     expect((await confirmar(c.id, '7777')).status).toBe(202)
   })
 })
+
+describe('GET /cobros/:id', () => {
+  it('devuelve el cobro solicitado, con sus eventos', async () => {
+    const creado = (await retiro(JORGE.cedula)).cuerpo
+    const { status, cuerpo } = await e.pedir('GET', `/cobros/${creado.id}`)
+    expect(status).toBe(200)
+    expect(cuerpo).toMatchObject({ id: creado.id, estado: 'PorConfirmar', canal: 'retiro' })
+    expect(cuerpo.eventos.map((x: { hacia: string }) => x.hacia)).toEqual(['Solicitado', 'PorConfirmar'])
+  })
+
+  it('un cobro que no existe es 404', async () => {
+    expect((await e.pedir('GET', '/cobros/00000000-0000-4000-8000-000000000000')).status).toBe(404)
+  })
+})
+
+describe('GET /puntos/:id/cobros', () => {
+  it('lista los cobros del punto, del más reciente al más antiguo, sin eventos', async () => {
+    const c = (await retiro(JORGE.cedula)).cuerpo
+    const { status, cuerpo } = await e.pedir('GET', `/puntos/${s.puntoId}/cobros`)
+    expect(status).toBe(200)
+    expect(cuerpo).toHaveLength(1)
+    expect(cuerpo[0]).toMatchObject({ id: c.id, canal: 'retiro', estado: 'PorConfirmar' })
+    expect(cuerpo[0].eventos).toBeUndefined()
+  })
+
+  it('desde=hoy es el periodo por defecto; desde inválido también filtra el día', async () => {
+    await retiro(JORGE.cedula)
+    const hoy = (await e.pedir('GET', `/puntos/${s.puntoId}/cobros?desde=hoy`)).cuerpo
+    const defecto = (await e.pedir('GET', `/puntos/${s.puntoId}/cobros`)).cuerpo
+    const invalido = (await e.pedir('GET', `/puntos/${s.puntoId}/cobros?desde=ayer`)).cuerpo
+    expect(hoy).toHaveLength(1)
+    expect(defecto).toHaveLength(1)
+    expect(invalido).toHaveLength(1)
+  })
+
+  it('pasados 8 días, desde=hoy y 7d quedan vacíos y desde=todo conserva el cobro', async () => {
+    const c = (await retiro(JORGE.cedula)).cuerpo
+    e.avanzarReloj(8 * 86_400_000)
+    expect((await e.pedir('GET', `/puntos/${s.puntoId}/cobros?desde=hoy`)).cuerpo).toEqual([])
+    expect((await e.pedir('GET', `/puntos/${s.puntoId}/cobros?desde=7d`)).cuerpo).toEqual([])
+    const todo = (await e.pedir('GET', `/puntos/${s.puntoId}/cobros?desde=todo`)).cuerpo
+    expect(todo).toHaveLength(1)
+    expect(todo[0].id).toBe(c.id)
+  })
+
+  it('un punto sin cobros responde lista vacía; uno inexistente, 404', async () => {
+    expect((await e.pedir('GET', `/puntos/${s.punto2Id}/cobros`)).cuerpo).toEqual([])
+    expect((await e.pedir('GET', '/puntos/00000000-0000-4000-8000-000000000000/cobros')).status).toBe(404)
+  })
+})
+
+describe('canal compra (bono)', () => {
+  const SEDE = 'https://ilp.interledger-test.dev/tatu-sede'
+
+  async function activarBono(): Promise<string> {
+    const entidad = await e.crearEntidad()
+    const id = (
+      await e.pedir('POST', '/programas', {
+        entidadId: entidad.id,
+        nombre: 'Bono escolar',
+        billetera: BILLETERA_PROGRAMA,
+        vigenciaInicio: '2026-10-01',
+        vigenciaFin: '2026-12-31',
+        tipo: 'bono',
+        categorias: ['alimentos', 'salud'],
+      })
+    ).cuerpo.id as string
+    await e.pedir('POST', `/programas/${id}/autorizar`)
+    const q = new URLSearchParams({ interact_ref: 'ref-1', hash: await e.hashValido(id, 'ref-1') })
+    await e.pedir('GET', `/callback/${id}?${q}`)
+    return id
+  }
+
+  const compra = (puntoId: string, extra: Record<string, unknown> = {}) =>
+    e.pedir('POST', '/cobros', {
+      cedula: JORGE.cedula,
+      canal: 'compra',
+      puntoId,
+      totalCompra: '8000000',
+      llaveIdempotencia: llaveNueva(),
+      ...extra,
+    })
+
+  it('en una sede asociada al bono queda PorConfirmar con el min(disponible, totalCompra)', async () => {
+    e.billeteras.registrar(SEDE)
+    const bonoId = await activarBono()
+    const sedeId = (await e.pedir('POST', '/puntos', { nombre: 'Sede escolar', billetera: SEDE, tipo: 'compra', programaId: bonoId })).cuerpo.id
+    const { status, cuerpo } = await compra(sedeId, { programaId: bonoId })
+    expect(status).toBe(201)
+    expect(cuerpo).toMatchObject({
+      estado: 'PorConfirmar',
+      canal: 'compra',
+      monto: { valor: '8000000', assetCode: 'COP', assetScale: 2 },
+      totalCompra: { valor: '8000000', assetCode: 'COP', assetScale: 2 },
+      programa: { id: bonoId, nombre: 'Bono escolar' },
+      punto: { id: sedeId, nombre: 'Sede escolar' },
+    })
+    const r = await confirmar(cuerpo.id, JORGE.pin)
+    expect(r.status).toBe(202)
+    expect((await e.pedir('GET', `/cobros/${cuerpo.id}`)).cuerpo.estado).toBe('Pagado')
+    expect(e.pagos.entrantes[0]).toMatchObject({ billetera: SEDE, monto: 8_000_000 })
+  })
+
+  it('una sede no asociada al bono queda Rechazado ComercioNoAutorizado', async () => {
+    e.billeteras.registrar(SEDE)
+    const bonoId = await activarBono()
+    const sedeId = (await e.pedir('POST', '/puntos', { nombre: 'Sede ajena', billetera: SEDE, tipo: 'compra' })).cuerpo.id
+    const { cuerpo } = await compra(sedeId, { programaId: bonoId })
+    expect(cuerpo).toMatchObject({ estado: 'Rechazado', motivo: { codigo: 'ComercioNoAutorizado' } })
+    expect(e.pagos.entrantes).toHaveLength(0)
+  })
+
+  it('sin totalCompra el canal compra es 400', async () => {
+    e.billeteras.registrar(SEDE)
+    const bonoId = await activarBono()
+    const sedeId = (await e.pedir('POST', '/puntos', { nombre: 'Sede', billetera: SEDE, tipo: 'compra', programaId: bonoId })).cuerpo.id
+    expect((await compra(sedeId, { programaId: bonoId, totalCompra: undefined })).status).toBe(400)
+  })
+})
+

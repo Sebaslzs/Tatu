@@ -6,6 +6,8 @@ import { jsonSchema } from './ayudas.ts'
 import { MODELOS } from './modelos.ts'
 import { rutasAutorizacion } from './rutas/autorizacion.ts'
 import { rutasBeneficiarios } from './rutas/beneficiarios.ts'
+import { rutasBilleteras } from './rutas/billeteras.ts'
+import { rutasCobros } from './rutas/cobros.ts'
 import { rutasCuentas } from './rutas/cuentas.ts'
 import { rutasLiquidacion } from './rutas/liquidacion.ts'
 import { rutasProgramas } from './rutas/programas.ts'
@@ -16,7 +18,7 @@ import { rutasSistema } from './rutas/sistema.ts'
 const DESCRIPCION = [
   'Tatú convierte una liquidación ya aprobada de un subsidio en pagos bajo demanda con **Open Payments** (Interledger).',
   '',
-  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18) y las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B. Las rutas de los módulos siguientes (cobros, tablero, cierre) existen pero responden `501 NoImplementado`.',
+  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18), las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B, el **resumen de la persona** (HU-08) y los **cobros** (HU-10, HU-11). El tablero y el cierre del programa responden `501 NoImplementado`.',
   '',
   '### Convenciones',
   '- **Errores**: siempre `{ "error": { "codigo", "mensaje" } }`. Decide con `codigo`; `mensaje` es para la persona.',
@@ -34,7 +36,9 @@ const ETIQUETAS = [
   { name: 'Ciclo de vida', description: 'HU-18 · Pausar y reanudar.' },
   { name: 'Puntos', description: 'HU-03 · Puntos de retiro y sedes de comercio.' },
   { name: 'Cuentas', description: 'HU-07 · Enlazar y verificar la cuenta del beneficiario (llave Bre-B o billetera).' },
-  { name: 'Beneficiarios', description: 'Registro del equipo de prueba: personas y su PIN.' },
+  { name: 'Beneficiarios', description: 'Registro del equipo de prueba, el selector demo y el resumen HU-08.' },
+  { name: 'Billeteras', description: 'Resolver una dirección de billetera antes de guardarla.' },
+  { name: 'Cobros', description: 'HU-10 y HU-11 · Solicitar, confirmar con PIN, cancelar y consultar un cobro.' },
   { name: 'Liquidación', description: 'HU-02 · Liquidación de la entidad (la plataforma consulta, no copia): pagos, personas y PIN.' },
   { name: 'Banco puente', description: 'AD-21 · Banco puente de Bre-B simulado: resuelve llaves a billeteras, sin revelar al titular.' },
 ]
@@ -58,6 +62,8 @@ export function construirDocumentoOpenApi(): Json {
       ...rutasPuntos(),
       ...rutasCuentas(),
       ...rutasBeneficiarios(),
+      ...rutasBilleteras(),
+      ...rutasCobros(),
       ...rutasLiquidacion(),
       ...rutasPuente(),
     },

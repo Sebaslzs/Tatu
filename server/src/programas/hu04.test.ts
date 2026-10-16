@@ -392,3 +392,17 @@ describe('CA-18.02 · reanudar', () => {
 
   it.todo('los cobros que ya están en Pagando terminan normalmente (HU-12)')
 })
+
+describe('rutas aún no implementadas', () => {
+  it('GET /programas/:id/tablero responde 501 NoImplementado', async () => {
+    const { status, cuerpo } = await e.pedir('GET', `/programas/${id}/tablero`)
+    expect(status).toBe(501)
+    expect(cuerpo.error.codigo).toBe('NoImplementado')
+  })
+
+  it('POST /programas/:id/cerrar responde 501 NoImplementado', async () => {
+    const { status, cuerpo } = await e.pedir('POST', `/programas/${id}/cerrar`, {})
+    expect(status).toBe(501)
+    expect(cuerpo.error.codigo).toBe('NoImplementado')
+  })
+})

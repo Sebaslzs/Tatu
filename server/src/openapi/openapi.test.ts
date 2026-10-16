@@ -5,11 +5,14 @@ import SwaggerParser from '@apidevtools/swagger-parser'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { COP } from '../pruebas/billeterasFalsas.ts'
 import { crearEntorno, type Entorno } from '../pruebas/entorno.ts'
+import { ANA, escenarioDeCobro, JORGE, llaveNueva } from '../pruebas/escenario.ts'
 import { construirDocumentoOpenApi } from './documento.ts'
 import { RUTA_DOCUMENTO } from './rutas.ts'
 import {
   Autorizacion,
   Beneficiario,
+  BilleteraResuelta,
+  Cobro,
   Coincidencia,
   ConfigPublica,
   Cuenta,
@@ -18,6 +21,8 @@ import {
   Llave,
   LlaveConsultada,
   Pago,
+  PagosPunto,
+  PersonaDemo,
   PinRegistrado,
   Persona,
   Programa,
@@ -26,6 +31,7 @@ import {
   Resolucion,
   ResultadoEnlace,
   Resumen,
+  ResumenBeneficiario,
   ResumenLiquidacion,
   RespuestaPin,
   Salud,
@@ -104,6 +110,18 @@ describe('el documento OpenAPI', () => {
     expect(texto('/programas/{id}/cancelar-aprobacion', 'post')).toContain('CA-05.03')
     expect(texto('/programas/{id}/pausar', 'post')).toContain('CA-18.01')
     expect(texto('/programas/{id}/reanudar', 'post')).toContain('CA-18.02')
+  })
+
+  it('las operaciones de cobros, caja y resumen citan sus criterios', () => {
+    const texto = (ruta: string, metodo: string) => {
+      const op = documento.paths[ruta]![metodo]!
+      return `${op.summary} ${op.description}`
+    }
+    expect(texto('/puntos/{id}/pagos', 'get')).toContain('CA-10.01')
+    for (const ca of ['CA-10.02', 'CA-10.04', 'CA-10.07']) expect(texto('/cobros', 'post')).toContain(ca)
+    for (const ca of ['CA-11.01', 'CA-11.02', 'CA-11.03']) expect(texto('/cobros/{id}/confirmar', 'post')).toContain(ca)
+    expect(texto('/cobros/{id}/cancelar', 'post')).toContain('CA-11.05')
+    expect(texto('/beneficiarios/{cedula}/resumen', 'get')).toContain('CA-08.01')
   })
 
   it('el callback documenta sus parámetros y la redirección, sin cuerpo JSON', () => {
@@ -309,6 +327,40 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     for (const p of (await e.pedir('GET', '/puntos')).cuerpo) Punto.parse(p)
   })
 
+  it('GET /billeteras/resolver', async () => {
+    BilleteraResuelta.parse((await e.pedir('GET', `/billeteras/resolver?direccion=${encodeURIComponent('$ilp.interledger-test.dev/tatu-programa')}`)).cuerpo)
+  })
+
+  describe('cobros, caja y resumen del beneficiario', () => {
+    it('solicitar, consultar, cancelar, pagos y cobros del punto cumplen el modelo', async () => {
+      const s = await escenarioDeCobro(e)
+      PagosPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/pagos?cedula=${JORGE.cedula}`)).cuerpo)
+      const creado = await e.pedir('POST', '/cobros', {
+        cedula: JORGE.cedula,
+        canal: 'retiro',
+        puntoId: s.puntoId,
+        llaveIdempotencia: llaveNueva(),
+      })
+      expect(creado.status).toBe(201)
+      Cobro.parse(creado.cuerpo)
+      Cobro.parse((await e.pedir('GET', `/cobros/${creado.cuerpo.id}`)).cuerpo)
+      for (const c of (await e.pedir('GET', `/puntos/${s.puntoId}/cobros`)).cuerpo) Cobro.parse(c)
+      Cobro.parse((await e.pedir('POST', `/cobros/${creado.cuerpo.id}/cancelar`)).cuerpo)
+      PersonaDemo.parse((await e.pedir('GET', '/beneficiarios/demo')).cuerpo[0])
+      ResumenBeneficiario.parse((await e.pedir('GET', `/beneficiarios/${ANA.cedula}/resumen`)).cuerpo)
+    })
+
+    it('confirmar con PIN cumple el modelo 202 y no filtra el PIN', async () => {
+      const s = await escenarioDeCobro(e)
+      const creado = (await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+      const r = await e.pedir('POST', `/cobros/${creado.id}/confirmar`, { pin: JORGE.pin })
+      await e.esperarPagos()
+      expect(r.status).toBe(202)
+      Cobro.parse(r.cuerpo)
+      expect(JSON.stringify(r.cuerpo)).not.toContain(JORGE.pin)
+    })
+  })
+
   it('el simulador de la liquidación', async () => {
     Resumen.parse((await e.pedir('GET', `/liquidacion/programas/${programaId}/resumen`)).cuerpo)
     Pago.parse((await e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/1000000001`)).cuerpo)
@@ -335,6 +387,6 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     for (const item of Object.values(documento.paths)) {
       for (const metodo of METODOS.filter((m) => item[m])) for (const s of Object.keys(item[metodo]!.responses)) documentados.add(s)
     }
-    expect([...documentados].sort()).toEqual(['200', '201', '204', '302', '400', '404', '409', '422', '502', '503'])
+    expect([...documentados].sort()).toEqual(['200', '201', '202', '204', '302', '400', '404', '409', '422', '502', '503'])
   })
 })

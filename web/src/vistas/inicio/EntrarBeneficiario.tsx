@@ -1,8 +1,10 @@
-// Acceso de la beneficiaria con su cédula (prototipo "L1"). Con la cédula sola nadie cobra.
+// Acceso de la beneficiaria con su cédula. Con la cédula sola nadie cobra.
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
+import { obtenerResumen } from '@/api/beneficiario'
+import { codigoDeError, mensajeDeError } from '@/api/client'
 import { useRol } from '@/contexto/Rol'
-import { BotonEntrar, CabeceraCelular, Icono, IconoCandado, MensajeError, PantallaCelular, VolverARol } from './piezas'
+import { BotonEntrar, CabeceraCelular, Icono, IconoCandado, MensajeError, PantallaCelular, VolverARol } from '@/componentes/piezas'
 
 /** Solo números (se aceptan espacios al escribir), entre 6 y 10 dígitos. */
 const cedulaValida = (cc: string) => /^\d{6,10}$/.test(cc.replace(/\s/g, ''))
@@ -10,15 +12,25 @@ const cedulaValida = (cc: string) => /^\d{6,10}$/.test(cc.replace(/\s/g, ''))
 export function EntrarBeneficiario() {
   const [cedula, setCedula] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const { elegirRol } = useRol()
+  const [consultando, setConsultando] = useState(false)
+  const { entrarComoBeneficiario } = useRol()
   const navegar = useNavigate()
 
-  const entrar = (e: FormEvent) => {
+  // La cédula debe estar registrada: se consulta su resumen antes de entrar
+  const entrar = async (e: FormEvent) => {
     e.preventDefault()
     if (!cedula.trim()) return setError('Escribe tu número de cédula.')
     if (!cedulaValida(cedula)) return setError('Revisa la cédula: solo números, de 6 a 10 dígitos.')
-    elegirRol('beneficiario')
-    navegar('/beneficiario')
+    const limpia = cedula.replace(/\s/g, '')
+    setConsultando(true)
+    try {
+      await obtenerResumen(limpia)
+      entrarComoBeneficiario(limpia)
+      navegar('/beneficiario')
+    } catch (err) {
+      setError(codigoDeError(err) === 'PersonaNoEncontrada' ? 'Esa cédula no está registrada en ningún programa.' : mensajeDeError(err))
+      setConsultando(false)
+    }
   }
 
   return (
@@ -38,7 +50,7 @@ export function EntrarBeneficiario() {
         <p className="m-0 text-[17px] leading-[1.45]">Escribe tu número de cédula para ver lo que tienes por cobrar.</p>
       </div>
 
-      <form onSubmit={entrar} noValidate className="flex flex-col gap-4">
+      <form onSubmit={(e) => void entrar(e)} noValidate className="flex flex-col gap-4">
         <div className="mt-2 flex flex-col gap-2">
           <label htmlFor="cc" className="text-[17px] font-bold">
             Número de cédula
@@ -61,7 +73,7 @@ export function EntrarBeneficiario() {
           </span>
         </div>
         {error && <MensajeError id="cc-error">{error}</MensajeError>}
-        <BotonEntrar>Entrar</BotonEntrar>
+        <BotonEntrar disabled={consultando}>{consultando ? 'Consultando…' : 'Entrar'}</BotonEntrar>
       </form>
 
       <div className="mt-auto flex items-start gap-2.5 text-[15px] leading-[1.45] text-tinta-suave">

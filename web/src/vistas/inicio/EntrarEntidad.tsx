@@ -1,8 +1,8 @@
-// Acceso de la entidad con su NIT (prototipo "LD1"). Entrar no mueve dinero.
+// Acceso de la entidad con su NIT. Entrar no mueve dinero.
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useRol } from '@/contexto/Rol'
-import { BotonEntrar, IconoCandado, MensajeError, PantallaPartida, VolverARol } from './piezas'
+import { BotonEntrar, IconoCandado, MensajeError, PantallaPartida, VolverARol } from '@/componentes/piezas'
 
 /** 8 a 10 dígitos, guion y dígito de verificación. Se ignoran espacios y puntos. */
 const nitValido = (nit: string) => /^\d{8,10}-\d$/.test(nit.replace(/[\s.]/g, ''))

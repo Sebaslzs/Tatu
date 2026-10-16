@@ -1,4 +1,4 @@
-// Piezas compartidas de las pantallas de entrada (tatu-prototipo-2.html: Main, L1, L2, LD1, LD2).
+// Piezas visuales compartidas: marcos de pantalla, marca, botones, mensajes e íconos.
 import type { ReactNode, SVGProps } from 'react'
 import { Link } from 'react-router'
 import { cn } from '@/lib/utils'
@@ -92,7 +92,7 @@ export function VolverARol({ className }: { className?: string }) {
   )
 }
 
-/** Botón principal azul del prototipo (56 px de alto, radio 14). */
+/** Botón principal azul de los formularios (56 px de alto). */
 export function BotonEntrar({ children, className, disabled }: { children: ReactNode; className?: string; disabled?: boolean }) {
   return (
     <button
@@ -109,7 +109,9 @@ export function BotonEntrar({ children, className, disabled }: { children: React
   )
 }
 
+/** Mensaje de error de un formulario; no muestra nada si no hay error. */
 export function MensajeError({ id, children }: { id: string; children: ReactNode }) {
+  if (!children) return null
   return (
     <div
       id={id}
@@ -126,7 +128,7 @@ export function MensajeError({ id, children }: { id: string; children: ReactNode
   )
 }
 
-/** Íconos de trazo de 24 px, como los del prototipo. */
+/** Íconos de trazo sobre una cuadrícula de 24 px. */
 export function Icono({ children, className, stroke = 'currentColor', strokeWidth = 2, ...resto }: SVGProps<SVGSVGElement>) {
   return (
     <svg

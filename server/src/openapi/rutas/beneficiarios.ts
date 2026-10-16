@@ -68,5 +68,34 @@ export function rutasBeneficiarios(): Json {
         },
       },
     },
+    '/beneficiarios/demo': {
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'demoBeneficiarios',
+        summary: 'Personas de prueba para el selector de la web',
+        description: 'Nombre, etiqueta y documento de quien ya está registrado. Vacío si nadie se ha inscrito.',
+        responses: { 200: ok('Personas de la demo.', { type: 'array', items: ref('PersonaDemo') }, [{ nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', documento: '1000000003' }]) },
+      },
+    },
+    '/beneficiarios/{cedula}/resumen': {
+      parameters: [{ name: 'cedula', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000001' }],
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'resumenBeneficiario',
+        summary: 'Resumen «tengo $230.000» (HU-08)',
+        description: [
+          'Todo lo que la persona necesita en una pantalla: pagos pendientes, cuenta, puntos de retiro e historial.',
+          '',
+          '- **CA-08.01** `pagos` son todos los subsidios y bonos pendientes; `pago` es el primero.',
+          '- **CA-08.02** `ultimoCobro` e `historial` muestran cuándo y dónde cobró.',
+          '- **CA-08.04** una persona puede tener varios pagos pendientes a la vez.',
+        ].join('\n'),
+        responses: {
+          200: ok('Resumen de la persona.', ref('ResumenBeneficiario')),
+          400: entradaInvalida,
+          404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
+        },
+      },
+    },
   }
 }

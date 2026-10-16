@@ -1,8 +1,8 @@
-// Inicio: elegir con qué rol entrar (prototipo "Main", HU-19). No hay cuentas de usuario.
+// Inicio: elegir con qué rol entrar. No hay cuentas de usuario.
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useRol } from '@/contexto/Rol'
-import { Icono, Marca, PantallaCelular } from './piezas'
+import { Icono, Marca, PantallaCelular } from '@/componentes/piezas'
 
 interface OpcionRol {
   a: string
