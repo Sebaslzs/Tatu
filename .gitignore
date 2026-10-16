@@ -1,0 +1,28 @@
+# Secretos: nunca al repo (RNF-01, CA-20.02)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+private.key
+
+# Dependencias y salidas de build
+node_modules/
+dist/
+.vercel/
+.output/
+functions/
+
+# Base local de PGlite (AD-23)
+server/data/
+
+# Logs y herramientas
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.tsbuildinfo

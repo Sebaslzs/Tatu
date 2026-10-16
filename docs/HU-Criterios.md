@@ -279,14 +279,14 @@ pago disponible, **para** entregar el efectivo sin trámites ni fotos de documen
 
 `E4` · **Must · 5 pts** · Roles 3 (vista) y 2 (API) · Depende de HU-02 y HU-03
 
-- **CA-10.01 (el punto consulta):** Dado una cédula con subsidio disponible, cuando el cajero la
+- **CA-10.01 (el punto consulta):** Dado una cédula con subsidio disponible, cuando el punto donde se reclama la
   digita, entonces ve «Pago disponible: $230.000» con la persona y sus pagos; si la cédula no tiene
   pagos, recibe 404 `SinPagoDisponible` (no se filtra si la cédula existía).
 - **CA-10.02 (solicitud):** Dado que el punto envía una solicitud de cobro con `canal='retiro'`, la
   cédula, el punto y una llave de idempotencia (y opcionalmente el programa), entonces el cobro queda
   `PorConfirmar` (espera PIN) y se aplican las reglas RN-01 a RN-06 (liquidación, programa, cuenta,
   destino, vigencia, moneda).
-- **CA-10.03 (monto no mutable, RN-11):** Dado que el cajero cambia el monto, cuando envía, entonces
+- **CA-10.03 (monto no mutable, RN-11):** Dado que el punto donde se reclama cambia el monto, cuando envía, entonces
   la plataforma solo acepta el valor disponible: el monto no viene del navegador; el backend calcula
   `monto = valor_disponible` para subsidios (RN-05).
 - **CA-10.04 (el punto no elige programa):** Dado que la cédula puede estar en varios subsidios,
@@ -517,7 +517,7 @@ README con el video, **para** cumplir la entrega y no ser descalificados.
 - **CA-21.01:** Dado un programa `bono`, cuando lo creo, entonces `destino=restringido` y marco qué
   categorías y comercios lo aceptan.
 - **CA-21.02:** Dado un comercio autorizado, un total de $80.000 y un bono de $60.000, cuando el
-  cajero digita la cédula y el cliente confirma con PIN, entonces se pagan **$60.000** al comercio y
+  punto donde se reclama digita la cédula y el cliente confirma con PIN, entonces se pagan **$60.000** al comercio y
   el cliente paga **$20.000** aparte (RN-05: `monto = min(valor_disponible, total_compra)`).
 - **CA-21.03:** Dado un comercio no autorizado, cuando digita la cédula, entonces responde 409 «Este
   comercio no acepta este bono» y no se mueve dinero.
@@ -530,13 +530,13 @@ README con el video, **para** cumplir la entrega y no ser descalificados.
 ## HU-22 · Extra 2 · QR del beneficiario y cámara
 
 **Como** beneficiario con celular, **quiero** mostrar un QR temporal y que el punto lo lea con su
-cámara, **para** que el cajero no tenga que digitar mi cédula.
+cámara, **para** que el punto donde se reclama no tenga que digitar mi cédula.
 
 `E7` · **Could · 5 pts** · Rol 3 · Depende de HU-08, HU-10 y HU-25 · `EXTRA_QR` · `QR_TTL_SEG=60`
 
 - **CA-22.01:** Dado un pago disponible, cuando pulso «Mostrar QR», entonces veo un QR que vence en 60
   segundos y **solo** lleva un token, sin datos personales.
-- **CA-22.02:** Dado el punto servido por HTTPS, cuando el cajero escanea el QR, entonces el flujo
+- **CA-22.02:** Dado el punto servido por HTTPS, cuando el punto donde se reclama escanea el QR, entonces el flujo
   sigue igual que con la cédula, incluido el PIN.
 - **CA-22.03 (alternativa):** Si la cámara no abre, digitar la cédula siempre funciona.
 

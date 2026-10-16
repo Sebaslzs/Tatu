@@ -145,35 +145,60 @@ flowchart LR
 | API | Express 5, Zod 4 |
 | Web | React 19, Vite, Tailwind 4, shadcn/ui |
 | Pagos | `@interledger/open-payments` 7.4.0 |
-| Datos | PostgreSQL (Supabase) con Drizzle y migraciones SQL; PGlite en local sin internet |
+| Datos | PostgreSQL (Supabase) con Drizzle; el esquema SQL está en `db/`. PGlite en local sin internet |
 | Hosting | Vercel: estáticos + una función para `/api` |
 
 ## Estado del repositorio
 
 El proyecto se construye durante el **Hackathon Interledger de Medellín (16 y 17 de octubre de
-2026)**. Hoy el repositorio tiene la documentación y la identidad visual; el código se agrega
-siguiendo el orden de implementación de la especificación.
+2026)**. Hoy el repositorio tiene el **backend** (`server/`), la documentación y la identidad visual;
+la web (`web/`) es un esqueleto con el selector de rol.
 
+```text
+server/       API: Express + Zod + SDK Open Payments + Drizzle (Supabase o PGlite)
+web/          Web: React + Vite + Tailwind CSS + shadcn/ui (esqueleto); web/public/brand: identidad visual
+db/           Esquema SQL de la base de datos
+docs/         Especificación, historias de usuario, arquitectura y prototipo
+prompts/      Texto real de los prompts usados con IA
+AI_USAGE.md   Uso de IA
 ```
-docs/        especificación, prototipo y exploración de logo
-web/public/  identidad visual (logos, animación del tatú)
-HU-Criterios.md   historias de usuario y criterios de aceptación
+
+## Cómo correrlo
+
+Requisitos: Node.js LTS (ver `.nvmrc`) y pnpm (`corepack enable`).
+
+```bash
+cp .env.example .env   # completar; sin DATABASE_URL se usa PGlite local
+pnpm install
+pnpm dev               # API en :3000 y web en :5173 (Vite pasa /api a la API)
 ```
 
-<!-- TODO: completar cuando exista el código -->
-### Cómo correrlo
+| Comando | Qué hace |
+|---|---|
+| `pnpm dev` | API (`server/`, Express + tsx) y web (`web/`, React + Vite) en paralelo |
+| `pnpm test` | Vitest en todos los paquetes |
+| `pnpm typecheck` | TypeScript en todos los paquetes |
+| `pnpm build` | Typecheck de la API y build de la web |
 
-_Pendiente: se completa cuando estén `server/` y `web/`._ Los comandos previstos son
-`pnpm dev` (API en 3000 + web en 5173), `pnpm -r test` y `pnpm -r typecheck`. Las variables de
-entorno van en `.env` a partir de `.env.example`.
+### Documentación de la API
+
+Con la API arriba: Swagger UI en <http://localhost:3000/api/docs> y el documento OpenAPI 3.1 en
+`/api/openapi.json`. Para exportarlo a un archivo (Postman, Bruno):
+`pnpm --filter server exec tsx scripts/volcar-openapi.ts`.
 
 ## Documentación
 
 - [Especificación de implementación](docs/Especificación%20de%20implementación%20—%20Tatú.md):
   producto, reglas de negocio, estados, modelo de datos, API, pantallas y orden de trabajo.
-- [Historias de usuario y criterios de aceptación](HU-Criterios.md): backlog de 25 HU priorizadas
+- [Historias de usuario y criterios de aceptación](docs/HU-Criterios.md): backlog de 25 HU priorizadas
   (MoSCoW).
+- [Estructura del proyecto](docs/Estructura%20del%20proyecto.md) y
+  [Documento de Arquitectura](docs/Documento%20de%20Arquitectura%20—%20Hackathon%20Open%20Payments.md).
 - [Prototipo](docs/Tatú%20·%20Prototipo.pdf) y [exploración de logo](docs/Tatú%20·%20Exploración%20de%20logo.pdf).
+
+## Uso de IA
+
+Ver [AI_USAGE.md](AI_USAGE.md) y la carpeta [prompts/](prompts/).
 
 ## Entregables del hackathon
 
