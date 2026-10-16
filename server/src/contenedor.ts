@@ -38,6 +38,7 @@ import { ServicioPuntos } from './puntos/servicio.ts'
 
 export interface Contenedor {
   config: ConfigPublica
+  configCompleta: Config
   uow: UnidadDeTrabajo
   programas: ServiciosProgramas
   puntos: ServicioPuntos
@@ -119,6 +120,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
 
   return {
     config,
+    configCompleta: config,
     uow,
     token,
     billeteras,
