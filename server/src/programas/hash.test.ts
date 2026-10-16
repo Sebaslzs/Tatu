@@ -1,23 +1,50 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { calcularHash, hashValido } from './hash.ts'
+import { candidatos, verificarHash, type DatosHash } from './hash.ts'
 
-const datos = {
+const datos: DatosHash = {
   nonceCliente: 'nonce-cliente',
-  nonceServidor: 'nonce-servidor',
+  nonceCierre: 'nonce-servidor',
   interactRef: 'ref-123',
-  grantUrl: 'https://auth.interledger-test.dev/',
+  urlPermiso: 'https://auth.interledger-test.dev',
 }
 
-describe('hash del callback (HU-04)', () => {
-  it('acepta las variantes base64 del hash correcto', () => {
-    const h = calcularHash(datos)
-    expect(hashValido(datos, h.toString('base64'))).toBe(true)
-    expect(hashValido(datos, h.toString('base64').replace(/=+$/, ''))).toBe(true)
-    expect(hashValido(datos, h.toString('base64url'))).toBe(true)
+const hashDe = (grantUrl: string) =>
+  createHash('sha256').update(`nonce-cliente\nnonce-servidor\nref-123\n${grantUrl}`).digest('base64')
+
+describe('hash del callback (CA-04.03)', () => {
+  it('acepta las tres variantes base64 del hash correcto', () => {
+    const crudo = hashDe('https://auth.interledger-test.dev')
+    expect(verificarHash(crudo, datos)?.variante).toBe('estandar-con-padding')
+    expect(verificarHash(crudo.replace(/=+$/, ''), datos)?.variante).toBe('estandar-sin-padding')
+    expect(verificarHash(crudo.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), datos)).toBeTruthy()
+  })
+
+  it('acepta el grant_url con y sin barra final, y dice cuál coincidió', () => {
+    expect(verificarHash(hashDe('https://auth.interledger-test.dev'), datos)?.grantUrl).toBe('https://auth.interledger-test.dev')
+    expect(verificarHash(hashDe('https://auth.interledger-test.dev/'), datos)?.grantUrl).toBe('https://auth.interledger-test.dev/')
+    expect(verificarHash(hashDe('https://auth.interledger-test.dev'), { ...datos, urlPermiso: 'https://auth.interledger-test.dev/' })).toBeTruthy()
   })
 
   it('hash alterado → rechazado (RNF-01)', () => {
-    const alterado = calcularHash({ ...datos, interactRef: 'ref-falso' }).toString('base64')
-    expect(hashValido(datos, alterado)).toBe(false)
+    const alterado = hashDe('https://auth.interledger-test.dev').replace(/^./, (c) => (c === 'A' ? 'B' : 'A'))
+    expect(verificarHash(alterado, datos)).toBeNull()
+  })
+
+  it.each([
+    ['interact_ref distinto', { interactRef: 'ref-falso' }],
+    ['nonce del cliente distinto', { nonceCliente: 'otro' }],
+    ['nonce del servidor distinto', { nonceCierre: 'otro' }],
+    ['grant_url distinto', { urlPermiso: 'https://otro.example' }],
+  ])('un dato distinto (%s) no valida', (_caso, cambio) => {
+    expect(verificarHash(hashDe('https://auth.interledger-test.dev'), { ...datos, ...cambio })).toBeNull()
+  })
+
+  it('un hash vacío no valida', () => {
+    expect(verificarHash('', datos)).toBeNull()
+  })
+
+  it('genera 6 candidatos: 3 variantes por 2 formas de la URL', () => {
+    expect(candidatos(datos)).toHaveLength(6)
   })
 })

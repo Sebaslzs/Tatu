@@ -1,10 +1,16 @@
-// /puntos · HU-03.
+// /puntos · HU-03 (registro) y HU-10 (lo que el punto consulta).
 import { Router } from 'express'
+import { z } from 'zod'
 import { validar } from '../comun/errores.ts'
+import { idDe } from '../comun/parametros.ts'
+import { cedula } from '../liquidacion/contrato.ts'
+import type { ConsultasPunto } from './consultas.ts'
 import { EntradaPunto } from './esquemas.ts'
 import type { ServicioPuntos } from './servicio.ts'
 
-export function rutasPuntos(servicio: ServicioPuntos): Router {
+const Periodo = z.enum(['hoy', '7d', 'todo']).catch('hoy')
+
+export function rutasPuntos(servicio: ServicioPuntos, consultas: ConsultasPunto): Router {
   const r = Router()
 
   r.get('/', async (_req, res) => {
@@ -13,6 +19,16 @@ export function rutasPuntos(servicio: ServicioPuntos): Router {
 
   r.post('/', async (req, res) => {
     res.status(201).json(await servicio.registrar(validar(EntradaPunto, req.body)))
+  })
+
+  // CA-10.01: el punto digita la cédula y ve qué subsidios puede pagarle hoy
+  r.get('/:id/pagos', async (req, res) => {
+    const { cedula: c } = validar(z.object({ cedula }), req.query)
+    res.json(await consultas.pagosDe(idDe(req), c))
+  })
+
+  r.get('/:id/cobros', async (req, res) => {
+    res.json(await consultas.cobrosDe(idDe(req), Periodo.parse(req.query.desde)))
   })
 
   return r

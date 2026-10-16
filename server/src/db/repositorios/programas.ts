@@ -11,6 +11,7 @@ export type CamposPrograma = Partial<Omit<NuevoPrograma, 'id' | 'creadoEn'>>
 export interface RepoProgramas {
   crear(nuevo: NuevoPrograma): Promise<FilaPrograma>
   obtener(id: string): Promise<FilaPrograma | undefined>
+  deIds(ids: readonly string[]): Promise<Map<string, FilaPrograma>>
   listar(): Promise<FilaPrograma[]>
   /** Cambia solo si sigue en `estadoEsperado` (bloqueo optimista); undefined si otro ganó. */
   actualizar(id: string, campos: CamposPrograma, estadoEsperado: EstadoPrograma): Promise<FilaPrograma | undefined>
@@ -28,6 +29,13 @@ export function repoProgramas(db: Db): RepoProgramas {
     async obtener(id) {
       const [fila] = await db.select().from(programa).where(eq(programa.id, id)).limit(1)
       return fila
+    },
+
+    async deIds(ids) {
+      const unicos = [...new Set(ids)]
+      if (!unicos.length) return new Map()
+      const filas = await db.select().from(programa).where(inArray(programa.id, unicos))
+      return new Map(filas.map((p) => [p.id, p]))
     },
 
     listar() {

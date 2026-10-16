@@ -5,7 +5,8 @@
 import { z } from 'zod'
 import { TIPOS_PROGRAMA } from '../programas/estados.ts'
 import { TIPOS_PUNTO } from '../puntos/reglas.ts'
-import { Pago, Resumen } from '../liquidacion/contrato.ts'
+import { Pago, Persona, RespuestaPin, Resumen } from '../liquidacion/contrato.ts'
+import { Coincidencia, Llave, Resolucion, TipoLlave } from '../puente/contrato.ts'
 
 const uuid = (descripcion: string) => z.uuid().meta({ description: descripcion })
 
@@ -56,6 +57,14 @@ export const ResumenLiquidacion = z.strictObject({
   total: Monto.meta({ description: 'Total de la liquidación en la moneda del programa; será el tope al autorizar.' }),
 })
 
+export const Autorizacion = z.strictObject({
+  redirect: z.url().meta({
+    description: 'Enlace de consentimiento en el banco. Se devuelve y no se guarda: la persona va ahí a aprobar.',
+    examples: ['https://auth.interledger-test.dev/interact/1'],
+  }),
+  programa: Programa.meta({ description: 'El programa, ya en `EsperandoAprobacion` y con su tope fijado.' }),
+})
+
 export const Punto = z.strictObject({
   id: uuid('Identificador del punto.'),
   nombre: z.string(),
@@ -82,7 +91,42 @@ export const ConfigPublica = z.strictObject({
   }).meta({ description: 'Banderas `EXTRA_*`: un extra apagado no rompe el flujo principal (RNF-10).' }),
 })
 
-export { Pago, Resumen }
+export const Cuenta = z.strictObject({
+  id: uuid('Identificador de la cuenta.'),
+  cedula: z.string().meta({ examples: ['1000000002'] }),
+  estado: z.enum(['SinEnlazar', 'PorVerificar', 'Verificada']),
+  billetera: z.url().meta({ description: 'Billetera a la que llega el pago.' }),
+  billeteraCorta: z.string().meta({ examples: ['…/prueba-luis'] }),
+  tipoLlave: TipoLlave.nullable().meta({ description: 'Tipo de la llave Bre-B elegida; `null` si la cuenta es una billetera escrita a mano.' }),
+  llave: z.string().nullable().meta({ description: 'La llave **enmascarada**, nunca completa.', examples: ['300***4567'] }),
+  verificadaEn: z.string().nullable(),
+})
+
+export const ResultadoEnlace = z.strictObject({
+  redirect: z.url().nullable().meta({ description: 'Enlace para aprobar en la billetera (verificación con `subject`); `null` si no hace falta aprobar nada.' }),
+  cuenta: Cuenta,
+})
+
+export const LlaveConsultada = z.strictObject({
+  tipoLlave: TipoLlave,
+  llave: z.string().meta({ description: 'La llave enmascarada.', examples: ['300***4567'] }),
+  titular: z.string().meta({ description: 'Titular enmascarado, para «¿Eres Luis G***?».', examples: ['Luis G***'] }),
+})
+
+export const Beneficiario = z.strictObject({
+  cedula: z.string(),
+  nombre: z.string().meta({ description: 'Lo trae la liquidación; Tatú no lo guarda. Si no responde: «Persona 1234».' }),
+  billetera: z.string().nullable(),
+  billeteraCorta: z.string().nullable(),
+  moneda: Moneda.nullable(),
+  estadoCuenta: z.enum(['SinEnlazar', 'PorVerificar', 'Verificada']).nullable(),
+  tienePin: z.boolean(),
+  registrado: z.string(),
+})
+
+export const PinRegistrado = z.strictObject({ cedula: z.string(), tienePin: z.literal(true) })
+
+export { Coincidencia, Llave, Pago, Persona, RespuestaPin, Resolucion, Resumen }
 
 /** Modelos que van a `components.schemas`, por nombre. */
 export const MODELOS = {
@@ -92,10 +136,21 @@ export const MODELOS = {
   Entidad,
   Programa,
   ResumenLiquidacion,
+  Autorizacion,
   Punto,
   PuntoRegistrado,
   Salud,
   ConfigPublica,
   ResumenPagos: Resumen,
   PagoCedula: Pago,
+  Cuenta,
+  ResultadoEnlace,
+  LlaveConsultada,
+  Beneficiario,
+  PinRegistrado,
+  Persona,
+  RespuestaPin,
+  Llave,
+  Resolucion,
+  Coincidencia,
 } as const

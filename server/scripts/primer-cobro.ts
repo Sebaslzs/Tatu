@@ -10,4 +10,4 @@ if (!config.OP_CLIENT_WALLET_ADDRESS) {
 
 const op = new OpenPaymentsService(config)
 console.log('Wallet del cliente:', await op.resolver(config.OP_CLIENT_WALLET_ADDRESS))
-// Siguiente paso: grant de pago entrante → incomingPayment.create → outgoingPayment.create
+// Siguiente paso: pago entrante → pago saliente con el permiso del programa
