@@ -64,5 +64,18 @@ export const EntradaPrograma = z
 
 export const EdicionPrograma = z.object(campos).partial().refine(vigenciaCoherente, MENSAJE_VIGENCIA)
 
+/** CA-17.01 / CA-17.04: la segunda confirmación del cierre, escrita por la persona. */
+export const Cierre = z.object({
+  confirmacion: z
+    .string()
+    .trim()
+    .default('')
+    .meta({
+      description: 'La palabra `CERRAR`, escrita por la persona de la entidad (CA-17.01). Es la segunda confirmación del cierre (CA-17.04): sin ella responde `400 ConfirmacionRequerida`.',
+      examples: ['CERRAR'],
+    }),
+})
+
 export type EntradaPrograma = z.output<typeof EntradaPrograma>
 export type EdicionPrograma = z.output<typeof EdicionPrograma>
+export type Cierre = z.output<typeof Cierre>

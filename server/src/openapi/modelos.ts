@@ -212,6 +212,33 @@ export const ResumenBeneficiario = z.strictObject({
   historial: z.array(Cobro),
 })
 
+export const PorCanal = z.strictObject({
+  cobros: z.number().int().meta({ description: 'Cobros Pagados de este canal.' }),
+  monto: Monto,
+})
+
+export const Tablero = z.strictObject({
+  programa: Programa,
+  autorizado: Monto.meta({ description: 'El tope aprobado (lo que la entidad autorizó).' }),
+  cobrado: Monto.meta({ description: 'Lo cobrado hasta ahora (CA-15.01).' }),
+  fuente: z.enum(['banco', 'plataforma']).meta({
+    description: '`banco`: leído del permiso con `getGrantSpentAmounts`. `plataforma`: suma de los cobros Pagados en la base, cuando el banco no respondió.',
+  }),
+  noHaSalido: Monto.meta({ description: '`autorizado − cobrado`: lo que nunca saldrá de la cuenta (CA-15.01).' }),
+  cobrosPagados: z.number().int(),
+  porCanal: z.strictObject({ cuenta: PorCanal, retiro: PorCanal, compra: PorCanal }).meta({ description: 'Desglose de los cobros Pagados por canal (CA-15.01).' }),
+  reembolsoSegundos: z.number().nullable().meta({ description: 'Promedio de segundos del PIN a Pagado en los retiros; null sin retiros pagados (CA-15.03).' }),
+  giradoPorAdelantado: Monto.meta({ description: 'El modelo no gira nada antes del cobro: siempre $0 (CA-15.03).' }),
+  sinCobrar: z.strictObject({ cedulas: z.number().int(), monto: Monto }).nullable().meta({ description: 'Cédulas de la liquidación que no han cobrado; null si la liquidación no responde.' }),
+  cobrosPagando: z.number().int(),
+  rechazadosYFallidos: z.number().int(),
+  cobros: z.array(Cobro).meta({ description: 'Todos los cobros del programa, del más reciente al más antiguo.' }),
+  cierre: z
+    .strictObject({ autorizado: Monto, cobrado: Monto, nuncaSalio: Monto, cerradoEn: z.string() })
+    .nullable()
+    .meta({ description: 'Solo en un programa Cerrado: las cifras guardadas al cerrar, antes de revocar el permiso (CA-17.03).' }),
+})
+
 export { Coincidencia, Llave, Pago, Persona, RespuestaPin, Resolucion, Resumen }
 
 /** Modelos que van a `components.schemas`, por nombre. */
@@ -248,4 +275,6 @@ export const MODELOS = {
   Cobro,
   PuntoDeRetiro,
   ResumenBeneficiario,
+  PorCanal,
+  Tablero,
 } as const
