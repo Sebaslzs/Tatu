@@ -289,7 +289,7 @@ describe('CA-01.08 · listado', () => {
     await pedirAprobacion(cuerpo.id, DIEZ_MINUTOS - 1000)
     const lista = await e.pedir('GET', '/programas')
     expect(lista.cuerpo[0].estado).toBe('EsperandoAprobacion')
-    expect(lista.cuerpo[0].tope).toMatchObject('69000000')
+    expect(lista.cuerpo[0].tope).toBe('69000000')
   })
 
   it('el vencimiento depende del reloj: al pasar el tiempo, vence', async () => {

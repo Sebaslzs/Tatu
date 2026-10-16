@@ -1,7 +1,7 @@
 // Casos de uso de puntos de retiro (HU-03).
 import { resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, noEncontrado } from '../comun/errores.ts'
-import { mismaMoneda, monedaApi, type Moneda } from '../comun/montos.ts'
+import { mismaMoneda, monedaApi, type Moneda, type MonedaApi } from '../comun/montos.ts'
 import type { FilaPunto } from '../db/repositorios/puntos.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { monedaDe } from '../programas/vista.ts'
@@ -22,7 +22,7 @@ export interface VistaPunto {
 }
 
 export interface VistaPuntoRegistrado extends VistaPunto {
-  moneda: Moneda
+  moneda: MonedaApi
 }
 
 const vistaPunto = (p: FilaPunto): VistaPunto => ({
