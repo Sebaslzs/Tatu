@@ -57,7 +57,7 @@ aparezca.
 psql "$DATABASE_URL" -c "select count(*) as tablas from information_schema.tables where table_schema = 'public';"
 ```
 
-Debe responder `13`.
+Debe responder `14` (13 de la base inicial más `asignacion` de la Actualización 01).
 
 **Node (`pg`):**
 
@@ -113,7 +113,8 @@ políticas de RLS, no aplica para Tatú.
   llave `anon`) no ve nada, a propósito. Todo pasa por nuestro backend con esta cadena de conexión.
 - **Solo la publishable key es pública.** La secret key (`service_role`) nunca se comparte: salta
   toda la seguridad.
-- **Los cambios de esquema van en un script nuevo** en `db/`, nunca editando a mano en Supabase:
-  así la base y el repo no se desalinean.
+- **Los cambios de esquema van como una sección `ACTUALIZACIÓN NN` al final de `esquema.sql`**,
+  nunca editando lo ya ejecutado ni cambiando la base a mano en Supabase: así la base y el repo no
+  se desalinean (ver `README.md`, sección 2).
 - **El usuario `postgres` tiene todos los permisos.** Antes de producción, el backend debe usar un
   rol propio con permisos mínimos.

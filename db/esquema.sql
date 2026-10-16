@@ -503,3 +503,318 @@ ALTER TABLE bloqueo_pin         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE evento              ENABLE ROW LEVEL SECURITY;
 
 COMMIT;
+
+
+-- #####################################################################
+-- #####################################################################
+-- ACTUALIZACIÓN 01 · Cobros parciales de subsidios
+--
+-- En la base ya desplegada se ejecuta SOLO esta sección (de aquí hasta el
+-- final). El script de arriba no se modifica.
+--
+-- Es incremental e idempotente: corre sobre una base que ya tiene la
+-- estructura inicial y se puede ejecutar varias veces sin duplicar objetos
+-- ni perder datos.
+--
+-- Qué agrega (explicación en db/README.md, sección 11):
+--   1. Columnas nuevas en programa y cobro
+--   2. Tabla asignacion: el saldo de cada persona en cada programa
+--   3. Saldo inicial de los cobros que ya existen
+--   4. Índice anti doble cobro: de «uno en total» a «uno en vuelo»
+--   5. Reglas del cobro con saldo (programas parciales y no parciales)
+--   6. El monto de un cobro no cambia después de creado
+--   7. Trigger que reserva, confirma y libera el saldo
+--   8. Auditoría y seguridad de lo nuevo
+-- #####################################################################
+-- #####################################################################
+
+BEGIN;
+
+-- ---------------------------------------------------------------------
+-- 1. Columnas nuevas
+-- ---------------------------------------------------------------------
+
+-- El programa decide si permite cobrar por partes y desde qué monto.
+-- false (por defecto) = se comporta exactamente como antes.
+ALTER TABLE programa ADD COLUMN IF NOT EXISTS permite_parcial    boolean NOT NULL DEFAULT false;
+ALTER TABLE programa ADD COLUMN IF NOT EXISTS monto_minimo_cobro bigint;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'monto_minimo_positivo') THEN
+    ALTER TABLE programa ADD CONSTRAINT monto_minimo_positivo CHECK (monto_minimo_cobro > 0);
+  END IF;
+END $$;
+
+-- Lo que reportó el banco: sentAmount del pago saliente y receivedAmount
+-- del entrante. Con varios pagos por persona, las comisiones se suman y hay
+-- que poder conciliar lo que salió contra lo que llegó.
+ALTER TABLE cobro ADD COLUMN IF NOT EXISTS monto_enviado  bigint;
+ALTER TABLE cobro ADD COLUMN IF NOT EXISTS monto_recibido bigint;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'montos_banco_validos') THEN
+    ALTER TABLE cobro ADD CONSTRAINT montos_banco_validos
+      CHECK ((monto_enviado IS NULL OR monto_enviado >= 0) AND (monto_recibido IS NULL OR monto_recibido >= 0));
+  END IF;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 2. asignacion: el saldo de cada persona en cada programa
+--    saldo disponible = asignado − cobrado − comprometido (se calcula)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS asignacion (
+  programa_id      uuid NOT NULL REFERENCES programa (id)     ON DELETE RESTRICT,
+  beneficiario_id  uuid NOT NULL REFERENCES beneficiario (id) ON DELETE RESTRICT,
+  asignado         bigint NOT NULL CHECK (asignado > 0),       -- lo que dice la liquidación
+  comprometido     bigint NOT NULL DEFAULT 0,                  -- cobros en vuelo
+  cobrado          bigint NOT NULL DEFAULT 0,                  -- cobros Pagado
+  version          int NOT NULL DEFAULT 0,
+  creado_en        timestamptz NOT NULL DEFAULT now(),
+  actualizado_en   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (programa_id, beneficiario_id),
+
+  -- La regla central: nunca se compromete ni se cobra más de lo asignado
+  CONSTRAINT sin_sobregiro CHECK (comprometido >= 0 AND cobrado >= 0
+                                  AND comprometido + cobrado <= asignado)
+);
+
+CREATE INDEX IF NOT EXISTS asignacion_beneficiario_idx ON asignacion (beneficiario_id);
+
+DROP TRIGGER IF EXISTS asignacion_actualizada ON asignacion;
+CREATE TRIGGER asignacion_actualizada
+  BEFORE UPDATE ON asignacion
+  FOR EACH ROW EXECUTE FUNCTION fn_marcar_actualizacion();
+
+-- ---------------------------------------------------------------------
+-- 3. Saldo inicial de los cobros que ya existen
+--    Lo ya cobrado o en vuelo queda como asignado (saldo 0). Si la
+--    liquidación dice que la persona tiene más, la API sube «asignado».
+--    ON CONFLICT: si la sección se ejecuta otra vez, no toca lo que ya hay.
+-- ---------------------------------------------------------------------
+INSERT INTO asignacion (programa_id, beneficiario_id, asignado, comprometido, cobrado)
+SELECT programa_id,
+       beneficiario_id,
+       sum(monto) FILTER (WHERE estado IN ('Solicitado', 'PorConfirmar', 'Pagando', 'Pagado')),
+       coalesce(sum(monto) FILTER (WHERE estado IN ('Solicitado', 'PorConfirmar', 'Pagando')), 0),
+       coalesce(sum(monto) FILTER (WHERE estado = 'Pagado'), 0)
+FROM cobro
+GROUP BY programa_id, beneficiario_id
+HAVING sum(monto) FILTER (WHERE estado IN ('Solicitado', 'PorConfirmar', 'Pagando', 'Pagado')) > 0
+ON CONFLICT (programa_id, beneficiario_id) DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- 4. Índice anti doble cobro: de «uno en total» a «uno en vuelo»
+--    Antes: un solo cobro Solicitado, PorConfirmar, Pagando o Pagado por
+--    persona y programa. Ahora: un solo cobro EN VUELO a la vez; los Pagado
+--    pueden ser varios. «No cobrar dos veces» lo garantiza el paso 5 en los
+--    programas no parciales y el saldo (sin_sobregiro) en los parciales.
+-- ---------------------------------------------------------------------
+CREATE UNIQUE INDEX IF NOT EXISTS un_cobro_en_vuelo_por_persona
+  ON cobro (programa_id, beneficiario_id)
+  WHERE estado IN ('Solicitado', 'PorConfirmar', 'Pagando');
+
+DROP INDEX IF EXISTS un_cobro_vivo_por_persona;
+
+-- ---------------------------------------------------------------------
+-- 5. Reglas del cobro (reemplaza fn_cobro_reglas; las reglas anteriores
+--    quedan iguales y se agregan las del saldo al final)
+--   RN-02  programa no parcial: un solo cobro vivo o pagado por persona
+--          (lo que antes hacía el índice)
+--   RN-19  programa parcial: la persona tiene asignación y el monto cabe
+--          en su saldo
+--   RN-20  programa parcial: el monto respeta el mínimo, salvo que sea
+--          justo el saldo que queda
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_cobro_reglas() RETURNS trigger AS $$
+DECLARE
+  p  programa%ROWTYPE;
+  tipo_del_punto tipo_punto;
+  saldo bigint;
+BEGIN
+  IF NEW.estado = 'Rechazado' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT * INTO p FROM programa WHERE id = NEW.programa_id;
+
+  IF p.estado <> 'Activo' OR now() NOT BETWEEN p.vigencia_inicio AND p.vigencia_fin THEN
+    RAISE EXCEPTION 'RN-06: el programa no está recibiendo cobros (estado % o fuera de vigencia)', p.estado;
+  END IF;
+
+  IF p.tipo = 'subsidio' AND NEW.canal = 'compra' THEN
+    RAISE EXCEPTION 'RN-03: un subsidio se cobra a la cuenta o en un punto de retiro';
+  END IF;
+
+  IF p.tipo = 'bono' THEN
+    IF NEW.canal <> 'compra' THEN
+      RAISE EXCEPTION 'RN-03: un bono solo se usa en una compra';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM programa_punto
+                    WHERE programa_id = NEW.programa_id AND punto_id = NEW.punto_id)
+       AND NOT EXISTS (SELECT 1 FROM punto s
+                         JOIN comercio c ON c.id = s.comercio_id AND c.verificado_en IS NOT NULL
+                         JOIN programa_categoria pc ON pc.programa_id = NEW.programa_id
+                                                  AND pc.categoria = c.categoria
+                        WHERE s.id = NEW.punto_id) THEN
+      RAISE EXCEPTION 'RN-03: este comercio no acepta este bono';
+    END IF;
+  END IF;
+
+  IF NEW.punto_id IS NOT NULL THEN
+    SELECT tipo INTO tipo_del_punto FROM punto WHERE id = NEW.punto_id;
+    IF tipo_del_punto::text <> NEW.canal::text THEN
+      RAISE EXCEPTION 'RN-03: un punto de % no atiende el canal %', tipo_del_punto, NEW.canal;
+    END IF;
+  END IF;
+
+  IF NEW.canal = 'cuenta' AND NOT EXISTS (SELECT 1 FROM cuenta_beneficiario
+                                           WHERE id = NEW.cuenta_id AND estado = 'Verificada') THEN
+    RAISE EXCEPTION 'RN-04: la cuenta no está verificada';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM bloqueo_pin
+              WHERE programa_id = NEW.programa_id
+                AND beneficiario_id = NEW.beneficiario_id
+                AND bloqueado_hasta > now()) THEN
+    RAISE EXCEPTION 'RN-07: la persona está bloqueada por PIN en este programa';
+  END IF;
+
+  -- Nuevo: reglas del saldo
+  IF NOT p.permite_parcial THEN
+    IF EXISTS (SELECT 1 FROM cobro
+                WHERE programa_id = NEW.programa_id
+                  AND beneficiario_id = NEW.beneficiario_id
+                  AND estado IN ('Solicitado', 'PorConfirmar', 'Pagando', 'Pagado')) THEN
+      RAISE EXCEPTION 'RN-02: este subsidio ya está en proceso o fue cobrado';
+    END IF;
+  ELSE
+    SELECT asignado - cobrado - comprometido INTO saldo
+      FROM asignacion
+     WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'RN-19: la persona no tiene asignación en este programa';
+    END IF;
+    IF NEW.monto > saldo THEN
+      RAISE EXCEPTION 'RN-19: saldo insuficiente (disponible %)', saldo;
+    END IF;
+    IF p.monto_minimo_cobro IS NOT NULL AND NEW.monto < p.monto_minimo_cobro AND NEW.monto <> saldo THEN
+      RAISE EXCEPTION 'RN-20: el monto es menor que el mínimo de cobro (%)', p.monto_minimo_cobro;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------
+-- 6. El monto de un cobro no cambia después de creado (reemplaza
+--    fn_cobro_transicion; la máquina de estados queda igual). Si el monto
+--    cambiara después de reservar, el saldo quedaría descuadrado.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_cobro_transicion() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.estado NOT IN ('Solicitado', 'PorConfirmar', 'Rechazado') THEN
+      RAISE EXCEPTION 'Un cobro no puede nacer en estado %', NEW.estado;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.estado IS DISTINCT FROM OLD.estado AND NOT (
+       (OLD.estado = 'Solicitado'   AND NEW.estado IN ('PorConfirmar', 'Pagando', 'Rechazado'))
+    OR (OLD.estado = 'PorConfirmar' AND NEW.estado IN ('Pagando', 'Rechazado'))
+    OR (OLD.estado = 'Pagando'      AND NEW.estado IN ('Pagado', 'Fallido'))
+  ) THEN
+    RAISE EXCEPTION 'Transición de cobro no permitida: % -> %', OLD.estado, NEW.estado;
+  END IF;
+
+  IF NEW.monto IS DISTINCT FROM OLD.monto THEN
+    RAISE EXCEPTION 'El monto de un cobro no cambia después de creado';
+  END IF;
+
+  NEW.version        := OLD.version + 1;
+  NEW.actualizado_en := now();
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------
+-- 7. El saldo se mueve con el estado del cobro
+--    Nace vivo  → reserva   (comprometido + monto)
+--    Pagado     → confirma  (comprometido − monto, cobrado + monto)
+--    Rechazado o Fallido después de reservar → libera (comprometido − monto)
+--    Va en la misma transacción que el cobro: si el saldo no alcanza,
+--    sin_sobregiro falla y el cobro no se crea. Dos solicitudes simultáneas
+--    se ordenan por el bloqueo de la fila de asignacion.
+--    Programa no parcial: si la persona no tiene asignación, se crea con el
+--    monto del cobro (así funciona igual que antes, sin cambios en la API).
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_cobro_mueve_saldo() RETURNS trigger AS $$
+DECLARE
+  parcial boolean;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.estado = 'Rechazado' THEN
+      RETURN NEW;
+    END IF;
+    SELECT permite_parcial INTO parcial FROM programa WHERE id = NEW.programa_id;
+    IF parcial THEN
+      UPDATE asignacion
+         SET comprometido = comprometido + NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'RN-19: la persona no tiene asignación en este programa';
+      END IF;
+    ELSE
+      INSERT INTO asignacion (programa_id, beneficiario_id, asignado, comprometido)
+      VALUES (NEW.programa_id, NEW.beneficiario_id, NEW.monto, NEW.monto)
+      ON CONFLICT (programa_id, beneficiario_id) DO UPDATE
+        SET asignado     = asignacion.cobrado + asignacion.comprometido + EXCLUDED.asignado,
+            comprometido = asignacion.comprometido + EXCLUDED.comprometido,
+            version      = asignacion.version + 1;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.estado IS DISTINCT FROM OLD.estado THEN
+    IF NEW.estado = 'Pagado' THEN
+      UPDATE asignacion
+         SET comprometido = comprometido - NEW.monto, cobrado = cobrado + NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    ELSIF NEW.estado IN ('Rechazado', 'Fallido') AND OLD.estado <> 'Rechazado' THEN
+      UPDATE asignacion
+         SET comprometido = comprometido - NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS cobro_mueve_saldo ON cobro;
+CREATE TRIGGER cobro_mueve_saldo
+  AFTER INSERT OR UPDATE OF estado ON cobro
+  FOR EACH ROW EXECUTE FUNCTION fn_cobro_mueve_saldo();
+
+-- ---------------------------------------------------------------------
+-- 8. Auditoría y seguridad
+-- ---------------------------------------------------------------------
+
+-- evento también registra cambios de saldo (tipo_entidad = 'asignacion').
+-- La restricción original no tenía nombre propio: PostgreSQL la llamó
+-- evento_tipo_entidad_check. Se reemplaza por una con nombre.
+ALTER TABLE evento DROP CONSTRAINT IF EXISTS evento_tipo_entidad_check;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'evento_tipo_entidad_valido') THEN
+    ALTER TABLE evento ADD CONSTRAINT evento_tipo_entidad_valido CHECK (tipo_entidad IN
+      ('programa', 'cuenta', 'cobro', 'beneficiario', 'punto', 'comercio', 'entidad', 'usuario', 'asignacion'));
+  END IF;
+END $$;
+
+ALTER FUNCTION fn_cobro_reglas()       SET search_path FROM CURRENT;
+ALTER FUNCTION fn_cobro_transicion()   SET search_path FROM CURRENT;
+ALTER FUNCTION fn_cobro_mueve_saldo()  SET search_path FROM CURRENT;
+
+ALTER TABLE asignacion ENABLE ROW LEVEL SECURITY;
+
+COMMIT;

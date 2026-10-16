@@ -18,6 +18,7 @@ qué guarda cada atributo, cómo se relacionan y qué reglas garantiza la propia
 8. [Lo que no está en la base](#8-lo-que-no-está-en-la-base)
 9. [Historias de usuario y tablas](#9-historias-de-usuario-y-tablas)
 10. [Hallazgos y correcciones propuestas](#10-hallazgos-y-correcciones-propuestas)
+11. [Actualización 01 · Cobros parciales de subsidios](#11-actualización-01--cobros-parciales-de-subsidios)
 
 ## 1. Principio de diseño
 
@@ -33,16 +34,28 @@ y **si de verdad llegó**.
 
 ## 2. Cómo montar la base
 
-Un solo script crea todo en una base **vacía** (PostgreSQL 13 o superior):
+`esquema.sql` tiene dos partes:
+
+| Parte | Qué hace | Dónde se ejecuta |
+|---|---|---|
+| **Script original** (desde el inicio hasta el primer `COMMIT`) | Crea las 13 tablas iniciales, índices, triggers y RLS | Solo en una base **vacía**. Ya está ejecutado en el servidor y **no se modifica** |
+| **Actualización 01 · Cobros parciales** (debajo del original) | Agrega la tabla `asignacion`, columnas, reglas y triggers del saldo | En la base **ya desplegada**: se ejecuta solo esta sección |
+
+**Base nueva** (PostgreSQL 13 o superior): el archivo completo, que deja las 14 tablas.
 
 ```bash
 psql "$DATABASE_URL" -f db/esquema.sql
 ```
 
-En Supabase: **SQL Editor → New query**, pegar `db/esquema.sql` completo y **Run**.
+**Base ya desplegada:** solo la sección *Actualización 01*. En Supabase: **SQL Editor → New
+query**, pegar desde el bloque `ACTUALIZACIÓN 01` hasta el final y **Run**.
 
-El script corre en una sola transacción: o se crea todo o no se crea nada. Crea 13 tablas, sus
-índices, triggers y RLS. No carga datos.
+Cada parte corre en su propia transacción: o se aplica completa o no se aplica nada. Las
+actualizaciones son **idempotentes**: se pueden ejecutar varias veces sin duplicar objetos ni perder
+datos. Ninguna parte carga datos de prueba.
+
+**Regla para el futuro:** el script original y las actualizaciones ya ejecutadas no se editan. Cada
+cambio nuevo va como una sección `ACTUALIZACIÓN NN` al final del archivo, documentada en este README.
 
 Para conectarse a la base del proyecto en Supabase, ver [`CONEXION.md`](./CONEXION.md).
 
@@ -60,15 +73,18 @@ Para conectarse a la base del proyecto en Supabase, ver [`CONEXION.md`](./CONEXI
 
 ## 4. Tablas
 
-Las 13 tablas se agrupan en cinco módulos.
+Las 14 tablas se agrupan en cinco módulos.
 
 | Módulo | Tablas |
 |---|---|
 | Entidades y usuarios | `entidad`, `usuario`, `sesion` |
 | Programas | `programa`, `programa_categoria` |
 | Puntos y comercios | `punto`, `comercio`, `programa_punto` |
-| Beneficiarios | `beneficiario`, `cuenta_beneficiario`, `bloqueo_pin` |
+| Beneficiarios | `beneficiario`, `cuenta_beneficiario`, `bloqueo_pin`, `asignacion` |
 | Cobros y auditoría | `cobro`, `evento` |
+
+Las secciones 4.1 a 4.13 describen la base inicial. Lo que agregó la *Actualización 01*
+(`asignacion` y columnas nuevas) está en la [sección 11](#11-actualización-01--cobros-parciales-de-subsidios).
 
 ### 4.1 `entidad`
 
@@ -361,7 +377,7 @@ Estas reglas se cumplen aunque la aplicación tenga un error.
 
 | Regla | Cómo |
 |---|---|
-| Nadie cobra dos veces (RN-02, HU-14) | Índice único parcial `(programa_id, beneficiario_id)` en `Solicitado`, `PorConfirmar`, `Pagando` y `Pagado`. Arbitra aunque lleguen dos solicitudes en el mismo instante |
+| Nadie cobra dos veces (RN-02, HU-14) | Índice único parcial `un_cobro_en_vuelo_por_persona`: un solo cobro en vuelo por persona y programa. Además, en programas no parciales el trigger rechaza un segundo cobro si ya hay uno pagado, y en los parciales el saldo de `asignacion` impide cobrar más de lo asignado (ver [sección 11](#11-actualización-01--cobros-parciales-de-subsidios)) |
 | Doble clic | `llave_idempotencia` única |
 | Confirmación duplicada | `version` sube sola; la API actualiza con `WHERE id = $1 AND version = $2` |
 | Estados del cobro válidos | Trigger con la máquina de estados: rechaza saltos como `Fallido → Pagado` |
@@ -377,7 +393,7 @@ Estas reglas se cumplen aunque la aplicación tenga un error.
 
 ## 7. Seguridad
 
-- **RLS en las 13 tablas**, sin políticas: la API pública de Supabase (`anon`, `authenticated`)
+- **RLS en las 14 tablas**, sin políticas: la API pública de Supabase (`anon`, `authenticated`)
   no ve nada. El backend se conecta como dueño de las tablas.
 - **Contraseñas y tokens de sesión, solo como hash.**
 - **Permiso de Open Payments:** solo backend. En producción, cifrado con una llave de KMS y en una
@@ -409,7 +425,8 @@ Estas reglas se cumplen aunque la aplicación tenga un error.
 | HU-09 Cobrar a la cuenta | `cobro`, `cuenta_beneficiario` |
 | HU-10 a HU-12 Cobro en el punto | `cobro`, `punto`, `bloqueo_pin` |
 | HU-13 Rechazos | `cobro.motivo_rechazo`, `evento` |
-| HU-14 Doble cobro | Índice único parcial, `llave_idempotencia`, `version` |
+| HU-14 Doble cobro | Índice de cobro en vuelo, regla RN-02 del trigger, saldo de `asignacion`, `llave_idempotencia`, `version` |
+| Cobros parciales | `asignacion`, `programa.permite_parcial`, `programa.monto_minimo_cobro`, `cobro.monto_enviado`, `cobro.monto_recibido` |
 | HU-15 Tablero | `programa`, `cobro` |
 | HU-16 Línea de tiempo | `evento` |
 | HU-17 y HU-18 Cerrar y pausar | `programa.estado` |
@@ -435,6 +452,217 @@ script.
 | 10 | No hay tablas para el contrato por hitos | HU-24 (extra) | `contrato` e `hito`, si el extra entra |
 | 11 | HU-19 define la demo **sin login**; el módulo de usuarios agrega inicio de sesión | HU-19 | Ajustar la historia al módulo de usuarios |
 | 12 | El backend actual guarda `programa.entidad` como texto; esta base usa `programa.entidad_id` | HU-01 | Actualizar el backend antes de usar este esquema |
+
+## 11. Actualización 01 · Cobros parciales de subsidios
+
+### 11.1 Qué permite
+
+Que una persona cobre su subsidio **por partes**: por ejemplo, $100.000 hoy en un corresponsal,
+$100.000 mañana a su llave Bre-B y los últimos $30.000 cuando los necesite, en lugar de recibir los
+$230.000 en un solo cobro.
+
+Sirve sobre todo en los **puntos tipo corresponsal**: un punto tiene efectivo limitado en caja y
+puede entregar una parte sin rechazar a la persona. También resuelve el saldo del **bono**: si una
+compra es menor que el bono, el resto queda disponible en lugar de perderse.
+
+**Es opcional por programa.** `programa.permite_parcial` es `false` por defecto: los programas que
+ya existen siguen funcionando exactamente igual que antes.
+
+### 11.2 Cómo encaja con Open Payments e Interledger
+
+El protocolo ya permite los cobros parciales, sin cambios:
+
+- **El permiso del programa es un límite acumulado** (`limits.debitAmount` = `tope_total`) y no
+  tiene receptor fijo. Al banco le da igual si salen $230.000 en un pago o en tres.
+- **Cada cobro parcial es un pago independiente:** un *incoming payment* por el valor parcial en la
+  billetera destino (con su `referencia`) y un *outgoing payment* desde la billetera del programa.
+  Es el mismo adaptador de HU-12, con otro monto.
+- **El banco sigue frenando por tope:** si la suma de todos los cobros supera lo autorizado, responde
+  `InsufficientGrant` y el cobro queda `Fallido` (RN-09).
+- **Interledger mueve montos de cualquier tamaño** respetando la `escala_moneda`.
+
+Lo que el protocolo **no** sabe es cuánto le queda a cada persona: esa cuenta la lleva ahora la
+base, con la tabla `asignacion`.
+
+### 11.3 Cambios, uno por uno
+
+| # | Cambio | Tipo | Propósito |
+|---|---|---|---|
+| 1 | `programa.permite_parcial` y `programa.monto_minimo_cobro` | Columnas nuevas | Activar los parciales por programa y evitar microcobros |
+| 2 | `cobro.monto_enviado` y `cobro.monto_recibido` | Columnas nuevas | Conciliar lo que salió contra lo que llegó |
+| 3 | Tabla `asignacion` | Tabla nueva | El saldo de cada persona en cada programa |
+| 4 | Saldo inicial de los cobros existentes | Datos | Que la base desplegada quede coherente |
+| 5 | `un_cobro_vivo_por_persona` → `un_cobro_en_vuelo_por_persona` | Índice reemplazado | Permitir varios cobros pagados, pero uno solo en proceso |
+| 6 | `fn_cobro_reglas` con RN-02, RN-19 y RN-20 | Función reemplazada | Mantener "un solo cobro" en los no parciales y controlar el saldo en los parciales |
+| 7 | `fn_cobro_transicion`: el monto no cambia | Función reemplazada | Que el saldo reservado no se descuadre |
+| 8 | Trigger `cobro_mueve_saldo` | Trigger nuevo | Reservar, confirmar y liberar el saldo |
+| 9 | `evento` acepta `tipo_entidad = 'asignacion'`; RLS y `search_path` | Auditoría y seguridad | Igual que el resto de la base |
+
+#### 1. `programa.permite_parcial` y `monto_minimo_cobro`
+
+| Atributo | Tipo | Regla |
+|---|---|---|
+| `permite_parcial` | boolean | `false` por defecto: un solo cobro por el valor completo, como antes |
+| `monto_minimo_cobro` | bigint | Mayor que 0. Monto mínimo de cada cobro parcial; vacío = sin mínimo |
+
+El mínimo evita cobros de $1.000 que se coman las comisiones del banco o del corresponsal. La única
+excepción es el **saldo final**: si a la persona le quedan $30.000 y el mínimo es $50.000, puede
+retirar esos $30.000, para que no queden "centavos" imposibles de cobrar.
+
+#### 2. `cobro.monto_enviado` y `cobro.monto_recibido`
+
+| Atributo | Tipo | Regla |
+|---|---|---|
+| `monto_enviado` | bigint | ≥ 0. `sentAmount` del *outgoing payment*: lo que salió de la billetera del programa |
+| `monto_recibido` | bigint | ≥ 0. `receivedAmount` del *incoming payment*: lo que llegó al destino |
+
+Con varios pagos por persona, las comisiones se acumulan. Guardar los dos valores permite conciliar
+contra el banco y detectar diferencias. Los llena la API cuando el pago se completa.
+
+#### 3. Tabla `asignacion`
+
+El saldo de cada persona en cada programa.
+
+| Atributo | Tipo | Regla |
+|---|---|---|
+| `programa_id` | uuid · LP · LF → `programa` | — |
+| `beneficiario_id` | uuid · LP · LF → `beneficiario` | Una asignación por persona y programa |
+| `asignado` | bigint | Mayor que 0. Lo que la liquidación dice que le corresponde |
+| `comprometido` | bigint | ≥ 0. Suma de los cobros **en vuelo** (`Solicitado`, `PorConfirmar`, `Pagando`) |
+| `cobrado` | bigint | ≥ 0. Suma de los cobros `Pagado` |
+| `version` | int | Sube con cada movimiento |
+| `creado_en`, `actualizado_en` | timestamptz | `actualizado_en` se mueve solo |
+
+**Saldo disponible = `asignado − cobrado − comprometido`.** No se guarda: se calcula, porque es un
+dato derivado.
+
+**La regla central** es la restricción `sin_sobregiro`:
+`comprometido + cobrado <= asignado`. Ninguna operación, de la API o manual, puede comprometer ni
+cobrar más de lo asignado.
+
+**Cuándo nace una asignación:**
+- **Programa parcial:** la API la crea con el monto que responde la liquidación, antes del primer
+  cobro (`INSERT … ON CONFLICT DO NOTHING`).
+- **Programa no parcial:** la crea sola la base, en el primer cobro, con el monto de ese cobro. Así
+  el backend actual no tiene que cambiar.
+
+Nunca se crean por carga masiva: se mantiene el principio de no copiar la liquidación.
+
+**Novedades:** si la liquidación sube el monto, la API actualiza `asignado`. Si alguien intenta
+bajarlo por debajo de lo ya cobrado, `sin_sobregiro` lo rechaza.
+
+#### 4. Saldo inicial de los cobros existentes
+
+La actualización crea una asignación para cada persona que ya tenía cobros vivos o pagados:
+
+| Campo | Valor inicial |
+|---|---|
+| `asignado` | Suma de sus cobros `Solicitado`, `PorConfirmar`, `Pagando` y `Pagado` |
+| `comprometido` | Suma de sus cobros en vuelo |
+| `cobrado` | Suma de sus cobros `Pagado` |
+
+Es decir, quien ya cobró queda con **saldo 0**: no se le inventa dinero. Las personas que solo
+tienen cobros `Rechazado` no reciben asignación. Si la sección se ejecuta de nuevo, este paso no
+toca nada (`ON CONFLICT DO NOTHING`).
+
+#### 5. Índice anti doble cobro
+
+| | Antes | Ahora |
+|---|---|---|
+| Índice | `un_cobro_vivo_por_persona` | `un_cobro_en_vuelo_por_persona` |
+| Estados que cubre | `Solicitado`, `PorConfirmar`, `Pagando`, **`Pagado`** | `Solicitado`, `PorConfirmar`, `Pagando` |
+| Efecto | Un solo cobro por persona y programa, para siempre | Un solo cobro **en proceso** a la vez; los pagados pueden ser varios |
+
+Mantener **un solo cobro en vuelo** simplifica el flujo del PIN (no hay dos confirmaciones abiertas
+para la misma persona en dos puntos) y evita carreras sobre el saldo. El índice nuevo se crea antes
+de borrar el viejo, así que la base nunca queda sin protección.
+
+#### 6. Reglas del cobro: RN-02, RN-19 y RN-20
+
+`fn_cobro_reglas` conserva todas sus reglas anteriores (RN-03, RN-04, RN-06, RN-07) y agrega:
+
+| Regla | Aplica a | Qué hace | Mensaje |
+|---|---|---|---|
+| **RN-02** | Programas no parciales | Rechaza un cobro nuevo si la persona ya tiene uno en vuelo o pagado: lo que antes hacía el índice | `RN-02: este subsidio ya está en proceso o fue cobrado` |
+| **RN-19** | Programas parciales | Exige que la persona tenga asignación y que el monto quepa en su saldo | `RN-19: la persona no tiene asignación…` / `RN-19: saldo insuficiente (disponible N)` |
+| **RN-20** | Programas parciales | El monto no puede ser menor que `monto_minimo_cobro`, salvo que sea justo el saldo que queda | `RN-20: el monto es menor que el mínimo de cobro (N)` |
+
+**Compatibilidad con el backend desplegado:** cuando la base rechaza un cobro con un error de
+restricción o de trigger, el backend busca el cobro existente de esa persona y responde "ya fue
+cobrado" o "ya está en proceso". RN-02 produce exactamente ese resultado, así que en los programas no
+parciales nada cambia para el backend.
+
+#### 7. El monto de un cobro no cambia
+
+`fn_cobro_transicion` conserva la máquina de estados y agrega una regla: el `monto` de un cobro no
+se puede modificar después de creado. Si cambiara después de reservar el saldo, `asignacion`
+quedaría descuadrada.
+
+#### 8. Trigger `cobro_mueve_saldo`
+
+Mueve el saldo según el estado del cobro, en la **misma transacción** que el cobro:
+
+| Momento del cobro | Efecto en `asignacion` |
+|---|---|
+| Nace vivo (`Solicitado` o `PorConfirmar`) | **Reserva:** `comprometido + monto` |
+| Pasa a `Pagado` | **Confirma:** `comprometido − monto`, `cobrado + monto` |
+| Pasa a `Rechazado` o `Fallido` | **Libera:** `comprometido − monto` |
+| Nace `Rechazado` | Nada: nunca reservó |
+| Se queda en `Pagando` (timeout del banco) | Nada: el monto sigue **reservado** hasta reconciliar |
+
+Por qué esto protege el dinero:
+
+- **Si el saldo no alcanza, el cobro no se crea:** `sin_sobregiro` falla y toda la transacción se
+  deshace.
+- **Dos solicitudes al mismo tiempo:** PostgreSQL bloquea la fila de `asignacion`; la segunda espera,
+  ve el saldo ya reservado por la primera y falla.
+- **Pagos en estado desconocido:** un timeout deja el monto reservado. Así nunca se vuelve a gastar
+  dinero que quizá sí salió del banco.
+
+#### 9. Auditoría y seguridad
+
+- La restricción de `evento.tipo_entidad` se reemplaza por `evento_tipo_entidad_valido`, que acepta
+  además `asignacion`, para registrar los cambios de saldo (por ejemplo, una novedad que sube
+  `asignado`).
+- `asignacion` tiene RLS activo, como todas las tablas.
+- Las funciones nuevas o reemplazadas tienen `search_path` fijo.
+
+### 11.4 Ejemplo completo
+
+Programa parcial con `monto_minimo_cobro` = $50.000 y una asignación de $230.000:
+
+| Paso | Cobro | `asignado` / `comprometido` / `cobrado` | Saldo |
+|---|---|---|---|
+| Asignación creada | — | 230.000 / 0 / 0 | 230.000 |
+| Retiro en un corresponsal | $100.000 `PorConfirmar` | 230.000 / 100.000 / 0 | 130.000 |
+| El banco confirma | `Pagado` | 230.000 / 0 / 100.000 | 130.000 |
+| Cobro a su llave Bre-B | $100.000 → `Pagado` | 230.000 / 0 / 200.000 | 30.000 |
+| Intenta retirar $50.000 | Rechazado: RN-19 saldo insuficiente | sin cambio | 30.000 |
+| Intenta retirar $20.000 | Rechazado: RN-20 bajo el mínimo | sin cambio | 30.000 |
+| Retira los últimos $30.000 | Permitido: es el saldo final | 230.000 / 30.000 / 200.000 | 0 |
+
+### 11.5 Cómo se probó
+
+En PostgreSQL 17, sobre una base con la estructura inicial y datos (34 pruebas, todas correctas):
+
+- La actualización respeta los cobros existentes y calcula bien el saldo inicial.
+- Ejecutarla **dos veces** no duplica asignaciones, triggers ni restricciones.
+- Programas no parciales: un segundo cobro se rechaza como antes; un `Fallido` libera a la persona.
+- Programas parciales: el recorrido de la tabla anterior, el cambio de monto bloqueado y la
+  cancelación que libera el saldo.
+- 10 retiros simultáneos sobre el mismo saldo: entra uno, sin sobregiro.
+- El archivo completo también monta una base nueva sin errores (14 tablas).
+
+### 11.6 Pendientes para usar los cobros parciales
+
+| Pendiente | Responsable |
+|---|---|
+| Confirmar con Colsubsidio que sus programas permiten el pago fraccionado | Producto |
+| Definir quién lleva el saldo: la liquidación de la entidad o `asignacion` (hoy, `asignacion`) | Producto y entidad |
+| Backend: crear la asignación antes del primer cobro parcial, aceptar el monto elegido y llenar `monto_enviado` y `monto_recibido` | Backend |
+| Vistas del punto y del beneficiario: mostrar el saldo y pedir el monto | Frontend |
+| Historias: RN-02 pasa a "un cobro en vuelo y nunca más de lo asignado"; RN-05 permite elegir el monto; CA-10.03 deja de decir "monto no mutable" | Producto |
+| Probar en la Test Wallet varios pagos pequeños contra el mismo permiso y que `getGrantSpentAmounts` sume bien | Open Payments |
 
 ## Origen del esquema
 
