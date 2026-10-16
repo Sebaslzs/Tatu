@@ -14,6 +14,7 @@ import { LiquidacionSimulada, type PersonaLiquidada } from '../liquidacion/simul
 import { candidatos } from '../programas/hash.ts'
 import { PuenteSimulado } from '../puente/simulador.ts'
 import { BilleterasFalsas } from './billeterasFalsas.ts'
+import { PagosFalsos } from './pagosFalsos.ts'
 import { PermisosFalsos, URL_AUTORIZACION } from './permisosFalsos.ts'
 
 export interface Respuesta<T> {
@@ -42,6 +43,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
   const base = await abrirBase({})
   const billeteras = new BilleterasFalsas()
   const permisos = new PermisosFalsos()
+  const pagos = new PagosFalsos()
   const simulador = new LiquidacionSimulada(liquidacion)
   const puente = new PuenteSimulado()
   let ahora = INICIO_DE_PRUEBA
@@ -57,6 +59,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
     billeteras,
     permisos,
     verificacion: permisos,
+    pagos,
     simuladorLiquidacion: simulador,
     simuladorPuente: puente,
     reloj: () => ahora,
@@ -83,9 +86,12 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
     db: base.db,
     billeteras,
     permisos,
+    pagos,
     simulador,
     puente,
     contenedor,
+    /** Espera los pagos que el servidor dispara en segundo plano. */
+    esperarPagos: () => contenedor.cobros.esperarPagos(),
     repos: contenedor.uow.repos as Repos,
     pedir,
     avanzarReloj(ms: number) {
@@ -103,6 +109,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
       await base.db.execute(sql.raw(`TRUNCATE ${TABLAS.map((t) => `public.${t}`).join(', ')} CASCADE`))
       billeteras.limpiar()
       permisos.reiniciar()
+      pagos.reiniciar()
       simulador.reiniciar()
       puente.reiniciar()
       ahora = INICIO_DE_PRUEBA

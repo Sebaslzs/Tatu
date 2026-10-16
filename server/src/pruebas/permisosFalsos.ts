@@ -17,6 +17,8 @@ export class PermisosFalsos implements PuertoPermisos, PuertoVerificacionCuenta 
   falloAlPedir = false
   falloAlContinuar = false
   falloAlCancelar = false
+  /** El error que lanza `token.rotate`: un 4xx (el permiso murió) o `SinRespuesta` (red). */
+  errorAlRotar: ErrorOpenPayments | null = null
   /** Lo que el banco dice del dueño de la cuenta al continuar una verificación. */
   cuentaEsDeLaPersona = true
   /** Lo que el banco dice que gastó el permiso (getGrantSpentAmounts). */
@@ -42,6 +44,7 @@ export class PermisosFalsos implements PuertoPermisos, PuertoVerificacionCuenta 
   }
 
   async rotarToken(): Promise<TokenPermiso> {
+    if (this.errorAlRotar) throw this.errorAlRotar
     this.rotaciones += 1
     return { token: `token-rotado-${this.rotaciones}`, urlGestion: `${URL_AUTORIZACION}/token/r${this.rotaciones}`, expiraEnSeg: 600 }
   }

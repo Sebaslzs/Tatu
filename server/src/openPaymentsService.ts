@@ -17,6 +17,8 @@ import {
 import { ErrorBilletera, mismaBilletera, normalizarBilletera, type BilleteraResuelta, type PuertoBilleteras } from './comun/billeteras.ts'
 import { log } from './comun/log.ts'
 import { ErrorOpenPayments, montoOP } from './comun/openPayments.ts'
+import type { PagoEntrante, PagoSaliente, PuertoPagos } from './cobros/puertos.ts'
+import type { Moneda } from './comun/montos.ts'
 import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
 import type { PedidoPermiso, PermisoPendiente, PuertoPermisos, TokenPermiso } from './programas/puertos.ts'
 
@@ -82,7 +84,7 @@ function interaccion({ nonce, urlRetorno }: Pick<PedidoPermiso, 'nonce' | 'urlRe
   return { start: ['redirect' as const], finish: { method: 'redirect' as const, uri: urlRetorno, nonce } }
 }
 
-export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, PuertoVerificacionCuenta {
+export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, PuertoVerificacionCuenta, PuertoPagos {
   private readonly config: ConfigOpenPayments
   private publico?: Promise<UnauthenticatedClient>
   private autenticado?: Promise<AuthenticatedClient>
@@ -184,6 +186,78 @@ export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, Pu
     const wallet = await this.walletOP(args.billeteraPrograma)
     const r = await this.llamar('otra', (c) => c.outgoingPayment.getGrantSpentAmounts({ url: wallet.resourceServer, accessToken: args.token }))
     return r.spentDebitAmount ? Number(r.spentDebitAmount.value) : null
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Pagos (HU-09, HU-12)
+  // ---------------------------------------------------------------------------------------------
+
+  /** Token de pago entrante por billetera de destino: permisos no interactivos, se reutilizan mientras duren. */
+  private readonly tokensEntrantes = new Map<string, { token: string; vence: number }>()
+
+  private async tokenEntrante(wallet: WalletOP): Promise<string> {
+    const guardado = this.tokensEntrantes.get(wallet.id)
+    if (guardado && guardado.vence > Date.now()) return guardado.token
+    const g = await this.llamar('otra', (c) =>
+      c.grant.request({ url: wallet.authServer }, { access_token: { access: [{ type: 'incoming-payment', actions: ['create', 'read'] }] } }),
+    )
+    if (!isFinalizedGrantWithAccessToken(g)) {
+      throw new ErrorOpenPayments('ErrorOpenPayments', undefined, undefined, 'El permiso de pago entrante pidió interacción')
+    }
+    const duracion = (g.access_token.expires_in ?? 300) * 1000
+    this.tokensEntrantes.set(wallet.id, { token: g.access_token.value, vence: Date.now() + duracion - 30_000 })
+    return g.access_token.value
+  }
+
+  async crearPagoEntrante(args: { billetera: string; monto: number; moneda: Moneda; referencia: string; descripcion: string }): Promise<PagoEntrante> {
+    const wallet = await this.walletOP(args.billetera)
+    const token = await this.tokenEntrante(wallet)
+    const p = await this.llamar('otra', (c) =>
+      c.incomingPayment.create(
+        { url: wallet.resourceServer, accessToken: token },
+        {
+          walletAddress: wallet.id,
+          incomingAmount: montoOP(args.monto, args.moneda),
+          metadata: { description: args.descripcion, referencia: args.referencia },
+        },
+      ),
+    )
+    return { id: p.id, completado: p.completed, recibido: p.receivedAmount.value, esperado: p.incomingAmount?.value }
+  }
+
+  async leerPagoEntrante(args: { url: string; billetera: string }): Promise<PagoEntrante> {
+    const wallet = await this.walletOP(args.billetera)
+    const token = await this.tokenEntrante(wallet)
+    const p = await this.llamar('otra', (c) => c.incomingPayment.get({ url: args.url, accessToken: token }))
+    return { id: p.id, completado: p.completed, recibido: p.receivedAmount.value, esperado: p.incomingAmount?.value }
+  }
+
+  async crearPagoSaliente(args: {
+    billeteraPrograma: string
+    token: string
+    urlPagoEntrante: string
+    monto: number
+    moneda: Moneda
+    referencia: string
+  }): Promise<PagoSaliente> {
+    const wallet = await this.walletOP(args.billeteraPrograma)
+    const p = await this.llamar('pagoSaliente', (c) =>
+      c.outgoingPayment.create(
+        { url: wallet.resourceServer, accessToken: args.token },
+        {
+          walletAddress: wallet.id,
+          incomingPayment: args.urlPagoEntrante,
+          debitAmount: montoOP(args.monto, args.moneda),
+          metadata: { referencia: args.referencia },
+        },
+      ),
+    )
+    return { id: p.id, fallido: p.failed, debitado: p.debitAmount.value, enviado: p.sentAmount.value }
+  }
+
+  async leerPagoSaliente(args: { url: string; token: string }): Promise<PagoSaliente> {
+    const p = await this.llamar('otra', (c) => c.outgoingPayment.get({ url: args.url, accessToken: args.token }))
+    return { id: p.id, fallido: p.failed, debitado: p.debitAmount.value, enviado: p.sentAmount.value }
   }
 
   // ---------------------------------------------------------------------------------------------

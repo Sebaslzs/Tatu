@@ -2,6 +2,8 @@
 // no de Drizzle (inversión de dependencias).
 import type { Db } from './conexion.ts'
 import { repoBeneficiarios, type RepoBeneficiarios } from './repositorios/beneficiarios.ts'
+import { repoBloqueos, type RepoBloqueos } from './repositorios/bloqueos.ts'
+import { repoCobros, type RepoCobros } from './repositorios/cobros.ts'
 import { repoCuentas, type RepoCuentas } from './repositorios/cuentas.ts'
 import { repoEntidades, type RepoEntidades } from './repositorios/entidades.ts'
 import { repoEventos, type RepoEventos } from './repositorios/eventos.ts'
@@ -14,6 +16,8 @@ export interface Repos {
   puntos: RepoPuntos
   beneficiarios: RepoBeneficiarios
   cuentas: RepoCuentas
+  cobros: RepoCobros
+  bloqueos: RepoBloqueos
   eventos: RepoEventos
 }
 
@@ -30,6 +34,8 @@ function crearRepos(db: Db): Repos {
     puntos: repoPuntos(db),
     beneficiarios: repoBeneficiarios(db),
     cuentas: repoCuentas(db),
+    cobros: repoCobros(db),
+    bloqueos: repoBloqueos(db),
     eventos: repoEventos(db),
   }
 }

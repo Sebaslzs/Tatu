@@ -66,7 +66,19 @@ módulo; cada módulo se entregó en su propio commit.
 * Pruebas por criterio de aceptación en `hu07.test.ts`, `puente.test.ts`, `personas.test.ts` y
   `registro.test.ts`, más los modelos y rutas del Swagger de cada módulo.
 
-### 7. Módulos siguientes del backend
+### 7. Backend — cobros (`server/src/cobros`, `beneficiarios`, `puntos`, `programas/permisoToken.ts`)
+
+* Claude Code implementó el flujo de cobro: solicitar (HU-09, HU-10), confirmar con PIN y cancelar
+  (HU-11), pagar con Open Payments y reconciliar (HU-12), el catálogo de rechazos (HU-13), el
+  bloqueo del doble cobro (HU-14), la rotación del token del permiso (HU-06) y el resumen del
+  beneficiario (HU-08). Está dividido por responsabilidad: `solicitud`, `confirmacion`, `pagador`,
+  `movimientos`, `vista` y `servicio`.
+* Pruebas: `reglas.test.ts`, `estados.test.ts` y `hu10.test.ts` (HU-10 y HU-11). **Faltan** las
+  pruebas por criterio de HU-06, HU-08, HU-09, HU-12, HU-13 y HU-14, y el Swagger de `/cobros`.
+* `solicitud.ts` y `pagador.ts` implementan la lógica de dinero: **deben revisarse a mano** antes de
+  usarse con pagos reales.
+
+### 8. Módulos siguientes del backend
 
 Cada módulo se registra aquí al entregarse (ver el historial de commits de `server/`).
 

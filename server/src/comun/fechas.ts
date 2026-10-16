@@ -21,6 +21,16 @@ export function finDelDia(valor: string): Date {
   return new Date(Date.UTC(a, m - 1, d + 1, BOGOTA_UTC_HORAS) - 1)
 }
 
+/** El día del calendario en Bogotá de un instante: «2026-12-31». */
+export function diaEnBogota(instante: string | Date): string {
+  return new Date(new Date(instante).getTime() - BOGOTA_UTC_HORAS * 3600_000).toISOString().slice(0, 10)
+}
+
+/** El inicio del día de hoy en Bogotá, como instante UTC. */
+export function inicioDeHoyEnBogota(ahora: Date): Date {
+  return inicioDelDia(diaEnBogota(ahora))
+}
+
 export const fechaTexto = z
   .string()
   .trim()

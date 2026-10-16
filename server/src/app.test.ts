@@ -33,7 +33,7 @@ describe('API', () => {
   })
 
   it('las rutas de épicas siguientes responden 501 NoImplementado', async () => {
-    const { status, cuerpo } = await e.pedir('POST', '/cobros', {})
+    const { status, cuerpo } = await e.pedir('POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', {})
     expect(status).toBe(501)
     expect(cuerpo.error.codigo).toBe('NoImplementado')
   })

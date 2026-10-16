@@ -322,7 +322,7 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     ['404 billetera', () => e.pedir('POST', '/puntos', { nombre: 'Punto X', billetera: '$ilp.interledger-test.dev/no-existe' }), 404],
     ['404 cédula', () => e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/9999999999`), 404],
     ['409', () => e.pedir('POST', '/puntos', { nombre: 'Punto repetido', billetera: PUNTO }).then(() => e.pedir('POST', '/puntos', { nombre: 'Punto repetido', billetera: PUNTO })), 409],
-    ['501', () => e.pedir('POST', '/cobros', {}), 501],
+    ['501', () => e.pedir('POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', {}), 501],
   ])('los errores %s usan el formato documentado', async (_caso, hacer, status) => {
     const r = await hacer()
     expect(r.status).toBe(status)
