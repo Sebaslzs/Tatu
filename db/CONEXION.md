@@ -8,38 +8,42 @@ La base está en **Supabase**, proyecto `ihbhwslbudtczcxrpefr`, con el esquema d
 
 ## Datos de conexión
 
+Usa el **pooler** de Supabase: funciona en cualquier red, también en las que no tienen IPv6.
+
 | Parámetro | Valor |
 |---|---|
-| Host | `db.ihbhwslbudtczcxrpefr.supabase.co` |
-| Puerto | `5432` |
+| Host | `aws-0-us-east-1.pooler.supabase.com` |
+| Puerto | `5432` (modo sesión) o `6543` (modo transacción) |
 | Base | `postgres` |
-| Usuario | `postgres` |
+| Usuario | `postgres.ihbhwslbudtczcxrpefr` (usuario + id del proyecto) |
 | Contraseña | Pídela por privado al responsable de la base |
 | SSL | Obligatorio (`require`) |
 
 Cadena de conexión (reemplaza `<CONTRASEÑA>`):
 
 ```
-postgresql://postgres:<CONTRASEÑA>@db.ihbhwslbudtczcxrpefr.supabase.co:5432/postgres
+postgresql://postgres.ihbhwslbudtczcxrpefr:<CONTRASEÑA>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
+
+| Puerto | Modo | Cuándo usarlo |
+|---|---|---|
+| `5432` | Sesión | **Por defecto**: el backend en tu PC o en un servidor, pgAdmin, `psql` |
+| `6543` | Transacción | Funciones *serverless* (Vercel) con muchas conexiones cortas. No admite sentencias preparadas con nombre |
 
 Si la contraseña tiene símbolos, codifícalos en la cadena: `@` → `%40`, `#` → `%23`, `/` → `%2F`,
 `:` → `%3A`, `%` → `%25`, `?` → `%3F`, `&` → `%26`.
 
-### Si no conecta: usa el pooler
+### Conexión directa (solo IPv6)
 
-Esta es la **conexión directa**. En el plan gratuito de Supabase solo funciona en redes con
-**IPv6**; en muchas redes de casa u oficina (IPv4) falla con un error de host o de tiempo de espera.
-En ese caso usa la cadena del **Session pooler**: en Supabase, botón **Connect** → *Connection
-string* → **Session pooler**. Su usuario es `postgres.ihbhwslbudtczcxrpefr` y su host termina en
-`pooler.supabase.com`.
+`db.ihbhwslbudtczcxrpefr.supabase.co:5432`, usuario `postgres`. En el plan gratuito esta dirección
+solo tiene IPv6: en redes sin IPv6 no conecta. Úsala solo si tu red tiene IPv6.
 
 ## Guardarla en `.env`
 
 En la carpeta del backend, un archivo `.env`:
 
 ```bash
-DATABASE_URL=postgresql://postgres:<CONTRASEÑA>@db.ihbhwslbudtczcxrpefr.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.ihbhwslbudtczcxrpefr:<CONTRASEÑA>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
 
 El `.gitignore` del repo ya excluye `.env`. Antes de cada commit, revisa con `git status` que no
