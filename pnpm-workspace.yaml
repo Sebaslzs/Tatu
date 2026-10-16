@@ -4,4 +4,5 @@ packages:
 
 # esbuild (usado por tsx, Vite y drizzle-kit) descarga su binario en postinstall
 allowBuilds:
+  '@scarf/scarf': set this to true or false
   esbuild: true

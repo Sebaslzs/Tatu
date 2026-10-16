@@ -7,6 +7,7 @@ import { EntrarEntidad } from '@/vistas/inicio/EntrarEntidad'
 import { EntrarPunto } from '@/vistas/inicio/EntrarPunto'
 import { CabeceraCelular } from '@/vistas/inicio/piezas'
 import { VistaBeneficiario } from '@/vistas/beneficiario/VistaBeneficiario'
+import { RutasEntidad } from '@/vistas/entidad/RutasEntidad'
 import { VistaEntidad } from '@/vistas/entidad/VistaEntidad'
 import { VistaPunto } from '@/vistas/punto/VistaPunto'
 
@@ -21,6 +22,8 @@ function AreaRol({ rol }: { rol: Rol }) {
   const { rol: elegido } = useRol()
   const navegar = useNavigate()
   if (elegido !== rol) return <Navigate to={`/entrar/${rol}`} replace />
+  // La entidad tiene sus propias pantallas de escritorio (vistas/entidad/RutasEntidad.tsx)
+  if (rol === 'entidad') return <RutasEntidad />
   const Vista = VISTAS[rol]
 
   return (

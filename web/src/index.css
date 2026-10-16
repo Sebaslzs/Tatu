@@ -18,6 +18,24 @@
     --color-borde-campo: #8F8571;
     --color-nota: #EDE5D3;
     --color-panel-texto: #D9D2C3;
+
+    /* Vistas de la entidad (piloto, produccion): textos de apoyo, controles, enlaces y estados */
+    --color-tenue: #5A657A;
+    --color-control: #847A66;
+    --color-enlace: #1E4FC8;
+    --color-noche-tenue: #B8C2D6;
+    --color-noche-suave: #1E2C49;
+    --color-bloque: #13203A;
+    --color-bloque-texto: #F5F0E6;
+    --color-pagado: #17703F;
+    --color-pagado-relleno: #1B7F4B;
+    --color-pagado-fondo: #E3EFE6;
+    --color-pagando: #6E4630;
+    --color-pagando-fondo: #FCE3B4;
+    --color-rechazo: #A3261C;
+    --color-rechazo-fondo: #F8E4DF;
+    --color-rechazo-relleno: #A3261C;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @theme inline {
@@ -127,6 +145,50 @@
 @utility ancho {
   font-stretch: 125%;
   letter-spacing: -0.01em;
+}
+
+/* Cifras grandes ($230.000): 800 al 125 % y dígitos tabulares */
+@utility cifra {
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Títulos de pantalla: 800 al 115 %, para que quepan a 375 px */
+@utility titular {
+  font-weight: 800;
+  font-stretch: 115%;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+/* Bloque Noche: la cifra que importa */
+@utility bloque {
+  background-color: var(--color-bloque);
+  color: var(--color-bloque-texto);
+}
+
+@utility mono {
+  font-family: var(--font-mono);
+}
+
+/* Cargando: aparece después de 200 ms, para que una respuesta rápida no muestre un destello */
+.aparece-tarde {
+  animation: aparecer 160ms ease-out 200ms both;
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+h1:focus {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
