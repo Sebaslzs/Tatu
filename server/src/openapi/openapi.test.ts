@@ -35,6 +35,7 @@ import {
   ResumenLiquidacion,
   RespuestaPin,
   Salud,
+  Tablero,
 } from './modelos.ts'
 
 const BILLETERA = 'https://ilp.interledger-test.dev/tatu-programa'
@@ -122,6 +123,15 @@ describe('el documento OpenAPI', () => {
     for (const ca of ['CA-11.01', 'CA-11.02', 'CA-11.03']) expect(texto('/cobros/{id}/confirmar', 'post')).toContain(ca)
     expect(texto('/cobros/{id}/cancelar', 'post')).toContain('CA-11.05')
     expect(texto('/beneficiarios/{cedula}/resumen', 'get')).toContain('CA-08.01')
+  })
+
+  it('las operaciones del tablero y del cierre citan sus criterios', () => {
+    const texto = (ruta: string, metodo: string) => {
+      const op = documento.paths[ruta]![metodo]!
+      return `${op.summary} ${op.description}`
+    }
+    for (const ca of ['CA-15.01', 'CA-15.02', 'CA-15.03', 'CA-15.04']) expect(texto('/programas/{id}/tablero', 'get')).toContain(ca)
+    for (const ca of ['CA-17.01', 'CA-17.03', 'CA-17.04', 'CA-17.05']) expect(texto('/programas/{id}/cerrar', 'post')).toContain(ca)
   })
 
   it('el callback documenta sus parámetros y la redirección, sin cuerpo JSON', () => {
@@ -256,6 +266,25 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     expect(Programa.parse((await e.pedir('POST', `/programas/${programaId}/reanudar`)).cuerpo).estado).toBe('Activo')
   })
 
+  it('GET /programas/{id}/tablero cumple el modelo y no filtra secretos', async () => {
+    const t = Tablero.parse((await e.pedir('GET', `/programas/${programaId}/tablero`)).cuerpo)
+    expect(t.fuente).toBe('plataforma')
+    expect(JSON.stringify(t)).not.toMatch(/tokenAcceso|urlGestion|token-acceso/)
+  })
+
+  it('cerrar el programa devuelve el tablero con sus cifras de cierre', async () => {
+    await e.pedir('POST', `/programas/${programaId}/autorizar`)
+    const q = new URLSearchParams({ interact_ref: 'r', hash: await e.hashValido(programaId, 'r') })
+    expect((await e.pedir('GET', `/callback/${programaId}?${q}`)).status).toBe(302)
+    const t = Tablero.parse((await e.pedir('POST', `/programas/${programaId}/cerrar`, { confirmacion: 'CERRAR' })).cuerpo)
+    expect(t.programa.estado).toBe('Cerrado')
+    expect(t.cierre).not.toBeNull()
+    expect(e.permisos.revocaciones).toBe(1)
+    expect(JSON.stringify(t)).not.toMatch(/tokenAcceso|urlGestion|token-acceso/)
+    // El tablero de un programa Cerrado sale de lo guardado al cerrar
+    expect(Tablero.parse((await e.pedir('GET', `/programas/${programaId}/tablero`)).cuerpo).cierre).not.toBeNull()
+  })
+
   describe('cuentas, beneficiarios, puente y personas', () => {
     const WALLET = 'https://ilp.interledger-test.dev/prueba-luis'
 
@@ -374,7 +403,10 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     ['404 billetera', () => e.pedir('POST', '/puntos', { nombre: 'Punto X', billetera: '$ilp.interledger-test.dev/no-existe' }), 404],
     ['404 cédula', () => e.pedir('GET', `/liquidacion/programas/${programaId}/pagos/9999999999`), 404],
     ['409', () => e.pedir('POST', '/puntos', { nombre: 'Punto repetido', billetera: PUNTO }).then(() => e.pedir('POST', '/puntos', { nombre: 'Punto repetido', billetera: PUNTO })), 409],
-    ['501', () => e.pedir('POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', {}), 501],
+    ['400 cierre', () => e.pedir('POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', {}), 400],
+    ['404 tablero', () => e.pedir('GET', '/programas/00000000-0000-4000-8000-000000000000/tablero'), 404],
+    ['404 cierre', () => e.pedir('POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', { confirmacion: 'CERRAR' }), 404],
+    ['409 cierre', () => e.pedir('POST', `/programas/${programaId}/cerrar`, { confirmacion: 'CERRAR' }), 409],
   ])('los errores %s usan el formato documentado', async (_caso, hacer, status) => {
     const r = await hacer()
     expect(r.status).toBe(status)

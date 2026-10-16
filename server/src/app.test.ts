@@ -34,12 +34,12 @@ describe('API', () => {
   })
 
   it.each([
-    ['POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar'],
-    ['GET', '/programas/00000000-0000-4000-8000-000000000000/tablero'],
-  ])('%s %s responde 501 NoImplementado', async (metodo, ruta) => {
-    const { status, cuerpo } = await e.pedir(metodo, ruta, metodo === 'POST' ? {} : undefined)
-    expect(status).toBe(501)
-    expect(cuerpo.error.codigo).toBe('NoImplementado')
+    ['POST', '/programas/00000000-0000-4000-8000-000000000000/cerrar', {}],
+    ['GET', '/programas/00000000-0000-4000-8000-000000000000/tablero', undefined],
+  ])('%s %s responde con el formato de error', async (metodo, ruta, cuerpo) => {
+    const r = await e.pedir(metodo, ruta, cuerpo)
+    expect(r.status).toBe(metodo === 'POST' ? 400 : 404)
+    expect(r.cuerpo.error.codigo).toBe(metodo === 'POST' ? 'ConfirmacionRequerida' : 'NoEncontrado')
   })
 
   it('GET /api/openapi.json publica el documento OpenAPI 3.1', async () => {
