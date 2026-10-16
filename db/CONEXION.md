@@ -70,6 +70,22 @@ const pool = new pg.Pool({
 **pgAdmin:** *Add New Server* → pestaña **Connection** con los datos de la tabla; en
 **Parameters**, *SSL mode* = `require`.
 
+## Skills de Supabase para asistentes de IA
+
+Si programas con un asistente de IA (Claude Code, Cursor u otro compatible con *agent skills*),
+instala las skills oficiales de Supabase en la carpeta del proyecto:
+
+```bash
+npx skills add supabase/agent-skills
+```
+
+Le dan al asistente buenas prácticas de Supabase y PostgreSQL. Necesita Node.js con `npx`.
+
+Ojo: esas skills asumen el uso típico de Supabase, con `supabase-js` y políticas de RLS por
+usuario. **En esta base mandan las reglas de abajo**: la Data API está apagada y todo pasa por
+nuestro backend. Si el asistente propone consultar las tablas desde el navegador o crear
+políticas de RLS, no aplica para Tatú.
+
 ## Reglas de esta base
 
 - **Todas las tablas tienen RLS** sin políticas: la API pública de Supabase (`supabase-js` con la
