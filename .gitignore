@@ -1,0 +1,15 @@
+# Secretos (CA-20.02): nunca al repo
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Dependencias y builds
+node_modules/
+dist/
+build/
+
+# Sistema y editores
+.DS_Store
+Thumbs.db

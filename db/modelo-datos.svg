@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1410" height="945" viewBox="0 0 1410 945" role="img">
+<title>Modelo de datos con entidades, usuarios y sesiones</title>
+<style>
+text{font-family:"Segoe UI",Arial,Helvetica,sans-serif}
+.th{font-size:14px;font-weight:600;fill:#085041}.thp{font-size:14px;font-weight:600;fill:#3C3489}
+.ts{font-size:12px;fill:#444441}.tsp{font-size:12px;fill:#3C3489}.k{font-weight:600}.i{font-style:italic}
+.tbl{fill:#FFFFFF;stroke:#B4B2A9}.hd{fill:#E1F5EE;stroke:#0F6E56}.hdp{fill:#EEEDFE;stroke:#534AB7}.hl{fill:#EEEDFE}
+.ln{fill:none;stroke:#888780;stroke-width:1.2}.dl{fill:none;stroke:#888780;stroke-width:1.2;stroke-dasharray:5 4}
+.grp{fill:#FDF6EC;stroke:#BA7517;stroke-dasharray:6 4}.gt{font-size:14px;font-weight:600;fill:#854F0B}
+.hdc{fill:#FAECE7;stroke:#993C1D}.thc{font-size:14px;font-weight:600;fill:#712B13}.ext{fill:#F1EFE8;stroke:#5F5E5A;stroke-dasharray:4 3}
+</style>
+<rect width="1410" height="945" fill="#FFFFFF"/>
+<rect class="grp" x="8" y="30" width="274" height="742" rx="6"/>
+<text class="gt" x="20" y="56">Entidades y usuarios</text>
+<path class="ln" d="M440 70 V44 H1000 V70"/>
+<path class="ln" d="M270 110 H290 V126 H310"/>
+<path class="ln" d="M570 110 H590 V126 H610"/>
+<path class="ln" d="M440 510 V540"/>
+<path class="ln" d="M840 142 H870 V210 H880"/>
+<path class="ln" d="M840 158 H860 V376 H880"/>
+<path class="ln" d="M840 174 H850 V638 H880"/>
+<path class="ln" d="M145 286 V316"/>
+<path class="ln" d="M145 548 V578"/>
+<path class="ln" d="M1000 170 V142"/>
+<path class="ln" d="M1000 568 V598"/>
+<path class="ln" d="M1000 702 V732"/>
+<path class="ln" d="M1120 290 H1140 V210 H1160"/>
+<path class="dl" d="M725 430 V398"/>
+<path class="dl" d="M610 510 H590 V480 H570"/>
+<text class="ts" x="432" y="62" text-anchor="end">1</text>
+<text class="ts" x="1008" y="62">N</text>
+<text class="ts" x="274" y="104">1</text>
+<text class="ts" x="294" y="120">N</text>
+<text class="ts" x="574" y="104">1</text>
+<text class="ts" x="594" y="120">N</text>
+<text class="ts" x="446" y="524">1</text>
+<text class="ts" x="446" y="536">N</text>
+<text class="ts" x="843" y="139">N</text>
+<text class="ts" x="873" y="206">1</text>
+<text class="ts" x="873" y="372">1</text>
+<text class="ts" x="873" y="634">1</text>
+<text class="ts" x="151" y="300">1</text>
+<text class="ts" x="151" y="312">N</text>
+<text class="ts" x="151" y="562">1</text>
+<text class="ts" x="151" y="574">N</text>
+<text class="ts" x="1006" y="154">N</text>
+<text class="ts" x="1006" y="166">1</text>
+<text class="ts" x="1006" y="582">N</text>
+<text class="ts" x="1006" y="594">1</text>
+<text class="ts" x="1006" y="716">1</text>
+<text class="ts" x="1006" y="728">N</text>
+<text class="ts" x="1124" y="284">N</text>
+<text class="ts" x="1146" y="206">1</text>
+<rect class="tbl" x="20" y="70" width="250" height="216" rx="4"/>
+<rect class="hdp" x="20" y="70" width="250" height="28" rx="4"/><text class="thp" x="30" y="89">entidad</text>
+<text class="ts k" x="30" y="114">id</text><text class="ts" x="260" y="114" text-anchor="end">uuid · LP</text>
+<text class="ts" x="30" y="130">tipo_documento</text><text class="ts" x="260" y="130" text-anchor="end">enum</text>
+<text class="ts" x="30" y="146">documento</text><text class="ts" x="260" y="146" text-anchor="end">text · ÚN</text>
+<text class="ts" x="30" y="162">nombre</text><text class="ts" x="260" y="162" text-anchor="end">text</text>
+<text class="ts" x="30" y="178">tipo</text><text class="ts" x="260" y="178" text-anchor="end">enum</text>
+<text class="ts" x="30" y="194">direccion</text><text class="ts" x="260" y="194" text-anchor="end">text</text>
+<text class="ts" x="30" y="210">telefono</text><text class="ts" x="260" y="210" text-anchor="end">text</text>
+<text class="ts" x="30" y="226">email</text><text class="ts" x="260" y="226" text-anchor="end">text</text>
+<text class="ts" x="30" y="242">estado</text><text class="ts" x="260" y="242" text-anchor="end">enum</text>
+<text class="ts" x="30" y="258">creado_en</text><text class="ts" x="260" y="258" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="274">actualizado_en</text><text class="ts" x="260" y="274" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="20" y="316" width="250" height="232" rx="4"/>
+<rect class="hdp" x="20" y="316" width="250" height="28" rx="4"/><text class="thp" x="30" y="335">usuario</text>
+<text class="ts k" x="30" y="360">id</text><text class="ts" x="260" y="360" text-anchor="end">uuid · LP</text>
+<text class="ts" x="30" y="376">entidad_id</text><text class="ts" x="260" y="376" text-anchor="end">uuid · LF</text>
+<text class="ts" x="30" y="392">nombre</text><text class="ts" x="260" y="392" text-anchor="end">text</text>
+<text class="ts" x="30" y="408">email</text><text class="ts" x="260" y="408" text-anchor="end">text · ÚN</text>
+<text class="ts" x="30" y="424">password_hash</text><text class="ts" x="260" y="424" text-anchor="end">text</text>
+<text class="ts" x="30" y="440">rol</text><text class="ts" x="260" y="440" text-anchor="end">enum</text>
+<text class="ts" x="30" y="456">estado</text><text class="ts" x="260" y="456" text-anchor="end">enum</text>
+<text class="ts" x="30" y="472">intentos_fallidos</text><text class="ts" x="260" y="472" text-anchor="end">smallint</text>
+<text class="ts" x="30" y="488">bloqueado_hasta</text><text class="ts" x="260" y="488" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="504">ultimo_acceso</text><text class="ts" x="260" y="504" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="520">creado_en</text><text class="ts" x="260" y="520" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="536">actualizado_en</text><text class="ts" x="260" y="536" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="20" y="578" width="250" height="168" rx="4"/>
+<rect class="hdp" x="20" y="578" width="250" height="28" rx="4"/><text class="thp" x="30" y="597">sesion</text>
+<text class="ts k" x="30" y="622">id</text><text class="ts" x="260" y="622" text-anchor="end">uuid · LP</text>
+<text class="ts" x="30" y="638">usuario_id</text><text class="ts" x="260" y="638" text-anchor="end">uuid · LF</text>
+<text class="ts" x="30" y="654">token_hash</text><text class="ts" x="260" y="654" text-anchor="end">bytea · ÚN</text>
+<text class="ts" x="30" y="670">ip</text><text class="ts" x="260" y="670" text-anchor="end">inet</text>
+<text class="ts" x="30" y="686">user_agent</text><text class="ts" x="260" y="686" text-anchor="end">text</text>
+<text class="ts" x="30" y="702">expira_en</text><text class="ts" x="260" y="702" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="718">creado_en</text><text class="ts" x="260" y="718" text-anchor="end">timestamptz</text>
+<text class="ts" x="30" y="734">revocado_en</text><text class="ts" x="260" y="734" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="310" y="70" width="260" height="440" rx="4"/>
+<rect class="hd" x="310" y="70" width="260" height="28" rx="4"/><text class="th" x="320" y="89">programa</text>
+<text class="ts k" x="320" y="114">id</text><text class="ts" x="560" y="114" text-anchor="end">uuid · LP</text>
+<text class="ts" x="320" y="130">entidad_id</text><text class="ts" x="560" y="130" text-anchor="end">uuid · LF</text>
+<text class="ts" x="320" y="146">nombre</text><text class="ts" x="560" y="146" text-anchor="end">text</text>
+<text class="ts" x="320" y="162">tipo</text><text class="ts" x="560" y="162" text-anchor="end">enum</text>
+<text class="ts" x="320" y="178">destino</text><text class="ts" x="560" y="178" text-anchor="end">enum</text>
+<text class="ts" x="320" y="194">billetera_programa</text><text class="ts" x="560" y="194" text-anchor="end">url</text>
+<text class="ts" x="320" y="210">codigo_moneda</text><text class="ts" x="560" y="210" text-anchor="end">text</text>
+<text class="ts" x="320" y="226">escala_moneda</text><text class="ts" x="560" y="226" text-anchor="end">int</text>
+<text class="ts" x="320" y="242">vigencia_inicio</text><text class="ts" x="560" y="242" text-anchor="end">timestamptz</text>
+<text class="ts" x="320" y="258">vigencia_fin</text><text class="ts" x="560" y="258" text-anchor="end">timestamptz</text>
+<text class="ts" x="320" y="274">tope_total</text><text class="ts" x="560" y="274" text-anchor="end">bigint</text>
+<text class="ts" x="320" y="290">monto_por_persona</text><text class="ts" x="560" y="290" text-anchor="end">bigint</text>
+<text class="ts" x="320" y="306">estado</text><text class="ts" x="560" y="306" text-anchor="end">enum</text>
+<text class="ts" x="320" y="322">aprobacion_solicitada_en</text><text class="ts" x="560" y="322" text-anchor="end">timestamptz</text>
+<text class="ts" x="320" y="338">permiso_vencido_en</text><text class="ts" x="560" y="338" text-anchor="end">timestamptz</text>
+<text class="ts" x="320" y="354">gastado_permisos_anteriores</text><text class="ts" x="560" y="354" text-anchor="end">bigint</text>
+<text class="ts" x="320" y="370">creado_en</text><text class="ts" x="560" y="370" text-anchor="end">timestamptz</text>
+<path d="M310 374 H570" fill="none" stroke="#B4B2A9" stroke-width="0.8"/>
+<text class="ts i" x="320" y="386">permiso de Open Payments</text>
+<text class="ts" x="320" y="402">token_acceso</text><text class="ts" x="560" y="402" text-anchor="end">text</text>
+<text class="ts" x="320" y="418">url_gestion</text><text class="ts" x="560" y="418" text-anchor="end">text</text>
+<text class="ts" x="320" y="434">uri_continuacion</text><text class="ts" x="560" y="434" text-anchor="end">text</text>
+<text class="ts" x="320" y="450">token_continuacion</text><text class="ts" x="560" y="450" text-anchor="end">text</text>
+<text class="ts" x="320" y="466">nonce_cliente</text><text class="ts" x="560" y="466" text-anchor="end">text</text>
+<text class="ts" x="320" y="482">nonce_cierre</text><text class="ts" x="560" y="482" text-anchor="end">text</text>
+<text class="ts" x="320" y="498">url_permiso</text><text class="ts" x="560" y="498" text-anchor="end">text</text>
+<rect class="tbl" x="310" y="540" width="260" height="72" rx="4"/>
+<rect class="hdc" x="310" y="540" width="260" height="28" rx="4"/><text class="thc" x="320" y="559">programa_categoria</text>
+<text class="ts k" x="320" y="584">programa_id</text><text class="ts" x="560" y="584" text-anchor="end">uuid · LP · LF</text>
+<text class="ts k" x="320" y="600">categoria</text><text class="ts" x="560" y="600" text-anchor="end">text · LP</text>
+<rect class="ext" x="310" y="640" width="260" height="74" rx="4"/>
+<text class="ts k" x="320" y="662" style="font-size:14px">Liquidación externa</text>
+<text class="ts" x="320" y="682">Nombre, contacto y monto</text><text class="ts" x="320" y="700">Se consulta, no se guarda</text>
+<rect class="tbl" x="610" y="70" width="230" height="328" rx="4"/>
+<rect class="hd" x="610" y="70" width="230" height="28" rx="4"/><text class="th" x="620" y="89">cobro</text>
+<text class="ts k" x="620" y="114">id</text><text class="ts" x="830" y="114" text-anchor="end">uuid · LP</text>
+<text class="ts" x="620" y="130">programa_id</text><text class="ts" x="830" y="130" text-anchor="end">uuid · LF</text>
+<text class="ts" x="620" y="146">punto_id</text><text class="ts" x="830" y="146" text-anchor="end">uuid · LF</text>
+<text class="ts" x="620" y="162">cuenta_id</text><text class="ts" x="830" y="162" text-anchor="end">uuid · LF</text>
+<text class="ts" x="620" y="178">beneficiario_id</text><text class="ts" x="830" y="178" text-anchor="end">uuid · LF</text>
+<text class="ts" x="620" y="194">canal</text><text class="ts" x="830" y="194" text-anchor="end">enum</text>
+<text class="ts" x="620" y="210">total_compra</text><text class="ts" x="830" y="210" text-anchor="end">bigint</text>
+<text class="ts" x="620" y="226">monto</text><text class="ts" x="830" y="226" text-anchor="end">bigint</text>
+<text class="ts" x="620" y="242">estado</text><text class="ts" x="830" y="242" text-anchor="end">enum</text>
+<text class="ts" x="620" y="258">motivo_rechazo</text><text class="ts" x="830" y="258" text-anchor="end">text</text>
+<text class="ts" x="620" y="274">intentos_pin</text><text class="ts" x="830" y="274" text-anchor="end">smallint</text>
+<text class="ts" x="620" y="290">referencia</text><text class="ts" x="830" y="290" text-anchor="end">text · ÚN</text>
+<text class="ts" x="620" y="306">llave_idempotencia</text><text class="ts" x="830" y="306" text-anchor="end">text · ÚN</text>
+<text class="ts" x="620" y="322">url_pago_entrante</text><text class="ts" x="830" y="322" text-anchor="end">text</text>
+<text class="ts" x="620" y="338">url_pago_saliente</text><text class="ts" x="830" y="338" text-anchor="end">text</text>
+<text class="ts" x="620" y="354">version</text><text class="ts" x="830" y="354" text-anchor="end">int</text>
+<text class="ts" x="620" y="370">creado_en</text><text class="ts" x="830" y="370" text-anchor="end">timestamptz</text>
+<text class="ts" x="620" y="386">actualizado_en</text><text class="ts" x="830" y="386" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="610" y="430" width="230" height="168" rx="4"/>
+<rect class="hd" x="610" y="430" width="230" height="28" rx="4"/><text class="th" x="620" y="449">evento</text>
+<text class="ts k" x="620" y="474">id</text><text class="ts" x="830" y="474" text-anchor="end">bigserial · LP</text>
+<text class="ts" x="620" y="490">tipo_entidad</text><text class="ts" x="830" y="490" text-anchor="end">text</text>
+<text class="ts" x="620" y="506">id_entidad</text><text class="ts" x="830" y="506" text-anchor="end">text</text>
+<text class="ts" x="620" y="522">estado_anterior</text><text class="ts" x="830" y="522" text-anchor="end">text</text>
+<text class="ts" x="620" y="538">estado_nuevo</text><text class="ts" x="830" y="538" text-anchor="end">text</text>
+<text class="ts" x="620" y="554">detalle</text><text class="ts" x="830" y="554" text-anchor="end">jsonb</text>
+<text class="ts" x="620" y="570">actor</text><text class="ts" x="830" y="570" text-anchor="end">text</text>
+<text class="ts" x="620" y="586">creado_en</text><text class="ts" x="830" y="586" text-anchor="end">timestamptz</text>
+<text class="ts i" x="610" y="618">Apunta a cualquier tabla</text>
+<rect class="tbl" x="880" y="70" width="240" height="72" rx="4"/>
+<rect class="hdc" x="880" y="70" width="240" height="28" rx="4"/><text class="thc" x="890" y="89">programa_punto</text>
+<text class="ts k" x="890" y="114">programa_id</text><text class="ts" x="1110" y="114" text-anchor="end">uuid · LP · LF</text>
+<text class="ts k" x="890" y="130">punto_id</text><text class="ts" x="1110" y="130" text-anchor="end">uuid · LP · LF</text>
+<rect class="tbl" x="880" y="170" width="240" height="136" rx="4"/>
+<rect class="hd" x="880" y="170" width="240" height="28" rx="4"/><text class="th" x="890" y="189">punto</text>
+<text class="ts k" x="890" y="214">id</text><text class="ts" x="1110" y="214" text-anchor="end">uuid · LP</text>
+<text class="ts" x="890" y="230">nombre</text><text class="ts" x="1110" y="230" text-anchor="end">text</text>
+<text class="ts" x="890" y="246">direccion</text><text class="ts" x="1110" y="246" text-anchor="end">text</text>
+<text class="ts" x="890" y="262">billetera</text><text class="ts" x="1110" y="262" text-anchor="end">url · ÚN</text>
+<text class="ts" x="890" y="278">tipo</text><text class="ts" x="1110" y="278" text-anchor="end">enum</text>
+<text class="ts" x="890" y="294">comercio_id</text><text class="ts" x="1110" y="294" text-anchor="end">uuid · LF</text>
+<rect class="tbl" x="880" y="336" width="240" height="232" rx="4"/>
+<rect class="hd" x="880" y="336" width="240" height="28" rx="4"/><text class="th" x="890" y="355">cuenta_beneficiario</text>
+<text class="ts k" x="890" y="380">id</text><text class="ts" x="1110" y="380" text-anchor="end">uuid · LP</text>
+<text class="ts" x="890" y="396">beneficiario_id</text><text class="ts" x="1110" y="396" text-anchor="end">uuid · LF</text>
+<text class="ts" x="890" y="412">tipo_llave</text><text class="ts" x="1110" y="412" text-anchor="end">enum</text>
+<text class="ts" x="890" y="428">llave</text><text class="ts" x="1110" y="428" text-anchor="end">text</text>
+<text class="ts" x="890" y="444">billetera</text><text class="ts" x="1110" y="444" text-anchor="end">url</text>
+<text class="ts" x="890" y="460">estado</text><text class="ts" x="1110" y="460" text-anchor="end">enum</text>
+<text class="ts" x="890" y="476">nonce_cliente</text><text class="ts" x="1110" y="476" text-anchor="end">text</text>
+<text class="ts" x="890" y="492">nonce_cierre</text><text class="ts" x="1110" y="492" text-anchor="end">text</text>
+<text class="ts" x="890" y="508">uri_continuacion</text><text class="ts" x="1110" y="508" text-anchor="end">text</text>
+<text class="ts" x="890" y="524">token_continuacion</text><text class="ts" x="1110" y="524" text-anchor="end">text</text>
+<text class="ts" x="890" y="540">verificada_en</text><text class="ts" x="1110" y="540" text-anchor="end">timestamptz</text>
+<text class="ts" x="890" y="556">creado_en</text><text class="ts" x="1110" y="556" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="880" y="598" width="240" height="104" rx="4"/>
+<rect class="hd" x="880" y="598" width="240" height="28" rx="4"/><text class="th" x="890" y="617">beneficiario</text>
+<text class="ts k" x="890" y="642">id</text><text class="ts" x="1110" y="642" text-anchor="end">uuid · LP</text>
+<text class="ts" x="890" y="658">tipo_documento</text><text class="ts" x="1110" y="658" text-anchor="end">enum</text>
+<text class="ts" x="890" y="674">numero_documento</text><text class="ts" x="1110" y="674" text-anchor="end">text · ÚN</text>
+<text class="ts" x="890" y="690">creado_en</text><text class="ts" x="1110" y="690" text-anchor="end">timestamptz</text>
+<rect class="tbl" x="880" y="732" width="240" height="120" rx="4"/>
+<rect class="hd" x="880" y="732" width="240" height="28" rx="4"/><text class="th" x="890" y="751">bloqueo_pin</text>
+<text class="ts k" x="890" y="776">programa_id</text><text class="ts" x="1110" y="776" text-anchor="end">uuid · LP · LF</text>
+<text class="ts k" x="890" y="792">beneficiario_id</text><text class="ts" x="1110" y="792" text-anchor="end">uuid · LP · LF</text>
+<text class="ts" x="890" y="808">bloqueado_hasta</text><text class="ts" x="1110" y="808" text-anchor="end">timestamptz</text>
+<text class="ts" x="890" y="824">cobro_id</text><text class="ts" x="1110" y="824" text-anchor="end">uuid · LF</text>
+<text class="ts" x="890" y="840">creado_en</text><text class="ts" x="1110" y="840" text-anchor="end">timestamptz</text>
+<text class="ts i" x="880" y="872">LF también a programa y cobro</text>
+<rect class="tbl" x="1160" y="170" width="230" height="152" rx="4"/>
+<rect class="hdc" x="1160" y="170" width="230" height="28" rx="4"/><text class="thc" x="1170" y="189">comercio</text>
+<text class="ts k" x="1170" y="214">id</text><text class="ts" x="1380" y="214" text-anchor="end">uuid · LP</text>
+<text class="ts" x="1170" y="230">nit</text><text class="ts" x="1380" y="230" text-anchor="end">text · ÚN</text>
+<text class="ts" x="1170" y="246">razon_social</text><text class="ts" x="1380" y="246" text-anchor="end">text</text>
+<text class="ts" x="1170" y="262">ciiu</text><text class="ts" x="1380" y="262" text-anchor="end">text</text>
+<text class="ts" x="1170" y="278">categoria</text><text class="ts" x="1380" y="278" text-anchor="end">text</text>
+<text class="ts" x="1170" y="294">verificado_en</text><text class="ts" x="1380" y="294" text-anchor="end">timestamptz</text>
+<text class="ts" x="1170" y="310">creado_en</text><text class="ts" x="1380" y="310" text-anchor="end">timestamptz</text>
+<path class="ln" d="M310 905 H340"/>
+<text class="ts" x="348" y="909">Llave foránea</text>
+<path class="dl" d="M450 905 H480"/>
+<text class="ts" x="488" y="909">Relación lógica, sin LF</text>
+<rect x="650" y="898" width="14" height="14" rx="3" fill="#EEEDFE" stroke="#534AB7"/>
+<text class="ts" x="672" y="909">Entidades y usuarios</text>
+<rect x="830" y="898" width="14" height="14" rx="3" fill="#E1F5EE" stroke="#0F6E56"/>
+<text class="ts" x="852" y="909">Programas, cobros y beneficiarios</text>
+<rect x="1080" y="898" width="14" height="14" rx="3" fill="#FAECE7" stroke="#993C1D"/>
+<text class="ts" x="1102" y="909">Bonos y comercios</text>
+<text class="ts" x="310" y="932">LP: llave primaria · LF: llave foránea · ÚN: valor único (documento y numero_documento: junto con su tipo)</text>
+</svg>
