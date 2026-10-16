@@ -2,7 +2,7 @@
 // cédula completa. Con la base lejos, una consulta por fila vuelve lenta la app: las listas cargan
 // primero lo que necesitan (una consulta por tabla, en paralelo) y arman cada vista sin ir a la base.
 import { billeteraCorta } from '../comun/billeteras.ts'
-import { enmascararDocumento } from '../comun/log.ts'
+import { etiquetaDe } from '../comun/etiqueta.ts'
 import { monedaApi, montoOpcional, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
@@ -31,8 +31,8 @@ export interface VistaCobro {
   programa: { id: string; nombre: string }
   canal: Canal
   punto: { id: string; nombre: string; billeteraCorta: string } | null
-  cuenta: { billeteraCorta: string } | null
-  persona: { nombre: string; documento: string; novedad: boolean }
+  cuenta: { billetera: string; billeteraCorta: string } | null
+  persona: { nombre: string; etiqueta: string; novedad: boolean }
   monto: Monto | null
   totalCompra: Monto | null
   moneda: MonedaApi
@@ -134,10 +134,10 @@ export class VistasCobro {
       programa: { id: programa.id, nombre: programa.nombre },
       canal: c.canal,
       punto: punto ? { id: punto.id, nombre: punto.nombre, billeteraCorta: billeteraCorta(punto.billetera) } : null,
-      cuenta: cuenta ? { billeteraCorta: billeteraCorta(cuenta.billetera) } : null,
+      cuenta: cuenta ? { billetera: cuenta.billetera, billeteraCorta: billeteraCorta(cuenta.billetera) } : null,
       persona: {
         nombre: ctx.personas.get(persona.numeroDocumento)?.nombre ?? `Persona ${persona.numeroDocumento.slice(-4)}`,
-        documento: enmascararDocumento(persona.numeroDocumento),
+        etiqueta: etiquetaDe(persona),
         novedad: esNovedad(eventos),
       },
       monto: montoOpcional(c.monto),

@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto'
 import { billeteraCorta, resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, noEncontrado } from '../comun/errores.ts'
 import type { Reloj } from '../comun/fechas.ts'
+import { etiquetaDe } from '../comun/etiqueta.ts'
 import { monedaApi, type Moneda, type MonedaApi } from '../comun/montos.ts'
 import { esViolacionUnica } from '../db/errores.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
@@ -125,7 +126,7 @@ export class ServicioBeneficiarios {
     const personas = await this.nombres(lista.map((b) => b.numeroDocumento))
     return lista.map((b) => ({
       nombre: nombreDe(b.numeroDocumento, personas),
-      etiqueta: `${b.tipoDocumento === 'CC' ? 'C.C.' : b.tipoDocumento} de prueba ${Number(b.numeroDocumento.slice(-3))}`,
+      etiqueta: etiquetaDe(b),
       documento: b.numeroDocumento,
     }))
   }

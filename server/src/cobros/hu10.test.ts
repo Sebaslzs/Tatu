@@ -33,7 +33,7 @@ describe('CA-10.01 · el punto consulta', () => {
     const { status, cuerpo } = await e.pedir('GET', `/puntos/${s.puntoId}/pagos?documento=${JORGE.documento}`)
     expect(status).toBe(200)
     expect(cuerpo).toEqual({
-      persona: { nombre: 'Jorge Ruiz', tienePin: true },
+      persona: { nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', tienePin: true },
       pagos: [
         {
           programa: { id: s.programaId, nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
@@ -78,7 +78,7 @@ describe('CA-10.02 · la solicitud', () => {
       monto: '23000000',
       programa: { id: s.programaId },
       punto: { id: s.puntoId, nombre: 'Tienda Marta' },
-      persona: { nombre: 'Jorge Ruiz', documento: '******0003', novedad: false },
+      persona: { nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', novedad: false },
       intentosRestantes: 3,
       motivo: null,
     })

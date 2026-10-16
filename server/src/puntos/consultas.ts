@@ -1,5 +1,6 @@
 // Lo que el punto consulta (HU-10, CA-10.01): qué subsidios puede pagarle hoy a una cédula, y los
 // cobros que ha hecho. Una cédula que no existe responde igual que una sin pagos: no se filtra si existía.
+import { etiquetaDe } from '../comun/etiqueta.ts'
 import { ErrorApi, noEncontrado } from '../comun/errores.ts'
 import { inicioDeHoyEnBogota, type Reloj } from '../comun/fechas.ts'
 import type { FilaPunto } from '../db/repositorios/puntos.ts'
@@ -12,7 +13,7 @@ import { LiquidacionNoResponde } from '../liquidacion/cliente.ts'
 export type PeriodoCaja = 'hoy' | '7d' | 'todo'
 
 export interface PagosParaElPunto {
-  persona: { nombre: string; tienePin: boolean }
+  persona: { nombre: string; etiqueta: string; tienePin: boolean }
   pagos: PagoPendiente[]
 }
 
@@ -44,7 +45,7 @@ export class ConsultasPunto {
     if (!pagos.length && !liquidacionDisponible) throw new LiquidacionNoResponde()
     if (!pagos.length) throw new ErrorApi(404, 'SinPagoDisponible', MOTIVOS.SinPagoDisponible.mensaje)
     const p = personas.get(documento)
-    return { persona: { nombre: p?.nombre ?? `Persona ${documento.slice(-4)}`, tienePin: p?.tienePin ?? false }, pagos }
+    return { persona: { nombre: p?.nombre ?? `Persona ${documento.slice(-4)}`, etiqueta: etiquetaDe(persona), tienePin: p?.tienePin ?? false }, pagos }
   }
 
   /** Los cobros del punto, del más reciente al más antiguo, en el periodo pedido. */
