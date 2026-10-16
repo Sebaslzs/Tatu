@@ -1,0 +1,7 @@
+packages:
+  - server
+  - web
+
+# esbuild (usado por tsx, Vite y drizzle-kit) descarga su binario en postinstall
+allowBuilds:
+  esbuild: true
