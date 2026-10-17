@@ -115,7 +115,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   // Cobros
   const movimientos = new MovimientosCobro(uow)
   const vistas = new VistasCobro(uow, liquidacion, { confirmacionTtlSeg: config.CONFIRMACION_TTL_SEG, pinMaxIntentos: config.PIN_MAX_INTENTOS })
-  const pagador = new PagadorCobros({ uow, movimientos, pagos, token })
+  const pagador = new PagadorCobros({ uow, movimientos, pagos, token, ...(piezas.candado ? { candado: piezas.candado } : {}) })
   const confirmacion = new ConfirmacionCobro({
     uow,
     liquidacion,
