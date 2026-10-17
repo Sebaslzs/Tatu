@@ -337,14 +337,22 @@ export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, Pu
   private cargarLlave(): KeyObject {
     const { OP_PRIVATE_KEY_BASE64, OP_PRIVATE_KEY_PATH } = this.config
     let llave: KeyObject
-    if (OP_PRIVATE_KEY_BASE64) {
-      const bytes = Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64')
-      const texto = bytes.toString('utf8')
-      llave = texto.includes('-----BEGIN') ? createPrivateKey(texto) : createPrivateKey({ key: bytes, format: 'der', type: 'pkcs8' })
-    } else if (OP_PRIVATE_KEY_PATH) {
-      llave = createPrivateKey(readFileSync(resolve(RAIZ_SERVER, OP_PRIVATE_KEY_PATH)))
-    } else {
-      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'Falta OP_PRIVATE_KEY_BASE64 u OP_PRIVATE_KEY_PATH en el .env')
+    // Una llave mal puesta (texto que no es la llave, archivo que no existe) es configuración, no un
+    // error interno: 503 OpenPaymentsNoConfigurado con qué revisar, en vez de un 500 sin pista
+    try {
+      if (OP_PRIVATE_KEY_BASE64) {
+        const bytes = Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64')
+        const texto = bytes.toString('utf8')
+        llave = texto.includes('-----BEGIN') ? createPrivateKey(texto) : createPrivateKey({ key: bytes, format: 'der', type: 'pkcs8' })
+      } else if (OP_PRIVATE_KEY_PATH) {
+        llave = createPrivateKey(readFileSync(resolve(RAIZ_SERVER, OP_PRIVATE_KEY_PATH)))
+      } else {
+        throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'Falta OP_PRIVATE_KEY_BASE64 u OP_PRIVATE_KEY_PATH en el .env')
+      }
+    } catch (e) {
+      if (e instanceof ErrorOpenPayments) throw e
+      const variable = OP_PRIVATE_KEY_BASE64 ? 'OP_PRIVATE_KEY_BASE64 (debe ser el base64 del archivo private.key)' : 'OP_PRIVATE_KEY_PATH (el archivo private.key)'
+      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, `No se pudo leer la llave privada: revisa ${variable}`)
     }
     if (llave.asymmetricKeyType !== 'ed25519') {
       throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'La llave privada no es Ed25519')
