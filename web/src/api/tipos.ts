@@ -117,11 +117,15 @@ export interface Beneficiario {
   registrado: string
 }
 
+/** `wallet`: se le enlaza su billetera. `llaveCedula`: su cédula queda como llave Bre-B que apunta a esa billetera. */
+export type CobraCon = 'wallet' | 'llaveCedula'
+
 export interface BeneficiarioEntrada {
   cedula: string
   billetera: string
   nombre?: string
   pin?: string
+  cobraCon?: CobraCon
 }
 
 // ── Cobros ────────────────────────────────────────────────────────────────────
