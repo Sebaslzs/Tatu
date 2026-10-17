@@ -65,6 +65,23 @@ export const MENSAJE_CEDULA_NO_ENCONTRADA = 'Esta cédula no está en la liquida
 /** Lo que la plataforma entiende de una consulta por cédula. */
 export type ConsultaPago = { tipo: 'disponible'; monto: number; novedad: boolean } | { tipo: 'pagado' } | { tipo: 'noExiste' }
 
+/**
+ * Lo que guarda el sistema simulado del gobierno y sirve su router (/api/liquidacion). Lo cumplen la
+ * versión en la base y la de memoria de las pruebas.
+ */
+export interface DatosLiquidacion {
+  /** Cuántas cédulas y el total sin novedades: será el tope al autorizar (RN-08). */
+  resumen(programaId: string): Promise<Resumen>
+  /** undefined si la cédula no está. */
+  pago(programaId: string, documento: string): Promise<Pago | undefined>
+  buscar(documentos: readonly string[]): Persona[] | Promise<Persona[]>
+  validarPin(documento: string, pin: string): boolean | Promise<boolean>
+  inscribir(documento: string, nombre: string, pin?: string): Persona | Promise<Persona>
+  ponerPin(documento: string, pin: string): boolean | Promise<boolean>
+  /** Atajo de la demo: el monto de cada persona es el «monto por persona» del programa, si lo tiene. */
+  montoPorPrograma: (programaId: string) => Promise<number | null>
+}
+
 /** Puerto hacia la liquidación: la plataforma consulta, nunca copia la lista (CA-02.05). */
 export interface PuertoLiquidacion {
   resumen(programaId: string): Promise<{ cedulas: number; total: number }>

@@ -1,6 +1,6 @@
 // Siembra datos de demo usando la propia API (sin SQL a mano): entidad, punto, programa y beneficiario.
 // Es repetible: lo que ya existe se reutiliza. Uso: pnpm --filter server seed
-// La liquidación y el puente son simulados y viven en memoria: se vuelven a cargar en cada arranque.
+// La liquidación y el puente simulados se guardan en la base (esquema `simulacion`), junto con lo demás.
 import { crearApp } from '../src/app.ts'
 import { config, PGLITE_DIR } from '../src/config.ts'
 import { crearContenedor } from '../src/contenedor.ts'

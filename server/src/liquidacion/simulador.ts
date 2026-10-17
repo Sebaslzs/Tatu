@@ -1,8 +1,9 @@
-// Liquidación simulada de la entidad (AD-13): en la demo hace el papel del sistema de la entidad.
+// Liquidación simulada de la entidad (AD-13), en memoria: la usan las pruebas. La API sirve la que se
+// guarda en la base (enBase.ts), que empieza vacía.
 // Datos de prueba (Arquitectura § 4.1): 3 cédulas de $230.000 (COP, escala 2) = $690.000.
 // El PIN nunca se guarda en claro: solo su hash, y solo se puede preguntar «¿es este?».
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
-import type { Pago, Persona, Resumen } from './contrato.ts'
+import type { DatosLiquidacion, Pago, Persona, Resumen } from './contrato.ts'
 
 export interface PersonaLiquidada {
   documento: string
@@ -20,18 +21,19 @@ export const LIQUIDACION_DE_PRUEBA: readonly PersonaLiquidada[] = [
   { documento: '1000000003', nombre: 'Jorge Ruiz', monto: 23_000_000, pin: '3333' },
 ]
 
-const MONTO_POR_DEFECTO = 23_000_000
+/** Monto de quien no tiene uno propio ni lo fija el programa ($230.000 con escala 2). */
+export const MONTO_POR_DEFECTO = 23_000_000
 
 // scrypt con costo bajo: el PIN tiene 4 dígitos, así que lo que protege de verdad es el límite de
 // intentos que lleva la API. El hash solo evita guardar el PIN en claro.
 const COSTO = { N: 1024, r: 8, p: 1 }
 
-function hashPin(pin: string): string {
+export function hashPin(pin: string): string {
   const sal = randomBytes(16)
   return `${sal.toString('hex')}:${scryptSync(pin, sal, 32, COSTO).toString('hex')}`
 }
 
-function pinCoincide(guardado: string, pin: string): boolean {
+export function pinCoincide(guardado: string, pin: string): boolean {
   const [sal, hash] = guardado.split(':')
   if (!sal || !hash) return false
   const esperado = Buffer.from(hash, 'hex')
@@ -45,7 +47,7 @@ interface Registro {
   pinHash: string | null
 }
 
-export class LiquidacionSimulada {
+export class LiquidacionSimulada implements DatosLiquidacion {
   private readonly inicial: readonly PersonaLiquidada[]
   private personas = new Map<string, Registro>()
   private pagadas = new Set<string>()
