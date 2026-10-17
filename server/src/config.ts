@@ -36,6 +36,8 @@ const esquema = z.object({
   POLL_INTERVALO_MS: entero(1000),
   /** Minutos que espera una aprobación antes de volver a Borrador (CA-01.08, HU-05). */
   APROBACION_TTL_MIN: entero(10),
+  /** HU-06: cada cuánto se rota el token del permiso; en la Test Wallet vence a los 10 minutos. */
+  TOKEN_RENOVAR_CADA_SEG: entero(240),
   /** CA-11.04: segundos que espera un cobro el PIN antes de rechazarse por tiempo agotado. */
   CONFIRMACION_TTL_SEG: entero(120),
   /** CA-11.03: PIN incorrectos antes de rechazar el cobro y bloquear la cédula. */

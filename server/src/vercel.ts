@@ -1,17 +1,38 @@
 // Entrada de la API en Vercel: una función que sirve todo /api con la misma app de Express que
 // main.ts. No hay proceso prendido, así que lo que main.ts hace al arrancar (abrir la base, en
-// Supabase con el esquema ya cargado) se hace en el primer pedido de cada instancia.
+// Supabase con el esquema ya cargado) se hace en el primer pedido de cada instancia, y la
+// renovación del token del permiso (HU-06) se dispara con los pedidos en vez de un setInterval.
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
 import { crearApp } from './app.ts'
 import { config } from './config.ts'
-import { crearContenedor } from './contenedor.ts'
+import { crearContenedor, type Contenedor } from './contenedor.ts'
 import { log } from './comun/log.ts'
-import { abrirBase } from './db/conexion.ts'
+import { abrirBase, type Base } from './db/conexion.ts'
 
-let listo: Promise<ReturnType<typeof crearApp>> | undefined
+/** Clave del candado de PostgreSQL: una sola instancia rota los tokens a la vez. */
+const CANDADO_RENOVACION = 720_035
 
-function preparar(): Promise<ReturnType<typeof crearApp>> {
+interface Lista {
+  app: ReturnType<typeof crearApp>
+  base: Base
+  contenedor: Contenedor
+}
+
+let listo: Promise<Lista> | undefined
+let ultimaRenovacion = 0
+let renovando = false
+
+/** Las tareas de segundo plano no pueden colgarse: si Open Payments no responde, se sueltan a los 45 s. */
+function conLimite<T>(p: Promise<T>, ms = 45_000): Promise<T> {
+  let reloj: NodeJS.Timeout | undefined
+  const limite = new Promise<never>((_, rechazar) => {
+    reloj = setTimeout(() => rechazar(new Error(`Sin respuesta en ${ms / 1000} s`)), ms)
+  })
+  return Promise.race([p, limite]).finally(() => clearTimeout(reloj))
+}
+
+function preparar(): Promise<Lista> {
   listo ??= (async () => {
     if (!config.DATABASE_URL) {
       throw new Error('En Vercel DATABASE_URL tiene que ser una URL de PostgreSQL (Supabase)')
@@ -27,7 +48,7 @@ function preparar(): Promise<ReturnType<typeof crearApp>> {
         .then((n) => n && log.info(`Recuperación al arrancar: ${n} cobros en Pagando`))
         .catch((e) => log.warn('Falló la recuperación al arrancar', { error: e })),
     )
-    return crearApp(contenedor)
+    return { app: crearApp(contenedor), base, contenedor }
   })().catch((e) => {
     listo = undefined
     throw e
@@ -35,14 +56,37 @@ function preparar(): Promise<ReturnType<typeof crearApp>> {
   return listo
 }
 
+/**
+ * HU-06: el token del permiso vence a los 10 minutos. Si pasaron TOKEN_RENOVAR_CADA_SEG desde la
+ * última vuelta de esta instancia, se rota en segundo plano; el candado evita que dos instancias
+ * roten el mismo token a la vez (el segundo rotaría uno ya cambiado y lo daría por vencido).
+ */
+function renovarSiToca({ base, contenedor }: Lista): void {
+  const ahora = Date.now()
+  if (renovando || ahora - ultimaRenovacion < config.TOKEN_RENOVAR_CADA_SEG * 1000) return
+  ultimaRenovacion = ahora
+  renovando = true
+  waitUntil(
+    conLimite(base.conCandado(CANDADO_RENOVACION, () => contenedor.renovacion.renovarTodos()))
+      .then((r) => r && r.renovados + r.vencidos + r.fallidos && log.info('Renovación de tokens', { ...r }))
+      .catch((e) => log.warn('Falló la renovación de tokens', { error: e }))
+      .finally(() => {
+        renovando = false
+      }),
+  )
+}
+
 export default async function manejar(req: IncomingMessage, res: ServerResponse) {
+  let lista: Lista
   try {
-    const app = await preparar()
-    app(req as Parameters<typeof app>[0], res as Parameters<typeof app>[1])
+    lista = await preparar()
   } catch (e) {
     log.error('La API no pudo arrancar', { error: e })
     res.statusCode = 503
     res.setHeader('content-type', 'application/json; charset=utf-8')
     res.end(JSON.stringify({ error: { codigo: 'NoDisponible', mensaje: 'La API no pudo conectarse a la base de datos' } }))
+    return
   }
+  renovarSiToca(lista)
+  lista.app(req as Parameters<typeof lista.app>[0], res as Parameters<typeof lista.app>[1])
 }

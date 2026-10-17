@@ -30,6 +30,7 @@ import { ServicioPermisoToken } from './programas/permisoToken.ts'
 import type { PuertoPermisos } from './programas/puertos.ts'
 import type { ServiciosProgramas } from './programas/rutas.ts'
 import { ServicioProgramas } from './programas/servicio.ts'
+import { RenovacionPermisos } from './programas/renovacion.ts'
 import { ServicioTablero } from './programas/tablero.ts'
 import { Transiciones } from './programas/transiciones.ts'
 import { ClientePuente } from './puente/cliente.ts'
@@ -51,6 +52,7 @@ export interface Contenedor {
   resumenBeneficiario: ConsultaResumenBeneficiario
   cobros: ServicioCobros
   token: ServicioPermisoToken
+  renovacion: RenovacionPermisos
   billeteras: PuertoBilleteras
   simuladorLiquidacion: DatosLiquidacion
   simuladorPuente: DatosPuente
@@ -130,6 +132,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     configCompleta: config,
     uow,
     token,
+    renovacion: new RenovacionPermisos({ uow, token }),
     billeteras,
     simuladorLiquidacion: simuladorLiquidacion,
     simuladorPuente: piezas.simuladorPuente ?? new PuenteEnBase(piezas.db),
