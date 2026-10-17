@@ -1,17 +1,29 @@
 // Los subsidios que una persona tiene por cobrar (HU-08, CA-10.01): programas Activos o Pausados
-// donde no ha cobrado y la liquidación tiene un pago para su cédula. Con `soloQueReciben`, solo los
+// donde le queda saldo y la liquidación tiene un pago para su cédula. Con `soloQueReciben`, solo los
 // que hoy aceptan cobros: es lo que puede pagar un punto.
+//
+// Un subsidio maneja saldo (HU-26): `monto` es lo que queda (lo asignado menos lo pagado y lo que
+// está en vuelo), y desaparece cuando se agota. Un bono desaparece al primer cobro pagado.
 import { diaEnBogota, type Reloj } from '../comun/fechas.ts'
 import { monto, type Monto } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { rn06ProgramaRecibe } from '../cobros/reglas.ts'
+import { manejaSaldo, saldoDe } from '../cobros/saldo.ts'
 import type { PuertoLiquidacion } from '../liquidacion/contrato.ts'
 import { monedaDe } from '../programas/vista.ts'
 
 export interface PagoPendiente {
   programa: { id: string; nombre: string; estado: string; tipo: 'subsidio' | 'bono' }
+  /** Lo que puede cobrar hoy: en un subsidio, el saldo que le queda. */
   monto: Monto
+  /** HU-26: lo que le asignó la liquidación y lo que ya cobró (en un bono, cobrado es 0). */
+  asignado: Monto
+  cobrado: Monto
+  /** HU-26: en un punto de retiro puede retirar solo una parte (todo subsidio). */
+  retiroParcial: boolean
+  /** Retiro mínimo del programa, si tiene; el último retiro puede ser menor (lo que quede). */
+  montoMinimo: Monto | null
   /** Día en que vence, en hora de Bogotá. */
   vigenciaFin: string
 }
@@ -48,7 +60,8 @@ export class PagosPendientes {
     const ahora = this.reloj()
     const candidatos = []
     for (const p of todos.filter((x) => x.estado === 'Activo' || x.estado === 'Pausado')) {
-      if (propios.some((c) => c.programaId === p.id && c.estado === 'Pagado')) continue
+      // Un bono es de un solo uso; un subsidio sigue mientras le quede saldo (se revisa abajo)
+      if (!manejaSaldo(p) && propios.some((c) => c.programaId === p.id && c.estado === 'Pagado')) continue
       if (soloQueReciben && rn06ProgramaRecibe({ estado: p.estado, vigenciaInicio: p.vigenciaInicio, vigenciaFin: p.vigenciaFin, ahora })) continue
       // Con el permiso vencido el pago fallaría: el punto no lo ofrece hasta que la entidad lo renueve
       if (soloQueReciben && p.permisoVencidoEn) continue
@@ -72,9 +85,17 @@ export class PagosPendientes {
     const pagos: PagoPendiente[] = []
     for (const { p, pago } of consultas) {
       if (pago?.tipo !== 'disponible') continue
+      const moneda = monedaDe(p)
+      const conSaldo = manejaSaldo(p)
+      const saldo = conSaldo ? saldoDe(pago.monto, propios.filter((c) => c.programaId === p.id)) : null
+      if (saldo && saldo.disponible <= 0) continue
       pagos.push({
         programa: { id: p.id, nombre: p.nombre, estado: p.estado, tipo: p.tipo },
-        monto: monto(pago.monto, monedaDe(p)),
+        monto: monto(saldo ? saldo.disponible : pago.monto, moneda),
+        asignado: monto(pago.monto, moneda),
+        cobrado: monto(saldo ? saldo.pagado : 0, moneda),
+        retiroParcial: conSaldo && p.destino === 'libre',
+        montoMinimo: p.montoMinimoCobro ? monto(p.montoMinimoCobro, moneda) : null,
         vigenciaFin: diaEnBogota(p.vigenciaFin),
       })
     }

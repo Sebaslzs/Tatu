@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm'
 import { crearApp } from '../app.ts'
 import { leerConfig } from '../config.ts'
 import { crearContenedor, type Contenedor } from '../contenedor.ts'
+import { FacturacionSimulada } from '../facturacion/simulador.ts'
 import { abrirBase } from '../db/conexion.ts'
 import type { FilaEntidad } from '../db/repositorios/entidades.ts'
 import type { Repos } from '../db/unidadDeTrabajo.ts'
@@ -37,7 +38,7 @@ export interface OpcionesEntorno {
 export const INICIO_DE_PRUEBA = new Date('2026-10-16T15:00:00.000Z')
 
 // Orden de borrado: los hijos antes que los padres
-const TABLAS = ['bloqueo_pin', 'cobro', 'cuenta_beneficiario', 'beneficiario', 'evento', 'programa_categoria', 'programa_punto', 'punto', 'programa', 'comercio', 'entidad']
+const TABLAS = ['venta', 'asignacion', 'bloqueo_pin', 'cobro', 'cuenta_beneficiario', 'beneficiario', 'evento', 'programa_categoria', 'programa_punto', 'punto', 'programa', 'comercio', 'entidad']
 
 export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorno = {}) {
   const base = await abrirBase({})
@@ -46,13 +47,14 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
   const pagos = new PagosFalsos()
   const simulador = new LiquidacionSimulada(liquidacion)
   const puente = new PuenteSimulado()
+  const facturacion = new FacturacionSimulada()
   let ahora = INICIO_DE_PRUEBA
 
   const servidor = createServer()
   await new Promise<void>((listo) => servidor.listen(0, '127.0.0.1', listo))
   const url = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api`
 
-  const config = leerConfig({ LIQUIDACION_URL: `${url}/liquidacion`, PUENTE_URL: `${url}/puente`, API_BASE_URL: url, EXTRA_BONO: 'true', ...entorno })
+  const config = leerConfig({ LIQUIDACION_URL: `${url}/liquidacion`, PUENTE_URL: `${url}/puente`, FACTURACION_URL: `${url}/facturacion`, API_BASE_URL: url, EXTRA_BONO: 'true', ...entorno })
   const contenedor: Contenedor = crearContenedor({
     db: base.db,
     config,
@@ -62,6 +64,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
     pagos,
     simuladorLiquidacion: simulador,
     simuladorPuente: puente,
+    simuladorFacturacion: facturacion,
     reloj: () => ahora,
     nuevoNonce: () => 'nonce-cliente-de-prueba',
   })
@@ -89,9 +92,13 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
     pagos,
     simulador,
     puente,
+    /** El sistema de facturación simulado: lo que recibió y su modo (normal, caído, rechaza). */
+    facturacion,
     contenedor,
     /** Espera los pagos que el servidor dispara en segundo plano. */
     esperarPagos: () => contenedor.cobros.esperarPagos(),
+    /** Espera los envíos a facturación que el servidor dispara en segundo plano. */
+    esperarFacturacion: () => contenedor.facturacion.esperar(),
     repos: contenedor.uow.repos as Repos,
     pedir,
     avanzarReloj(ms: number) {
@@ -112,6 +119,7 @@ export async function crearEntorno({ entorno = {}, liquidacion }: OpcionesEntorn
       pagos.reiniciar()
       simulador.reiniciar()
       puente.reiniciar()
+      facturacion.reiniciar()
       ahora = INICIO_DE_PRUEBA
     },
     crearEntidad(nombre = 'Alcaldía de Prueba'): Promise<FilaEntidad> {

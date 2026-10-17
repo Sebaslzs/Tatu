@@ -1,5 +1,8 @@
 // GENERADO con `pnpm db:pull` desde Supabase. No editar a mano.
-import { customType, pgTable, unique, check, uuid, text, timestamp, uniqueIndex, index, foreignKey, smallint, inet, integer, bigint, bigserial, jsonb, primaryKey, pgSequence, pgEnum } from "drizzle-orm/pg-core"
+// Excepción: asignacion, venta, estado_venta y las columnas e índices de las ACTUALIZACIONES 01 y 02
+// de db/esquema.sql se agregaron a mano, igual a como los genera la introspección. Al correr
+// `pnpm db:pull` sobre una base con esas actualizaciones, el archivo debe salir igual.
+import { customType, pgTable, unique, check, uuid, text, timestamp, uniqueIndex, index, foreignKey, smallint, inet, integer, bigint, bigserial, boolean, jsonb, primaryKey, pgSequence, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" })
@@ -11,6 +14,7 @@ export const estadoCuenta = pgEnum("estado_cuenta", ['SinEnlazar', 'PorVerificar
 export const estadoEntidad = pgEnum("estado_entidad", ['Activa', 'Suspendida', 'Retirada'])
 export const estadoPrograma = pgEnum("estado_programa", ['Borrador', 'EsperandoAprobacion', 'Activo', 'Pausado', 'Cerrado'])
 export const estadoUsuario = pgEnum("estado_usuario", ['Activo', 'Bloqueado', 'Inactivo'])
+export const estadoVenta = pgEnum("estado_venta", ['Registrada', 'PorEnviar', 'Enviada', 'Rechazada', 'Anulada'])
 export const rolUsuario = pgEnum("rol_usuario", ['admin', 'operador', 'consulta'])
 export const tipoDoc = pgEnum("tipo_doc", ['CC', 'TI', 'CE', 'PPT', 'PA'])
 export const tipoDocEntidad = pgEnum("tipo_doc_entidad", ['NIT', 'OTRO'])
@@ -117,6 +121,9 @@ export const programa = pgTable("programa", {
 	nonceCliente: text("nonce_cliente"),
 	nonceCierre: text("nonce_cierre"),
 	urlPermiso: text("url_permiso"),
+	permiteParcial: boolean("permite_parcial").default(false).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	montoMinimoCobro: bigint("monto_minimo_cobro", { mode: "number" }),
 }, (table) => [
 	index("programa_entidad_idx").using("btree", table.entidadId.asc().nullsLast(), table.creadoEn.asc().nullsLast()),
 	foreignKey({
@@ -131,6 +138,7 @@ export const programa = pgTable("programa", {
 	check("programa_codigo_moneda_check", sql`codigo_moneda ~ '^[A-Z]{3}$'::text`),
 	check("programa_escala_moneda_check", sql`(escala_moneda >= 0) AND (escala_moneda <= 18)`),
 	check("programa_gastado_permisos_anteriores_check", sql`gastado_permisos_anteriores >= 0`),
+	check("monto_minimo_positivo", sql`monto_minimo_cobro > 0`),
 	check("programa_monto_por_persona_check", sql`monto_por_persona > 0`),
 	check("programa_nombre_check", sql`(char_length(nombre) >= 3) AND (char_length(nombre) <= 80)`),
 	check("programa_tope_total_check", sql`tope_total > 0`),
@@ -228,6 +236,10 @@ export const cobro = pgTable("cobro", {
 	urlPagoEntrante: text("url_pago_entrante"),
 	urlPagoSaliente: text("url_pago_saliente"),
 	version: integer().default(0).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	montoEnviado: bigint("monto_enviado", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	montoRecibido: bigint("monto_recibido", { mode: "number" }),
 	creadoEn: timestamp("creado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	actualizadoEn: timestamp("actualizado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
@@ -236,7 +248,7 @@ export const cobro = pgTable("cobro", {
 	index("cobro_pagando_idx").using("btree", table.actualizadoEn.asc().nullsLast()).where(sql`(estado = 'Pagando'::estado_cobro)`),
 	index("cobro_programa_idx").using("btree", table.programaId.asc().nullsLast(), table.creadoEn.asc().nullsLast()),
 	index("cobro_punto_idx").using("btree", table.puntoId.asc().nullsLast()).where(sql`(punto_id IS NOT NULL)`),
-	uniqueIndex("un_cobro_vivo_por_persona").using("btree", table.programaId.asc().nullsLast(), table.beneficiarioId.asc().nullsLast()).where(sql`(estado = ANY (ARRAY['Solicitado'::estado_cobro, 'PorConfirmar'::estado_cobro, 'Pagando'::estado_cobro, 'Pagado'::estado_cobro]))`),
+	uniqueIndex("un_cobro_en_vuelo_por_persona").using("btree", table.programaId.asc().nullsLast(), table.beneficiarioId.asc().nullsLast()).where(sql`(estado = ANY (ARRAY['Solicitado'::estado_cobro, 'PorConfirmar'::estado_cobro, 'Pagando'::estado_cobro]))`),
 	foreignKey({
 			columns: [table.beneficiarioId],
 			foreignColumns: [beneficiario.id],
@@ -267,6 +279,7 @@ export const cobro = pgTable("cobro", {
 	check("cobro_total_compra_check", sql`total_compra > 0`),
 	check("compra_con_total", sql`((canal <> 'compra'::canal_cobro) AND (total_compra IS NULL)) OR ((canal = 'compra'::canal_cobro) AND ((total_compra IS NOT NULL) OR (estado = 'Rechazado'::estado_cobro)))`),
 	check("monto_si_avanza", sql`(monto IS NOT NULL) OR (estado = 'Rechazado'::estado_cobro)`),
+	check("montos_banco_validos", sql`((monto_enviado IS NULL) OR (monto_enviado >= 0)) AND ((monto_recibido IS NULL) OR (monto_recibido >= 0))`),
 	check("motivo_si_termina_mal", sql`(estado <> ALL (ARRAY['Rechazado'::estado_cobro, 'Fallido'::estado_cobro])) OR (motivo_rechazo IS NOT NULL)`),
 	check("pagado_con_pago_saliente", sql`(estado <> 'Pagado'::estado_cobro) OR (url_pago_saliente IS NOT NULL)`),
 ]);
@@ -283,7 +296,77 @@ export const evento = pgTable("evento", {
 }, (table) => [
 	index("evento_entidad_idx").using("btree", table.tipoEntidad.asc().nullsLast(), table.idEntidad.asc().nullsLast(), table.id.asc().nullsLast()),
 	check("actor_valido", sql`actor ~ '^(sistema|entidad|usuario|beneficiario|punto|banco)(:[0-9a-f-]{36})?$'::text`),
-	check("evento_tipo_entidad_check", sql`tipo_entidad = ANY (ARRAY['programa'::text, 'cuenta'::text, 'cobro'::text, 'beneficiario'::text, 'punto'::text, 'comercio'::text, 'entidad'::text, 'usuario'::text])`),
+	check("evento_tipo_entidad_valido", sql`tipo_entidad = ANY (ARRAY['programa'::text, 'cuenta'::text, 'cobro'::text, 'beneficiario'::text, 'punto'::text, 'comercio'::text, 'entidad'::text, 'usuario'::text, 'asignacion'::text, 'venta'::text])`),
+]);
+
+export const asignacion = pgTable("asignacion", {
+	programaId: uuid("programa_id").notNull(),
+	beneficiarioId: uuid("beneficiario_id").notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	asignado: bigint({ mode: "number" }).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	comprometido: bigint({ mode: "number" }).default(0).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	cobrado: bigint({ mode: "number" }).default(0).notNull(),
+	version: integer().default(0).notNull(),
+	creadoEn: timestamp("creado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	actualizadoEn: timestamp("actualizado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("asignacion_beneficiario_idx").using("btree", table.beneficiarioId.asc().nullsLast()),
+	foreignKey({
+			columns: [table.beneficiarioId],
+			foreignColumns: [beneficiario.id],
+			name: "asignacion_beneficiario_id_fkey"
+		}).onDelete("restrict"),
+	foreignKey({
+			columns: [table.programaId],
+			foreignColumns: [programa.id],
+			name: "asignacion_programa_id_fkey"
+		}).onDelete("restrict"),
+	primaryKey({ columns: [table.programaId, table.beneficiarioId], name: "asignacion_pkey"}),
+	check("asignacion_asignado_check", sql`asignado > 0`),
+	check("sin_sobregiro", sql`(comprometido >= 0) AND (cobrado >= 0) AND ((comprometido + cobrado) <= asignado)`),
+]);
+
+export const venta = pgTable("venta", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	cobroId: uuid("cobro_id").notNull(),
+	puntoId: uuid("punto_id").notNull(),
+	beneficiarioId: uuid("beneficiario_id").notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	valor: bigint({ mode: "number" }).notNull(),
+	descripcion: text(),
+	estado: estadoVenta().default('Registrada').notNull(),
+	intentosEnvio: smallint("intentos_envio").default(0).notNull(),
+	ultimoError: text("ultimo_error"),
+	referenciaExterna: text("referencia_externa"),
+	enviadaEn: timestamp("enviada_en", { withTimezone: true, mode: 'string' }),
+	version: integer().default(0).notNull(),
+	creadoEn: timestamp("creado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	actualizadoEn: timestamp("actualizado_en", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("venta_por_enviar_idx").using("btree", table.actualizadoEn.asc().nullsLast()).where(sql`(estado = 'PorEnviar'::estado_venta)`),
+	index("venta_punto_idx").using("btree", table.puntoId.asc().nullsLast(), table.creadoEn.asc().nullsLast()),
+	foreignKey({
+			columns: [table.beneficiarioId],
+			foreignColumns: [beneficiario.id],
+			name: "venta_beneficiario_id_fkey"
+		}).onDelete("restrict"),
+	foreignKey({
+			columns: [table.cobroId],
+			foreignColumns: [cobro.id],
+			name: "venta_cobro_id_fkey"
+		}).onDelete("restrict"),
+	foreignKey({
+			columns: [table.puntoId],
+			foreignColumns: [punto.id],
+			name: "venta_punto_id_fkey"
+		}).onDelete("restrict"),
+	unique("venta_cobro_id_key").on(table.cobroId),
+	check("enviada_con_fecha", sql`(estado = 'Enviada'::estado_venta) = (enviada_en IS NOT NULL)`),
+	check("venta_descripcion_check", sql`(char_length(descripcion) >= 2) AND (char_length(descripcion) <= 120)`),
+	check("venta_intentos_envio_check", sql`intentos_envio >= 0`),
+	check("venta_valor_check", sql`valor > 0`),
 ]);
 
 export const programaCategoria = pgTable("programa_categoria", {

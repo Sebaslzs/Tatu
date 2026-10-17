@@ -23,9 +23,11 @@ export interface PagosParaElPunto {
 
 /** Lo que movió el punto en una moneda. */
 export interface TotalCaja {
-  /** El efectivo entregado: los cobros Pagado. */
+  /** El efectivo entregado: los retiros Pagado menos las compras registradas en ellos (HU-27). */
   entregado: Monto
-  /** Igual a lo entregado: el punto solo entrega al ver «Pagado», y Pagado es el reembolso ya recibido en su billetera. */
+  /** HU-27: las compras que la persona pagó con su retiro (mercancía, no efectivo). */
+  vendido: Monto
+  /** Entregado + vendido: el punto solo entrega al ver «Pagado», y Pagado es el reembolso ya recibido en su billetera. */
   reembolsado: Monto
   /** Los cobros Pagando: el reembolso va en camino y ese efectivo todavía no se entrega. */
   pendiente: Monto
@@ -88,18 +90,22 @@ export class ConsultasPunto {
     const punto = await this.exigirPunto(puntoId)
     const cobros = await repos.cobros.dePunto(punto.id, this.desde(periodo))
     // Los programas y los eventos de la lista, de una vez
-    const [programas, eventos] = await Promise.all([
+    const [programas, eventos, ventas] = await Promise.all([
       repos.programas.deIds(cobros.map((c) => c.programaId)),
       repos.eventos.deVarias('cobro', cobros.map((c) => c.id)),
+      repos.ventas.deCobros(cobros.filter((c) => c.estado === 'Pagado').map((c) => c.id)),
     ])
 
-    const totales = new Map<string, { moneda: Moneda; entregado: number; pendiente: number }>()
+    const totales = new Map<string, { moneda: Moneda; entregado: number; vendido: number; pendiente: number }>()
     for (const c of cobros.filter((x) => x.estado === 'Pagado' || x.estado === 'Pagando')) {
       const moneda = monedaDe(programas.get(c.programaId)!)
       const clave = `${moneda.assetCode}/${moneda.assetScale}`
-      const t = totales.get(clave) ?? { moneda, entregado: 0, pendiente: 0 }
-      if (c.estado === 'Pagado') t.entregado += c.monto ?? 0
-      else t.pendiente += c.monto ?? 0
+      const t = totales.get(clave) ?? { moneda, entregado: 0, vendido: 0, pendiente: 0 }
+      if (c.estado === 'Pagado') {
+        const vendido = ventas.get(c.id)?.valor ?? 0
+        t.entregado += (c.monto ?? 0) - vendido
+        t.vendido += vendido
+      } else t.pendiente += c.monto ?? 0
       totales.set(clave, t)
     }
 
@@ -118,7 +124,8 @@ export class ConsultasPunto {
       periodo,
       totales: [...totales.values()].map((t) => ({
         entregado: monto(t.entregado, t.moneda),
-        reembolsado: monto(t.entregado, t.moneda),
+        vendido: monto(t.vendido, t.moneda),
+        reembolsado: monto(t.entregado + t.vendido, t.moneda),
         pendiente: monto(t.pendiente, t.moneda),
         giradoPorAdelantado: monto(0, t.moneda),
       })),

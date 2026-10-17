@@ -818,3 +818,346 @@ ALTER FUNCTION fn_cobro_mueve_saldo()  SET search_path FROM CURRENT;
 ALTER TABLE asignacion ENABLE ROW LEVEL SECURITY;
 
 COMMIT;
+
+
+-- #####################################################################
+-- #####################################################################
+-- ACTUALIZACIÓN 02 · Retiro parcial en el punto y venta asociada
+--
+-- En la base ya desplegada se ejecuta SOLO esta sección (de aquí hasta el
+-- final). Necesita la ACTUALIZACIÓN 01 (tabla asignacion y sus triggers).
+-- Lo de arriba no se modifica.
+--
+-- Es incremental e idempotente: corre sobre una base que ya tiene la
+-- estructura anterior y se puede ejecutar varias veces sin duplicar
+-- objetos ni perder datos.
+--
+-- Qué agrega (explicación en db/README.md, sección 12):
+--   1. Todo subsidio maneja saldo: se cobra por partes en el punto
+--   2. Reglas del cobro: a la cuenta va todo el saldo; el retiro, en
+--      unidades enteras de la moneda (RN-21, RN-22)
+--   3. Tipo estado_venta y tabla venta: la compra que la persona hizo en
+--      el punto durante su retiro (RN-23)
+--   4. Reglas y máquina de estados de la venta
+--   5. La venta sigue al cobro: Pagado → por enviar a facturar;
+--      Rechazado o Fallido → anulada
+--   6. Auditoría y seguridad de lo nuevo
+-- #####################################################################
+-- #####################################################################
+
+BEGIN;
+
+-- ---------------------------------------------------------------------
+-- 1 y 2. Reglas del cobro (reemplaza fn_cobro_reglas de la ACTUALIZACIÓN
+--    01; lo anterior queda igual y cambia lo marcado con «Nuevo (02)»)
+--   Un programa «maneja saldo» si es subsidio o si tiene permite_parcial.
+--   Los bonos siguen siendo de un solo uso (RN-02): no se vuelven efectivo.
+--   RN-21  retiro de un programa con saldo: en unidades enteras de la
+--          moneda (el efectivo no tiene centavos)
+--   RN-22  canal cuenta de un programa con saldo: se paga todo el saldo;
+--          solo el punto deja elegir cuánto
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_cobro_reglas() RETURNS trigger AS $$
+DECLARE
+  p  programa%ROWTYPE;
+  tipo_del_punto tipo_punto;
+  saldo bigint;
+  maneja_saldo boolean;
+BEGIN
+  IF NEW.estado = 'Rechazado' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT * INTO p FROM programa WHERE id = NEW.programa_id;
+
+  IF p.estado <> 'Activo' OR now() NOT BETWEEN p.vigencia_inicio AND p.vigencia_fin THEN
+    RAISE EXCEPTION 'RN-06: el programa no está recibiendo cobros (estado % o fuera de vigencia)', p.estado;
+  END IF;
+
+  IF p.tipo = 'subsidio' AND NEW.canal = 'compra' THEN
+    RAISE EXCEPTION 'RN-03: un subsidio se cobra a la cuenta o en un punto de retiro';
+  END IF;
+
+  IF p.tipo = 'bono' THEN
+    IF NEW.canal <> 'compra' THEN
+      RAISE EXCEPTION 'RN-03: un bono solo se usa en una compra';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM programa_punto
+                    WHERE programa_id = NEW.programa_id AND punto_id = NEW.punto_id)
+       AND NOT EXISTS (SELECT 1 FROM punto s
+                         JOIN comercio c ON c.id = s.comercio_id AND c.verificado_en IS NOT NULL
+                         JOIN programa_categoria pc ON pc.programa_id = NEW.programa_id
+                                                  AND pc.categoria = c.categoria
+                        WHERE s.id = NEW.punto_id) THEN
+      RAISE EXCEPTION 'RN-03: este comercio no acepta este bono';
+    END IF;
+  END IF;
+
+  IF NEW.punto_id IS NOT NULL THEN
+    SELECT tipo INTO tipo_del_punto FROM punto WHERE id = NEW.punto_id;
+    IF tipo_del_punto::text <> NEW.canal::text THEN
+      RAISE EXCEPTION 'RN-03: un punto de % no atiende el canal %', tipo_del_punto, NEW.canal;
+    END IF;
+  END IF;
+
+  IF NEW.canal = 'cuenta' AND NOT EXISTS (SELECT 1 FROM cuenta_beneficiario
+                                           WHERE id = NEW.cuenta_id AND estado = 'Verificada') THEN
+    RAISE EXCEPTION 'RN-04: la cuenta no está verificada';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM bloqueo_pin
+              WHERE programa_id = NEW.programa_id
+                AND beneficiario_id = NEW.beneficiario_id
+                AND bloqueado_hasta > now()) THEN
+    RAISE EXCEPTION 'RN-07: la persona está bloqueada por PIN en este programa';
+  END IF;
+
+  -- Nuevo (02): todo subsidio maneja saldo
+  maneja_saldo := p.permite_parcial OR p.tipo = 'subsidio';
+
+  IF NOT maneja_saldo THEN
+    IF EXISTS (SELECT 1 FROM cobro
+                WHERE programa_id = NEW.programa_id
+                  AND beneficiario_id = NEW.beneficiario_id
+                  AND estado IN ('Solicitado', 'PorConfirmar', 'Pagando', 'Pagado')) THEN
+      RAISE EXCEPTION 'RN-02: este subsidio ya está en proceso o fue cobrado';
+    END IF;
+  ELSE
+    SELECT asignado - cobrado - comprometido INTO saldo
+      FROM asignacion
+     WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'RN-19: la persona no tiene asignación en este programa';
+    END IF;
+    IF NEW.monto > saldo THEN
+      RAISE EXCEPTION 'RN-19: saldo insuficiente (disponible %)', saldo;
+    END IF;
+    IF p.monto_minimo_cobro IS NOT NULL AND NEW.monto < p.monto_minimo_cobro AND NEW.monto <> saldo THEN
+      RAISE EXCEPTION 'RN-20: el monto es menor que el mínimo de cobro (%)', p.monto_minimo_cobro;
+    END IF;
+    -- Nuevo (02)
+    IF NEW.canal = 'cuenta' AND NEW.monto <> saldo THEN
+      RAISE EXCEPTION 'RN-22: a la cuenta se paga todo el saldo (disponible %)', saldo;
+    END IF;
+    IF NEW.canal = 'retiro' AND NEW.monto % (10::numeric ^ p.escala_moneda)::bigint <> 0 THEN
+      RAISE EXCEPTION 'RN-21: el retiro va en unidades enteras de la moneda';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- El saldo se mueve con el estado del cobro (reemplaza fn_cobro_mueve_saldo
+-- de la ACTUALIZACIÓN 01). Único cambio: «maneja saldo» incluye a todo
+-- subsidio. La API crea o sube la fila de asignacion con lo que dice la
+-- liquidación antes de crear el cobro; este trigger solo reserva, confirma
+-- y libera.
+CREATE OR REPLACE FUNCTION fn_cobro_mueve_saldo() RETURNS trigger AS $$
+DECLARE
+  maneja_saldo boolean;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.estado = 'Rechazado' THEN
+      RETURN NEW;
+    END IF;
+    SELECT permite_parcial OR tipo = 'subsidio' INTO maneja_saldo FROM programa WHERE id = NEW.programa_id;
+    IF maneja_saldo THEN
+      UPDATE asignacion
+         SET comprometido = comprometido + NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'RN-19: la persona no tiene asignación en este programa';
+      END IF;
+    ELSE
+      INSERT INTO asignacion (programa_id, beneficiario_id, asignado, comprometido)
+      VALUES (NEW.programa_id, NEW.beneficiario_id, NEW.monto, NEW.monto)
+      ON CONFLICT (programa_id, beneficiario_id) DO UPDATE
+        SET asignado     = asignacion.cobrado + asignacion.comprometido + EXCLUDED.asignado,
+            comprometido = asignacion.comprometido + EXCLUDED.comprometido,
+            version      = asignacion.version + 1;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.estado IS DISTINCT FROM OLD.estado THEN
+    IF NEW.estado = 'Pagado' THEN
+      UPDATE asignacion
+         SET comprometido = comprometido - NEW.monto, cobrado = cobrado + NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    ELSIF NEW.estado IN ('Rechazado', 'Fallido') AND OLD.estado <> 'Rechazado' THEN
+      UPDATE asignacion
+         SET comprometido = comprometido - NEW.monto, version = version + 1
+       WHERE programa_id = NEW.programa_id AND beneficiario_id = NEW.beneficiario_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------
+-- 3. Venta: la compra que la persona hizo en el punto durante su retiro.
+--    Es parte del retiro, no un cobro aparte:
+--      efectivo que se entrega = cobro.monto − venta.valor
+--    Tatú no factura: guarda la venta y la envía a un sistema externo de
+--    facturación cuando el cobro queda Pagado.
+--
+--    Registrada  el cobro todavía no se paga (espera PIN o se está pagando)
+--    PorEnviar   el cobro quedó Pagado: falta que facturación la reciba
+--                (también si el envío falló y se va a reintentar)
+--    Enviada     facturación la recibió (final)
+--    Rechazada   facturación la rechazó por sus datos; se puede reenviar
+--    Anulada     el cobro terminó Rechazado o Fallido: no hubo venta (final)
+-- ---------------------------------------------------------------------
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_venta') THEN
+    CREATE TYPE estado_venta AS ENUM ('Registrada', 'PorEnviar', 'Enviada', 'Rechazada', 'Anulada');
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS venta (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),   -- también es la llave de idempotencia ante facturación
+  cobro_id            uuid NOT NULL UNIQUE REFERENCES cobro (id)    ON DELETE RESTRICT,  -- una venta por retiro
+  punto_id            uuid NOT NULL REFERENCES punto (id)           ON DELETE RESTRICT,
+  beneficiario_id     uuid NOT NULL REFERENCES beneficiario (id)    ON DELETE RESTRICT,
+  valor               bigint NOT NULL CHECK (valor > 0),            -- unidades mínimas, como cobro.monto
+  descripcion         text CHECK (char_length(descripcion) BETWEEN 2 AND 120),
+  estado              estado_venta NOT NULL DEFAULT 'Registrada',
+  intentos_envio      smallint NOT NULL DEFAULT 0 CHECK (intentos_envio >= 0),
+  ultimo_error        text,                                         -- texto corto; nunca datos personales
+  referencia_externa  text,                                         -- id que devolvió facturación
+  enviada_en          timestamptz,
+  version             int NOT NULL DEFAULT 0,
+  creado_en           timestamptz NOT NULL DEFAULT now(),
+  actualizado_en      timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT enviada_con_fecha CHECK ((estado = 'Enviada') = (enviada_en IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS venta_punto_idx      ON venta (punto_id, creado_en);
+CREATE INDEX IF NOT EXISTS venta_por_enviar_idx ON venta (actualizado_en) WHERE estado = 'PorEnviar';
+
+-- ---------------------------------------------------------------------
+-- 4. Reglas y máquina de estados de la venta
+--   RN-23  la venta va en un retiro del mismo punto y la misma persona,
+--          se registra antes del PIN y es MENOR que el retiro
+--   Registrada → PorEnviar (cobro Pagado) | Anulada (cobro Rechazado o Fallido)
+--   PorEnviar  → Enviada | Rechazada
+--   Rechazada  → PorEnviar (reenvío)
+--   Enviada, Anulada: finales. El valor y el cobro no cambian.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_venta_reglas() RETURNS trigger AS $$
+DECLARE
+  c cobro%ROWTYPE;
+BEGIN
+  SELECT * INTO c FROM cobro WHERE id = NEW.cobro_id;
+  IF c.canal <> 'retiro' THEN
+    RAISE EXCEPTION 'RN-23: la venta solo se registra en un retiro en el punto';
+  END IF;
+  IF c.estado NOT IN ('Solicitado', 'PorConfirmar') THEN
+    RAISE EXCEPTION 'RN-23: la venta se registra antes de confirmar el retiro';
+  END IF;
+  IF c.punto_id <> NEW.punto_id OR c.beneficiario_id <> NEW.beneficiario_id THEN
+    RAISE EXCEPTION 'RN-23: la venta no corresponde al punto o a la persona del retiro';
+  END IF;
+  IF NEW.valor >= c.monto THEN
+    RAISE EXCEPTION 'RN-23: la compra debe ser menor que el retiro';
+  END IF;
+  IF NEW.estado <> 'Registrada' THEN
+    RAISE EXCEPTION 'Una venta nace Registrada';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_venta_transicion() RETURNS trigger AS $$
+DECLARE
+  estado_del_cobro estado_cobro;
+BEGIN
+  IF NEW.valor IS DISTINCT FROM OLD.valor OR NEW.cobro_id IS DISTINCT FROM OLD.cobro_id
+     OR NEW.punto_id IS DISTINCT FROM OLD.punto_id OR NEW.beneficiario_id IS DISTINCT FROM OLD.beneficiario_id THEN
+    RAISE EXCEPTION 'El valor y el cobro de una venta no cambian después de creada';
+  END IF;
+
+  IF NEW.estado IS DISTINCT FROM OLD.estado THEN
+    IF NOT (
+         (OLD.estado = 'Registrada' AND NEW.estado IN ('PorEnviar', 'Anulada'))
+      OR (OLD.estado = 'PorEnviar'  AND NEW.estado IN ('Enviada', 'Rechazada'))
+      OR (OLD.estado = 'Rechazada'  AND NEW.estado = 'PorEnviar')
+    ) THEN
+      RAISE EXCEPTION 'Transición de venta no permitida: % -> %', OLD.estado, NEW.estado;
+    END IF;
+    SELECT estado INTO estado_del_cobro FROM cobro WHERE id = NEW.cobro_id;
+    IF NEW.estado = 'PorEnviar' AND estado_del_cobro <> 'Pagado' THEN
+      RAISE EXCEPTION 'Una venta se envía a facturar solo con el retiro Pagado';
+    END IF;
+    IF NEW.estado = 'Anulada' AND estado_del_cobro NOT IN ('Rechazado', 'Fallido') THEN
+      RAISE EXCEPTION 'Una venta se anula solo si el retiro no se pagó';
+    END IF;
+  END IF;
+
+  NEW.version        := OLD.version + 1;
+  NEW.actualizado_en := now();
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS venta_reglas ON venta;
+CREATE TRIGGER venta_reglas
+  BEFORE INSERT ON venta
+  FOR EACH ROW EXECUTE FUNCTION fn_venta_reglas();
+
+DROP TRIGGER IF EXISTS venta_transicion ON venta;
+CREATE TRIGGER venta_transicion
+  BEFORE UPDATE ON venta
+  FOR EACH ROW EXECUTE FUNCTION fn_venta_transicion();
+
+DROP TRIGGER IF EXISTS venta_sin_borrado ON venta;
+CREATE TRIGGER venta_sin_borrado
+  BEFORE DELETE ON venta
+  FOR EACH ROW EXECUTE FUNCTION fn_prohibir_borrado();
+DROP TRIGGER IF EXISTS venta_sin_truncate ON venta;
+CREATE TRIGGER venta_sin_truncate
+  BEFORE TRUNCATE ON venta
+  FOR EACH STATEMENT EXECUTE FUNCTION fn_prohibir_borrado();
+
+-- ---------------------------------------------------------------------
+-- 5. La venta sigue al cobro, en la misma transacción
+--    Pagado → PorEnviar · Rechazado o Fallido → Anulada
+--    La API hace lo mismo (también corre sin triggers); la segunda vez no
+--    encuentra la venta en Registrada y no cambia nada.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_cobro_mueve_venta() RETURNS trigger AS $$
+BEGIN
+  IF NEW.estado IS DISTINCT FROM OLD.estado THEN
+    IF NEW.estado = 'Pagado' THEN
+      UPDATE venta SET estado = 'PorEnviar' WHERE cobro_id = NEW.id AND estado = 'Registrada';
+    ELSIF NEW.estado IN ('Rechazado', 'Fallido') THEN
+      UPDATE venta SET estado = 'Anulada' WHERE cobro_id = NEW.id AND estado = 'Registrada';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS cobro_mueve_venta ON cobro;
+CREATE TRIGGER cobro_mueve_venta
+  AFTER UPDATE OF estado ON cobro
+  FOR EACH ROW EXECUTE FUNCTION fn_cobro_mueve_venta();
+
+-- ---------------------------------------------------------------------
+-- 6. Auditoría y seguridad
+-- ---------------------------------------------------------------------
+
+-- evento también registra la venta y su envío a facturación. Se reemplaza
+-- la restricción de la ACTUALIZACIÓN 01 (y la original, si quedara).
+ALTER TABLE evento DROP CONSTRAINT IF EXISTS evento_tipo_entidad_check;
+ALTER TABLE evento DROP CONSTRAINT IF EXISTS evento_tipo_entidad_valido;
+ALTER TABLE evento ADD CONSTRAINT evento_tipo_entidad_valido CHECK (tipo_entidad IN
+  ('programa', 'cuenta', 'cobro', 'beneficiario', 'punto', 'comercio', 'entidad', 'usuario', 'asignacion', 'venta'));
+
+ALTER FUNCTION fn_cobro_reglas()       SET search_path FROM CURRENT;
+ALTER FUNCTION fn_cobro_mueve_saldo()  SET search_path FROM CURRENT;
+ALTER FUNCTION fn_venta_reglas()       SET search_path FROM CURRENT;
+ALTER FUNCTION fn_venta_transicion()   SET search_path FROM CURRENT;
+ALTER FUNCTION fn_cobro_mueve_venta()  SET search_path FROM CURRENT;
+
+ALTER TABLE venta ENABLE ROW LEVEL SECURITY;
+
+COMMIT;

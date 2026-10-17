@@ -4,7 +4,7 @@ import type { Db } from '../conexion.ts'
 import { evento } from '../generado/schema.ts'
 
 export type FilaEvento = typeof evento.$inferSelect
-export type TipoEntidadEvento = 'programa' | 'cuenta' | 'cobro' | 'beneficiario' | 'punto' | 'comercio' | 'entidad'
+export type TipoEntidadEvento = 'programa' | 'cuenta' | 'cobro' | 'beneficiario' | 'punto' | 'comercio' | 'entidad' | 'venta'
 
 /**
  * Quién hizo el cambio: el rol y, si aplica, su id (`evento.actor` exige «rol» o «rol:uuid»). Nunca

@@ -23,6 +23,11 @@ export const MOTIVOS = {
   // Llave Bre-B: RN-18 la vuelve a resolver antes de pagar
   LlaveNoExiste: { mensaje: 'Tu llave Bre-B ya no existe: enlaza otra o cobra en un punto', estado: 'Rechazado' },
   PuenteNoResponde: { mensaje: 'No pudimos consultar Bre-B; intenta en un momento', estado: 'Rechazado' },
+  // Retiro parcial y venta (HU-26, HU-27). La API los revisa antes y responde 422 sin crear el cobro;
+  // estos códigos quedan cuando lo decidió la base en el mismo instante (dos solicitudes a la vez).
+  SaldoInsuficiente: { mensaje: 'El retiro supera el saldo disponible', estado: 'Rechazado' },
+  MontoNoPermitido: { mensaje: 'El valor del retiro no cumple las reglas del programa', estado: 'Rechazado' },
+  VentaNoPermitida: { mensaje: 'La compra registrada no cumple las reglas del retiro', estado: 'Rechazado' },
 } as const satisfies Record<string, { mensaje: string; estado: 'Rechazado' | 'Fallido' }>
 
 export type Motivo = keyof typeof MOTIVOS

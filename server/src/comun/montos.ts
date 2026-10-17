@@ -32,3 +32,12 @@ export function desdeDecimal(texto: string, escala: number): number {
   if (!Number.isSafeInteger(unidades)) throw new Error('El monto es demasiado grande')
   return unidades
 }
+
+/** «$60.000» o «$60.000,50» (formato colombiano), para los mensajes que lee una persona. */
+export function textoMonto(valor: number, moneda: Moneda): string {
+  const base = 10 ** moneda.assetScale
+  const enteros = Math.floor(valor / base)
+  const resto = valor % base
+  const miles = String(enteros).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return resto ? `$${miles},${String(resto).padStart(moneda.assetScale, '0')}` : `$${miles}`
+}

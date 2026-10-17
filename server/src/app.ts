@@ -9,6 +9,8 @@ import { rutasBilleteras } from './billeteras/rutas.ts'
 import { rutasCuentas } from './cuentas/rutas.ts'
 import { rutasEntidades } from './entidades/rutas.ts'
 import { rutasExtras } from './extras.ts'
+import { routerFacturacion } from './facturacion/router.ts'
+import { rutasVentas } from './facturacion/rutas.ts'
 import { routerLiquidacion } from './liquidacion/router.ts'
 import { construirDocumentoOpenApi } from './openapi/documento.ts'
 import { rutasDocumentacion } from './openapi/rutas.ts'
@@ -33,8 +35,10 @@ export function crearApp(c: Contenedor) {
   api.use('/cuentas', rutasCuentas(c.cuentas))
   api.use('/beneficiarios', rutasBeneficiarios(c.beneficiarios, c.resumenBeneficiario))
   api.use('/cobros', rutasCobros(c.cobros))
+  api.use('/ventas', rutasVentas(c.facturacion))
   api.use('/liquidacion', routerLiquidacion(c.simuladorLiquidacion))
   api.use('/puente', routerPuente(c.simuladorPuente))
+  api.use('/facturacion', routerFacturacion(c.simuladorFacturacion))
   api.use(rutasExtras(c.config))
   api.use(rutasDocumentacion(construirDocumentoOpenApi()))
   api.use(rutaNoEncontrada)

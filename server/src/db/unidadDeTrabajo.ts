@@ -1,6 +1,7 @@
 // Agrupa los repositorios y abre transacciones: los servicios dependen de esta interfaz,
 // no de Drizzle (inversión de dependencias).
 import type { Db } from './conexion.ts'
+import { repoAsignaciones, type RepoAsignaciones } from './repositorios/asignaciones.ts'
 import { repoBeneficiarios, type RepoBeneficiarios } from './repositorios/beneficiarios.ts'
 import { repoBloqueos, type RepoBloqueos } from './repositorios/bloqueos.ts'
 import { repoCobros, type RepoCobros } from './repositorios/cobros.ts'
@@ -9,6 +10,7 @@ import { repoEntidades, type RepoEntidades } from './repositorios/entidades.ts'
 import { repoEventos, type RepoEventos } from './repositorios/eventos.ts'
 import { repoProgramas, type RepoProgramas } from './repositorios/programas.ts'
 import { repoPuntos, type RepoPuntos } from './repositorios/puntos.ts'
+import { repoVentas, type RepoVentas } from './repositorios/ventas.ts'
 
 export interface Repos {
   entidades: RepoEntidades
@@ -19,6 +21,8 @@ export interface Repos {
   cobros: RepoCobros
   bloqueos: RepoBloqueos
   eventos: RepoEventos
+  ventas: RepoVentas
+  asignaciones: RepoAsignaciones
 }
 
 export interface UnidadDeTrabajo {
@@ -37,6 +41,8 @@ function crearRepos(db: Db): Repos {
     cobros: repoCobros(db),
     bloqueos: repoBloqueos(db),
     eventos: repoEventos(db),
+    ventas: repoVentas(db),
+    asignaciones: repoAsignaciones(db),
   }
 }
 

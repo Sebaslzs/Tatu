@@ -20,6 +20,9 @@ const COBRO_EJEMPLO = {
   intentosRestantes: 3,
   confirmarAntesDe: '2026-10-16T15:02:00.000Z',
   segundosHastaPagado: null,
+  venta: null,
+  efectivo: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+  saldoRestante: { valor: '0', assetCode: 'COP', assetScale: 2 },
   creado: '2026-10-16T15:00:00.000Z',
   actualizado: '2026-10-16T15:00:00.000Z',
 }
@@ -42,7 +45,9 @@ export function rutasCobros(): Json {
           '- **CA-10.02** con `canal=retiro`, la cédula, el punto y una llave de idempotencia, el cobro queda `PorConfirmar` y se aplican las reglas RN-01 a RN-06.',
           '- **CA-10.04** si no viene `programaId`, se toma el programa activo que tenga un pago disponible para esa cédula; el punto no elige programa.',
           '- **CA-10.07** repetir la misma `llaveIdempotencia` devuelve el mismo cobro: un doble clic no duplica el pago.',
-          '- **RN-11** el monto nunca viene del navegador: lo calcula el backend. `totalCompra` va solo en `canal=compra` (bono).',
+          '- **RN-11** el monto lo decide el backend. `totalCompra` va solo en `canal=compra` (bono).',
+          '- **HU-26 · retiro parcial** en `canal=retiro`, `monto` dice cuánto retirar del saldo; sin `monto` se retira todo. Debe ser mayor que 0, en pesos enteros, no superar el saldo y respetar el mínimo del programa (RN-19 a RN-21). Si no cumple: `422` sin crear cobro. El canal `cuenta` siempre paga todo el saldo (RN-22). Los bonos no cambian.',
+          '- **HU-27 · venta con el retiro** en `canal=retiro`, `venta` registra la compra que la persona hizo en el punto. Es **parte** del retiro: el efectivo que se entrega es `monto − venta.valor`, y la venta debe ser menor que el retiro (RN-23). Se envía a facturación cuando el cobro queda `Pagado`.',
           '- **CA-10.05** una persona sin PIN no puede cobrar en un punto: `422 SinPin`.',
         ].join('\n'),
         requestBody: {
@@ -52,6 +57,8 @@ export function rutasCobros(): Json {
             canal: 'retiro',
             puntoId: '33333333-3333-4333-8333-333333333333',
             llaveIdempotencia: '2f4e9a3c-6f7e-4c43-9d70-7d9ee1b0c0a1',
+            monto: '9000000',
+            venta: { valor: '5000000', descripcion: 'Mercado' },
           }),
         },
         responses: {
@@ -71,7 +78,11 @@ export function rutasCobros(): Json {
             'SinProgramas',
             'No hay programas recibiendo cobros',
           ),
-          422: falla('422 · La persona no registró un PIN (`SinPin`): solo puede cobrar a su cuenta.', 'SinPin', 'Esta persona no registró un PIN: solo puede cobrar a su cuenta'),
+          422: falla(
+            '422 · La persona no registró un PIN (`SinPin`), el retiro no cumple las reglas (`MontoInvalido`), supera el saldo (`SaldoInsuficiente`) o la compra no es menor que el retiro (`VentaInvalida`). No se crea cobro.',
+            'SaldoInsuficiente',
+            'El retiro supera el saldo disponible ($60.000)',
+          ),
           503: falla('503 · La liquidación no respondió (`LiquidacionNoResponde`) o la billetera de la cuenta no respondió (`SinRespuesta`).', 'LiquidacionNoResponde', 'No pudimos consultar tu pago; intenta en un momento'),
         },
       },

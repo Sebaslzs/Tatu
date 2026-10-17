@@ -18,6 +18,10 @@ import { ServicioCuentas } from './cuentas/servicio.ts'
 import type { Db } from './db/conexion.ts'
 import { crearUnidadDeTrabajo, type UnidadDeTrabajo } from './db/unidadDeTrabajo.ts'
 import type { ConfigPublica } from './extras.ts'
+import { ClienteFacturacion } from './facturacion/cliente.ts'
+import type { PuertoFacturacion } from './facturacion/contrato.ts'
+import { ServicioFacturacion } from './facturacion/servicio.ts'
+import { FacturacionSimulada } from './facturacion/simulador.ts'
 import { ClienteLiquidacion } from './liquidacion/cliente.ts'
 import type { PuertoLiquidacion } from './liquidacion/contrato.ts'
 import { LiquidacionSimulada } from './liquidacion/simulador.ts'
@@ -51,6 +55,8 @@ export interface Contenedor {
   billeteras: PuertoBilleteras
   simuladorLiquidacion: LiquidacionSimulada
   simuladorPuente: PuenteSimulado
+  facturacion: ServicioFacturacion
+  simuladorFacturacion: FacturacionSimulada
 }
 
 export interface PiezasContenedor {
@@ -64,6 +70,8 @@ export interface PiezasContenedor {
   puente?: PuertoPuente
   simuladorLiquidacion?: LiquidacionSimulada
   simuladorPuente?: PuenteSimulado
+  facturacion?: PuertoFacturacion
+  simuladorFacturacion?: FacturacionSimulada
   reloj?: Reloj
   nuevoNonce?: () => string
 }
@@ -80,6 +88,8 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const liquidacion =
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
   const puente = piezas.puente ?? new ClientePuente({ baseUrl: config.PUENTE_URL, timeoutMs: config.PUENTE_TIMEOUT_MS })
+  const puertoFacturacion =
+    piezas.facturacion ?? new ClienteFacturacion({ baseUrl: config.FACTURACION_URL, timeoutMs: config.FACTURACION_TIMEOUT_MS })
 
   // Programas
   const lector = new LectorProgramas(uow)
@@ -117,6 +127,9 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   })
   const solicitud = new SolicitudCobro({ uow, lector, liquidacion, cuentas, billeteras, vistas, pagador, reloj })
   const pagosPendientes = new PagosPendientes({ uow, liquidacion, reloj })
+  // HU-27: la venta de un retiro Pagado se envía a facturación, aparte del pago
+  const facturacion = new ServicioFacturacion({ uow, facturacion: puertoFacturacion, liquidacion, reloj })
+  movimientos.alPagarVenta((ventaId) => facturacion.disparar(ventaId))
 
   return {
     config,
@@ -125,10 +138,12 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     billeteras,
     simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
     simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
+    simuladorFacturacion: piezas.simuladorFacturacion ?? new FacturacionSimulada(),
+    facturacion,
     cuentas,
     beneficiarios: new ServicioBeneficiarios({ uow, liquidacion, puente, billeteras, reloj }),
     resumenBeneficiario: new ConsultaResumenBeneficiario({ uow, pagosPendientes, vistas }),
-    cobros: new ServicioCobros({ solicitud, confirmacion, pagador, movimientos, vistas }),
+    cobros: new ServicioCobros({ solicitud, confirmacion, pagador, movimientos, vistas, facturacion }),
     programas: {
       programas: new ServicioProgramas({ uow, billeteras, liquidacion, lector, transiciones, bonoHabilitado: config.EXTRA_BONO }),
       autorizacion: new ServicioAutorizacion({
