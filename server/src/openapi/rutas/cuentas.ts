@@ -4,7 +4,7 @@ import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json }
 
 const CUENTA_EJEMPLO = {
   id: '44444444-4444-4444-8444-444444444444',
-  cedula: '1000000002',
+  documento: '1000000002',
   estado: 'Verificada',
   billetera: 'https://ilp.interledger-test.dev/prueba-luis',
   billeteraCorta: '…/prueba-luis',
@@ -47,7 +47,7 @@ export function rutasCuentas(): Json {
         ].join('\n'),
         requestBody: {
           required: true,
-          content: contenidoJson(jsonSchema(EntradaCuenta, 'input'), { cedula: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '2222' }),
+          content: contenidoJson(jsonSchema(EntradaCuenta, 'input'), { documento: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '2222' }),
         },
         responses: {
           201: ok('Cuenta enlazada (o pendiente de verificar).', ref('ResultadoEnlace'), { redirect: null, cuenta: CUENTA_EJEMPLO }),
@@ -105,8 +105,8 @@ export function rutasCuentas(): Json {
         },
       },
     },
-    '/cuentas/{cedula}': {
-      parameters: [{ name: 'cedula', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000002' }],
+    '/cuentas/{documento}': {
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000002' }],
       get: {
         tags: ['Cuentas'],
         operationId: 'estadoCuenta',

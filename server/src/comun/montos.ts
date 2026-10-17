@@ -5,6 +5,17 @@ export interface Moneda {
   assetScale: number
 }
 
+/** Cómo lee la moneda la web ya conectada: { assetCode, assetScale }. */
+export type MonedaApi = Moneda
+export const monedaApi = (m: Moneda): MonedaApi => ({ assetCode: m.assetCode, assetScale: m.assetScale })
+
+/** Cómo la nombra Endpoints.md en los campos que la web aún no consume: { codigo, escala }. */
+export interface MonedaCodigo {
+  codigo: string
+  escala: number
+}
+export const monedaCodigo = (m: Moneda): MonedaCodigo => ({ codigo: m.assetCode, escala: m.assetScale })
+
 /** Lo que viaja en JSON: el valor va como texto para no perder precisión en el cliente. */
 export interface Monto extends Moneda {
   valor: string

@@ -23,12 +23,12 @@ beforeEach(async () => {
   await e.repos.beneficiarios.crear(LUIS)
   await e.repos.beneficiarios.crear(ANA)
   // Luis tiene la llave cédula y un celular en su banco; Ana, su celular
-  e.puente.registrar({ tipo: 'cedula', valor: LUIS, cedulaTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS })
-  e.puente.registrar({ tipo: 'celular', valor: '3001234567', cedulaTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS })
-  e.puente.registrar({ tipo: 'celular', valor: '3109998888', cedulaTitular: ANA, nombreTitular: 'Ana Pérez', billetera: WALLET_ANA })
+  e.puente.registrar({ tipo: 'cedula', valor: LUIS, documentoTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS })
+  e.puente.registrar({ tipo: 'celular', valor: '3001234567', documentoTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS })
+  e.puente.registrar({ tipo: 'celular', valor: '3109998888', documentoTitular: ANA, nombreTitular: 'Ana Pérez', billetera: WALLET_ANA })
 })
 
-const enlazar = (cuerpo: Record<string, unknown>) => e.pedir('POST', '/cuentas', { cedula: LUIS, ...cuerpo })
+const enlazar = (cuerpo: Record<string, unknown>) => e.pedir('POST', '/cuentas', { documento: LUIS, ...cuerpo })
 const llaveCelular = (extra: Record<string, unknown> = {}) => enlazar({ tipoLlave: 'celular', llave: '3001234567', pin: '2222', ...extra })
 const cuentas = () => e.contar('cuenta_beneficiario')
 
@@ -108,8 +108,8 @@ describe('CA-07.03 · otra llave: PIN y titular confirmado por el banco puente (
   it('quien no tiene PIN registrado no necesita PIN', async () => {
     await e.simulador.inscribir('1000000009', 'Rosa Díaz')
     await e.repos.beneficiarios.crear('1000000009')
-    e.puente.registrar({ tipo: 'celular', valor: '3205556666', cedulaTitular: '1000000009', nombreTitular: 'Rosa Díaz', billetera: WALLET_ANA })
-    const { status } = await e.pedir('POST', '/cuentas', { cedula: '1000000009', tipoLlave: 'celular', llave: '3205556666' })
+    e.puente.registrar({ tipo: 'celular', valor: '3205556666', documentoTitular: '1000000009', nombreTitular: 'Rosa Díaz', billetera: WALLET_ANA })
+    const { status } = await e.pedir('POST', '/cuentas', { documento: '1000000009', tipoLlave: 'celular', llave: '3205556666' })
     expect(status).toBe(201)
   })
 
@@ -140,7 +140,7 @@ describe('CA-07.04 · llave inexistente', () => {
   })
 
   it('una cédula no registrada en Tatú: 404 PersonaNoEncontrada', async () => {
-    const r = await e.pedir('POST', '/cuentas', { cedula: '1000000077', tipoLlave: 'cedula', llave: '1000000077' })
+    const r = await e.pedir('POST', '/cuentas', { documento: '1000000077', tipoLlave: 'cedula', llave: '1000000077' })
     expect(r.status).toBe(404)
     expect(r.cuerpo.error.codigo).toBe('PersonaNoEncontrada')
   })
@@ -235,7 +235,7 @@ describe('CA-07.05 · billetera Open Payments (opción avanzada)', () => {
     try {
       simulada.billeteras.registrar(WALLET_LUIS, COP)
       await simulada.repos.beneficiarios.crear(LUIS)
-      const r = await simulada.pedir('POST', '/cuentas', { cedula: LUIS, billetera: '$ilp.interledger-test.dev/prueba-luis', pin: '2222' })
+      const r = await simulada.pedir('POST', '/cuentas', { documento: LUIS, billetera: '$ilp.interledger-test.dev/prueba-luis', pin: '2222' })
       expect(r.status).toBe(201)
       expect(r.cuerpo).toMatchObject({ redirect: null, cuenta: { estado: 'Verificada' } })
       expect(simulada.permisos.verificacionesPedidas).toHaveLength(0)
@@ -310,7 +310,7 @@ describe('RN-17 y RN-18 · la llave cédula y su refresco', () => {
 
   it('RN-18: si la llave llega ahora a otra billetera, se guarda la nueva con su evento', async () => {
     const cuenta = (await e.contenedor.cuentas.cuentaPorCedula(await persona()))!
-    e.puente.registrar({ tipo: 'cedula', valor: LUIS, cedulaTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS_2 })
+    e.puente.registrar({ tipo: 'cedula', valor: LUIS, documentoTitular: LUIS, nombreTitular: 'Luis Gómez', billetera: WALLET_LUIS_2 })
     const nueva = await e.contenedor.cuentas.refrescarLlave(cuenta)
     expect(nueva).toMatchObject({ id: cuenta.id, billetera: WALLET_LUIS_2 })
     expect(detalleDe((await e.repos.eventos.de('cuenta', cuenta.id)).at(-1)!).texto).toMatch(/otra cuenta/)

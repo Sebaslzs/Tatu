@@ -57,9 +57,33 @@ const esquema = z.object({
 
 export type Config = z.infer<typeof esquema>
 
+type Entorno = Record<string, string | undefined>
+
+/**
+ * En Vercel la web y la API comparten dominio: las URLs que falten salen del dominio del despliegue
+ * (el de producción, o el de la rama en una preview). Fuera de Vercel el entorno queda igual.
+ */
+export function completarUrlsDeVercel(entorno: Entorno): Entorno {
+  if (!entorno.VERCEL) return entorno
+  const dominio =
+    entorno.VERCEL_ENV === 'production'
+      ? (entorno.VERCEL_PROJECT_PRODUCTION_URL ?? entorno.VERCEL_URL)
+      : (entorno.VERCEL_BRANCH_URL ?? entorno.VERCEL_URL)
+  if (!dominio) return entorno
+  const web = `https://${dominio}`
+  const api = entorno.API_BASE_URL || `${web}/api`
+  return {
+    ...entorno,
+    APP_BASE_URL: entorno.APP_BASE_URL || web,
+    API_BASE_URL: api,
+    LIQUIDACION_URL: entorno.LIQUIDACION_URL || `${sinBarraFinal(api)}/liquidacion`,
+    PUENTE_URL: entorno.PUENTE_URL || `${sinBarraFinal(api)}/puente`,
+  }
+}
+
 /** Valida un entorno; se exporta para poder probar la configuración sin tocar process.env. */
-export function leerConfig(entorno: Record<string, string | undefined>): Config {
-  return esquema.parse(entorno)
+export function leerConfig(entorno: Entorno): Config {
+  return esquema.parse(completarUrlsDeVercel(entorno))
 }
 
 export const config = leerConfig(process.env)

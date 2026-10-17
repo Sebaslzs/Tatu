@@ -6,7 +6,7 @@ import { normalizarLlave, type Llave } from './contrato.ts'
 import { enmascararLlave, enmascararNombre } from './enmascarar.ts'
 
 const WALLET = 'https://ilp.interledger-test.dev/prueba-luis'
-const LLAVE: Llave = { tipo: 'celular', valor: '3001234567', cedulaTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET }
+const LLAVE: Llave = { tipo: 'celular', valor: '3001234567', documentoTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET }
 
 describe('normalizarLlave (RN-14: el tipo lo elige la persona)', () => {
   it.each([
@@ -61,7 +61,7 @@ describe('router del banco puente', () => {
   it('registra una llave (201), la actualiza si es de la misma persona (200) y rechaza la de otra (409)', async () => {
     expect((await e.pedir('POST', '/puente/llaves', LLAVE)).status).toBe(201)
     expect((await e.pedir('POST', '/puente/llaves', { ...LLAVE, billetera: 'https://ilp.interledger-test.dev/otra' })).status).toBe(200)
-    const ajena = await e.pedir('POST', '/puente/llaves', { ...LLAVE, cedulaTitular: '1000000003' })
+    const ajena = await e.pedir('POST', '/puente/llaves', { ...LLAVE, documentoTitular: '1000000003' })
     expect(ajena.status).toBe(409)
     expect(ajena.cuerpo.error.codigo).toBe('LlaveEnUso')
   })
@@ -85,8 +85,8 @@ describe('router del banco puente', () => {
 
   it('«¿es de esta cédula?» responde sí o no sin decir de quién es', async () => {
     e.puente.registrar(LLAVE)
-    expect((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { cedula: '1000000002' })).cuerpo).toEqual({ pertenece: true })
-    expect((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { cedula: '1000000003' })).cuerpo).toEqual({ pertenece: false })
+    expect((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { documento: '1000000002' })).cuerpo).toEqual({ pertenece: true })
+    expect((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { documento: '1000000003' })).cuerpo).toEqual({ pertenece: false })
   })
 
   it('una llave que no existe, o con un tipo inválido, es 404 LlaveNoExiste', async () => {
@@ -99,7 +99,7 @@ describe('router del banco puente', () => {
 
   it('lista las llaves de una cédula y borra una', async () => {
     e.puente.registrar(LLAVE)
-    expect((await e.pedir('GET', '/puente/llaves?cedula=1000000002')).cuerpo).toEqual([LLAVE])
+    expect((await e.pedir('GET', '/puente/llaves?documento=1000000002')).cuerpo).toEqual([LLAVE])
     expect((await e.pedir('GET', '/puente/llaves')).status).toBe(400)
     expect((await e.pedir('DELETE', '/puente/llaves/celular/3001234567')).status).toBe(204)
     expect((await e.pedir('DELETE', '/puente/llaves/celular/3001234567')).status).toBe(404)

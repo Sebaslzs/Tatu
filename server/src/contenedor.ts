@@ -11,6 +11,7 @@ import { ServicioCobros } from './cobros/servicio.ts'
 import { SolicitudCobro } from './cobros/solicitud.ts'
 import { VistasCobro } from './cobros/vista.ts'
 import type { PuertoBilleteras } from './comun/billeteras.ts'
+import { esUuid } from './comun/parametros.ts'
 import { relojDelSistema, type Reloj } from './comun/fechas.ts'
 import type { Config } from './config.ts'
 import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
@@ -19,8 +20,8 @@ import type { Db } from './db/conexion.ts'
 import { crearUnidadDeTrabajo, type UnidadDeTrabajo } from './db/unidadDeTrabajo.ts'
 import type { ConfigPublica } from './extras.ts'
 import { ClienteLiquidacion } from './liquidacion/cliente.ts'
-import type { PuertoLiquidacion } from './liquidacion/contrato.ts'
-import { LiquidacionSimulada } from './liquidacion/simulador.ts'
+import type { DatosLiquidacion, PuertoLiquidacion } from './liquidacion/contrato.ts'
+import { LiquidacionEnBase } from './liquidacion/enBase.ts'
 import { OpenPaymentsService } from './openPaymentsService.ts'
 import { ServicioAutorizacion } from './programas/autorizacion.ts'
 import { CicloPrograma } from './programas/ciclo.ts'
@@ -33,12 +34,14 @@ import { ServicioTablero } from './programas/tablero.ts'
 import { Transiciones } from './programas/transiciones.ts'
 import { ClientePuente } from './puente/cliente.ts'
 import type { PuertoPuente } from './puente/contrato.ts'
-import { PuenteSimulado } from './puente/simulador.ts'
+import { PuenteEnBase } from './puente/enBase.ts'
+import type { DatosPuente } from './puente/simulador.ts'
 import { ConsultasPunto } from './puntos/consultas.ts'
 import { ServicioPuntos } from './puntos/servicio.ts'
 
 export interface Contenedor {
   config: ConfigPublica
+  configCompleta: Config
   uow: UnidadDeTrabajo
   programas: ServiciosProgramas
   puntos: ServicioPuntos
@@ -49,8 +52,8 @@ export interface Contenedor {
   cobros: ServicioCobros
   token: ServicioPermisoToken
   billeteras: PuertoBilleteras
-  simuladorLiquidacion: LiquidacionSimulada
-  simuladorPuente: PuenteSimulado
+  simuladorLiquidacion: DatosLiquidacion
+  simuladorPuente: DatosPuente
 }
 
 export interface PiezasContenedor {
@@ -62,8 +65,8 @@ export interface PiezasContenedor {
   pagos?: PuertoPagos
   liquidacion?: PuertoLiquidacion
   puente?: PuertoPuente
-  simuladorLiquidacion?: LiquidacionSimulada
-  simuladorPuente?: PuenteSimulado
+  simuladorLiquidacion?: DatosLiquidacion
+  simuladorPuente?: DatosPuente
   reloj?: Reloj
   nuevoNonce?: () => string
 }
@@ -80,6 +83,10 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const liquidacion =
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
   const puente = piezas.puente ?? new ClientePuente({ baseUrl: config.PUENTE_URL, timeoutMs: config.PUENTE_TIMEOUT_MS })
+
+  // La liquidación simulada paga el «monto por persona» de cada programa (atajo de la demo)
+  const simuladorLiquidacion = piezas.simuladorLiquidacion ?? new LiquidacionEnBase(piezas.db)
+  simuladorLiquidacion.montoPorPrograma = async (programaId) => (!esUuid(programaId) ? null : (await uow.repos.programas.obtener(programaId))?.montoPorPersona ?? null)
 
   // Programas
   const lector = new LectorProgramas(uow)
@@ -120,11 +127,12 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
 
   return {
     config,
+    configCompleta: config,
     uow,
     token,
     billeteras,
-    simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
-    simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
+    simuladorLiquidacion: simuladorLiquidacion,
+    simuladorPuente: piezas.simuladorPuente ?? new PuenteEnBase(piezas.db),
     cuentas,
     beneficiarios: new ServicioBeneficiarios({ uow, liquidacion, puente, billeteras, reloj }),
     resumenBeneficiario: new ConsultaResumenBeneficiario({ uow, pagosPendientes, vistas }),

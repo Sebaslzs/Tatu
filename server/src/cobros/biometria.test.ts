@@ -16,8 +16,8 @@ beforeEach(async () => {
   s = await escenarioDeCobro(e)
 })
 
-const retiro = async (cedula = JORGE.cedula) =>
-  (await e.pedir('POST', '/cobros', { cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+const retiro = async (documento = JORGE.documento) =>
+  (await e.pedir('POST', '/cobros', { documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
 const confirmar = (id: string, cuerpo: unknown) => e.pedir('POST', `/cobros/${id}/confirmar`, cuerpo)
 
 describe('confirmar con rostro o huella', () => {
@@ -86,7 +86,7 @@ describe('el retiro ya no exige PIN registrado', () => {
   })
 
   it('cobrar a la cuenta sigue sin pedir verificación', async () => {
-    const r = await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'cuenta', llaveIdempotencia: llaveNueva() })
+    const r = await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'cuenta', llaveIdempotencia: llaveNueva() })
     expect(r.status).toBe(201)
     expect(r.cuerpo.estado).toBe('Pagando')
   })

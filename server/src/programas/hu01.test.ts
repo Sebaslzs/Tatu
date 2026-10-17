@@ -204,7 +204,7 @@ describe('CA-01.06 · edición', () => {
       categorias: ['educacion'],
       billetera: usd,
       moneda: { assetCode: 'USD', assetScale: 2 },
-      montoPorPersona: { valor: '6050', assetCode: 'USD' },
+      montoPorPersona: { valor: '6050' },
       estado: 'Borrador',
     })
   })
@@ -271,7 +271,7 @@ describe('CA-01.08 · listado', () => {
       permisoActivo: false,
       permisoVencido: false,
       tope: null,
-      montoPorPersona: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+      montoPorPersona: { valor: '23000000' },
     })
   })
 

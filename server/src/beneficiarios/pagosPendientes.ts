@@ -2,7 +2,7 @@
 // donde no ha cobrado y la liquidación tiene un pago para su cédula. Con `soloQueReciben`, solo los
 // que hoy aceptan cobros: es lo que puede pagar un punto.
 import { diaEnBogota, type Reloj } from '../comun/fechas.ts'
-import { monto, type Monto } from '../comun/montos.ts'
+import { monedaCodigo, monto, type Monto, type MonedaCodigo } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { rn06ProgramaRecibe } from '../cobros/reglas.ts'
@@ -12,6 +12,7 @@ import { monedaDe } from '../programas/vista.ts'
 export interface PagoPendiente {
   programa: { id: string; nombre: string; estado: string; tipo: 'subsidio' | 'bono' }
   monto: Monto
+  moneda: MonedaCodigo
   /** Día en que vence, en hora de Bogotá. */
   vigenciaFin: string
 }
@@ -75,6 +76,7 @@ export class PagosPendientes {
       pagos.push({
         programa: { id: p.id, nombre: p.nombre, estado: p.estado, tipo: p.tipo },
         monto: monto(pago.monto, monedaDe(p)),
+        moneda: monedaCodigo(monedaDe(p)),
         vigenciaFin: diaEnBogota(p.vigenciaFin),
       })
     }

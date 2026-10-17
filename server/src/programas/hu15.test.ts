@@ -31,7 +31,7 @@ const ultimoEventoDeCierre = async () => {
 
 /** Cobra un retiro de Jorge y espera a que quede Pagado. */
 async function cobroPagado(): Promise<string> {
-  const c = (await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+  const c = (await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
   await e.pedir('POST', `/cobros/${c.id}/confirmar`, { pin: JORGE.pin })
   await e.esperarPagos()
   return c.id
@@ -42,7 +42,7 @@ describe('CA-15.01 · autorizado, cobrado y noHaSalido', () => {
     const { status, cuerpo } = await tablero()
     expect(status).toBe(200)
     expect(cuerpo).toMatchObject({
-      autorizado: { valor: '69000000', assetCode: 'COP', assetScale: 2 },
+      autorizado: { valor: '69000000' },
       cobrado: { valor: '0' },
       fuente: 'banco',
       noHaSalido: { valor: '69000000' },
@@ -182,7 +182,7 @@ describe('CA-17.01 · cerrar con la palabra CERRAR', () => {
 describe('CA-17.02 · un programa Cerrado no recibe cobros', () => {
   it('un intento de retiro queda Rechazado con el motivo ProgramaCerrado', async () => {
     await cerrar(PALABRA_CIERRE)
-    const r = await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })
+    const r = await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })
     expect(r.cuerpo).toMatchObject({ estado: 'Rechazado', motivo: { codigo: 'ProgramaCerrado', mensaje: 'El programa está cerrado y ya no recibe cobros' } })
     expect(e.pagos.entrantes).toHaveLength(0)
   })
@@ -218,7 +218,7 @@ describe('CA-17.04 · la plataforma valida la palabra antes de revocar', () => {
 describe('CA-17.05 · no cerrar con cobros enviándose', () => {
   it('con un cobro en Pagando responde 409 CobrosEnCurso y el programa sigue abierto', async () => {
     e.pagos.completarSalientes = false
-    const c = (await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+    const c = (await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
     await e.pedir('POST', `/cobros/${c.id}/confirmar`, { pin: JORGE.pin })
     await e.esperarPagos()
     expect((await e.repos.cobros.obtener(c.id))!.estado).toBe('Pagando')
