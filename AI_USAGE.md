@@ -82,6 +82,14 @@ módulo; cada módulo se entregó en su propio commit.
 
 Cada módulo se registra aquí al entregarse (ver el historial de commits de `server/`).
 
+### 9. Modo oscuro de la web (`web/`)
+
+* Claude Code implementó el modo oscuro: paleta «Noche» como tokens CSS por tema (`data-tema` en
+  `<html>`), script en `index.html` que aplica el tema antes de pintar, hook `useTema`
+  (`localStorage` con `try/catch` y respeto de `prefers-color-scheme`), interruptor accesible
+  `BotonTema` y el cambio de colores fijos por tokens en las pantallas existentes.
+* Pendiente de revisión humana: el contraste de cada pantalla en oscuro con datos reales del API.
+
 ## Qué hicimos nosotros
 
 * Definir el alcance de cada tarea (por ejemplo, «solo backend», «sin SQL a mano»), elegir la base

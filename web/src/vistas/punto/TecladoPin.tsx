@@ -34,7 +34,7 @@ export function TecladoPin({ onChange, deshabilitado = false, oculto = false }: 
 
   if (oculto) return null
 
-  const tecla = 'h-12 cursor-pointer rounded-xl border-[1.5px] border-linea bg-papel font-sans text-2xl font-bold text-noche active:bg-nota disabled:cursor-not-allowed disabled:opacity-50'
+  const tecla = 'h-12 cursor-pointer rounded-xl border-[1.5px] border-linea bg-papel font-sans text-2xl font-bold text-foreground active:bg-nota disabled:cursor-not-allowed disabled:opacity-50'
   return (
     <div className="grid grid-cols-3 gap-1.5">
       {'123456789'.split('').map((d) => (
@@ -51,7 +51,7 @@ export function TecladoPin({ onChange, deshabilitado = false, oculto = false }: 
         aria-label="Borrar un dígito"
         disabled={deshabilitado}
         onClick={borrar}
-        className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent text-noche disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent text-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Delete aria-hidden className="size-[26px]" strokeWidth={2} />
       </button>
@@ -72,10 +72,10 @@ export function PuntosPin({ largo, grande = false, error = false }: { largo: num
           className={cn(
             'flex items-center justify-center bg-papel',
             grande ? 'h-20 w-[72px] rounded-[14px] border-[2.5px]' : 'h-[54px] w-[52px] rounded-xl border-2',
-            error ? 'border-rechazo' : i < largo ? 'border-noche' : grande ? 'border-[#8F7A4C]' : 'border-[#B9AE97]',
+            error ? 'border-rechazo' : i < largo ? 'border-foreground' : grande ? 'border-control' : 'border-control',
           )}
         >
-          {i < largo && <span className={cn('rounded-full bg-noche', grande ? 'size-[18px]' : 'size-3.5')} />}
+          {i < largo && <span className={cn('rounded-full bg-foreground', grande ? 'size-[18px]' : 'size-3.5')} />}
         </span>
       ))}
     </div>

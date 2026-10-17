@@ -41,7 +41,7 @@ export function EsperaPagando({ cobroId, desde, children }: { cobroId: string; d
         <span className="text-[15px] text-noche-texto-tenue">Suele tardar unos segundos.</span>
       </div>
 
-      <div role="status" className="flex items-center gap-3 rounded-[18px] border-[2.5px] border-noche bg-papel p-4">
+      <div role="status" className="flex items-center gap-3 rounded-[18px] border-[2.5px] border-foreground bg-papel p-4">
         <Hand aria-hidden className="size-[34px] flex-none" strokeWidth={2} />
         <div className="flex flex-col gap-0.5">
           <span className="text-[21px] font-extrabold">No entregues efectivo todavía</span>

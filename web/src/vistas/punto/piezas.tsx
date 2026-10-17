@@ -7,6 +7,7 @@ import { Titulo } from '@/componentes/Comun'
 import { claseBoton, type VarianteBoton } from '@/lib/boton'
 import { cn } from '@/lib/utils'
 import { usePunto } from './datos'
+import { BotonTema } from '@/componentes/BotonTema'
 
 // ── Botones ───────────────────────────────────────────────────────────────────
 
@@ -23,12 +24,12 @@ export function BotonEnlace({ variante, className, ...props }: { variante?: Vari
 
 /** «Ir al inicio», «Cancelar cobro»: texto subrayado de 44 px de alto. */
 export const claseEnlaceSuave =
-  'flex min-h-11 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-[17px] font-semibold text-noche underline underline-offset-[3px] hover:text-noche disabled:opacity-50'
+  'flex min-h-11 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-[17px] font-semibold text-foreground underline underline-offset-[3px] hover:text-foreground disabled:opacity-50'
 
 // ── Celular ───────────────────────────────────────────────────────────────────
 
 const claseCuadroVolver =
-  'flex size-11 flex-none cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel p-0 text-noche hover:border-noche hover:text-noche'
+  'flex size-11 flex-none cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel p-0 text-foreground hover:border-foreground hover:text-foreground'
 
 /** ‹ en un cuadro de 44 px: un enlace, o un botón cuando volver hace algo (cancelar el cobro). */
 export function CuadroVolver({ a, alVolver, etiqueta }: { a?: string; alVolver?: () => void; etiqueta: string }) {
@@ -77,7 +78,7 @@ export function Cabecera({
 /** «‹ Inicio»: el volver del computador, con su texto. Un botón cuando volver cancela el cobro. */
 export function VolverEscritorio({ a, onClick, children }: { a?: string; onClick?: () => void; children: ReactNode }) {
   const clase =
-    'inline-flex min-h-11 cursor-pointer items-center gap-2 self-start rounded-xl border-[1.5px] border-linea bg-papel py-0 pr-3.5 pl-2 font-sans text-base font-bold text-noche no-underline hover:border-noche hover:text-noche'
+    'inline-flex min-h-11 cursor-pointer items-center gap-2 self-start rounded-xl border-[1.5px] border-linea bg-papel py-0 pr-3.5 pl-2 font-sans text-base font-bold text-foreground no-underline hover:border-foreground hover:text-foreground'
   const icono = <ChevronLeft aria-hidden className="size-[22px]" strokeWidth={2.4} />
   if (onClick || !a) {
     return (
@@ -121,7 +122,7 @@ export function PantallaPuntoEscritorio({
   const { nombre } = usePunto()
   const navegar = useNavigate()
   return (
-    <div className="flex min-h-dvh flex-col bg-arena text-noche">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="bloque">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-6 px-8 py-3 max-sm:px-4">
           <Link to="/" aria-label="Volver a elegir rol" className="flex items-center gap-2.5 text-bloque-texto no-underline hover:text-bloque-texto">
@@ -148,6 +149,7 @@ export function PantallaPuntoEscritorio({
           <div className="ml-auto flex items-center gap-3.5">
             <span className="text-[15px]">{nombre}</span>
             {/* El rol se borra al llegar a "/" (ElegirRol) */}
+            <BotonTema sobreBloque />
             <button
               type="button"
               onClick={() => navegar('/')}
@@ -237,7 +239,7 @@ export function ChipPago({ pausado }: { pausado: boolean }) {
     <span
       className={cn(
         'inline-flex flex-none items-center gap-[5px] self-start rounded-full px-2.5 py-1 text-[13px] font-bold whitespace-nowrap',
-        pausado ? 'bg-[#E7DFCF] text-tinta-suave' : 'bg-pagando-fondo text-noche',
+        pausado ? 'bg-nota text-tinta-suave' : 'bg-pagando-fondo text-foreground',
       )}
     >
       {!pausado && <Clock aria-hidden className="size-3.5" strokeWidth={2.5} />}
@@ -258,8 +260,8 @@ export function PasosCobro({ paso }: { paso: PasoCobro }) {
     <ol aria-label={`Paso ${actual + 1} de ${PASOS.length}`} className="m-0 flex list-none gap-1.5 p-0">
       {PASOS.map((texto, i) => (
         <li key={texto} aria-current={i === actual ? 'step' : undefined} className="flex flex-1 flex-col gap-1">
-          <span aria-hidden className={cn('h-1 rounded', i <= actual ? 'bg-noche' : 'bg-linea')} />
-          <span className={cn('text-[13px]', i <= actual ? 'text-noche' : 'text-tinta-suave', i === actual ? 'font-bold' : 'font-medium')}>{texto}</span>
+          <span aria-hidden className={cn('h-1 rounded', i <= actual ? 'bg-foreground' : 'bg-linea')} />
+          <span className={cn('text-[13px]', i <= actual ? 'text-foreground' : 'text-tinta-suave', i === actual ? 'font-bold' : 'font-medium')}>{texto}</span>
         </li>
       ))}
     </ol>

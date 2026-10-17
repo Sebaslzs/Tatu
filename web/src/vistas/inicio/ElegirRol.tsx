@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useRol } from '@/contexto/Rol'
 import { Icono, Marca, PantallaCelular } from '@/componentes/piezas'
+import { BotonTema } from '@/componentes/BotonTema'
 
 interface OpcionRol {
   a: string
@@ -60,6 +61,9 @@ export function ElegirRol() {
 
   return (
     <PantallaCelular className="justify-center gap-8 py-10">
+      <div className="-mb-4 flex justify-end">
+        <BotonTema />
+      </div>
       <Marca tamano="inicio" />
 
       <nav aria-labelledby="como-entrar" className="flex flex-col gap-3">
@@ -70,23 +74,23 @@ export function ElegirRol() {
           <Link
             key={o.a}
             to={o.a}
-            className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-noche no-underline transition-colors hover:border-noche hover:text-noche"
+            className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-foreground no-underline transition-colors hover:border-foreground hover:text-foreground"
           >
             <span className={`flex size-11 flex-none items-center justify-center rounded-xl ${o.fondo}`}>{o.icono}</span>
             <span className="flex flex-1 flex-col gap-0.5">
               <span className="text-lg font-bold">{o.titulo}</span>
               <span className="text-[15px] text-tinta-suave">{o.detalle}</span>
             </span>
-            <Icono className="size-5" stroke="#13203A">
+            <Icono className="size-5" stroke="var(--foreground)">
               <path d="M9 6l6 6-6 6" />
             </Icono>
           </Link>
         ))}
         <Link
           to="/entrar/punto"
-          className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-noche"
+          className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-foreground"
         >
-          <Icono className="size-[18px]" stroke="#13203A">
+          <Icono className="size-[18px]" stroke="var(--foreground)">
             <rect x="3" y="4" width="18" height="12" rx="2" />
             <path d="M8 20h8M12 16v4" />
           </Icono>

@@ -5,6 +5,9 @@
 @import "@fontsource-variable/archivo/wdth.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Modo oscuro: `data-tema` en <html> lo pone el script de index.html antes de pintar (lo guardado o,
+   si no hay, el sistema). `oscuro:` cambia lo que no es un color (el logo, por ejemplo). */
+@custom-variant oscuro (&:where([data-tema="oscuro"], [data-tema="oscuro"] *));
 
 /* Paleta de Tatú */
 @theme {
@@ -121,8 +124,59 @@
     --sidebar-accent-foreground: #F5F0E6;
     --sidebar-border: #1E2C49;
     --sidebar-ring: #2E5FE0;
+    --bloque-borde: none;
 }
 
+/* Modo oscuro, paleta «Noche» (la del logo oscuro): fondo hondo, texto arena clara y acentos ámbar.
+   Solo se reasignan los tokens: los componentes no cambian de clase. `noche` pasa a ser el tono de
+   los bloques sobre el fondo oscuro (con borde ámbar fino, ver `--bloque-borde`); el texto principal
+   usa `foreground`. Contrastes (texto / fondo): principal 14,9 · gris arena #BDB5A3 8,0 sobre
+   #1E2C49 · enlace #8DB0FF 8,6 · estados 6,3 a 8,9. Los rellenos (azul, verde, rojo) no cambian:
+   blanco encima da ≥ 5:1. */
+[data-tema="oscuro"] {
+    color-scheme: dark;
+    --background: #0B1324;
+    --foreground: #EFE6D2;
+    --card: #13203A;
+    --card-foreground: #EFE6D2;
+    --popover: #13203A;
+    --popover-foreground: #EFE6D2;
+    --secondary: #1E2C49;
+    --secondary-foreground: #EFE6D2;
+    --muted: #1E2C49;
+    --muted-foreground: #BDB5A3;
+    --accent: #F6A623;
+    --accent-foreground: #13203A;
+    --destructive: #FF8A7A;
+    --border: #2C3B5C;
+    --input: #6B7A99;
+    --ring: #5B85FF;
+    --sidebar-ring: #5B85FF;
+
+    --color-noche: #1E2C49;
+    --color-papel: #13203A;
+    --color-linea: #2C3B5C;
+    --color-tinta-suave: #BDB5A3;
+    --color-borde-campo: #6B7A99;
+    --color-nota: #1E2C49;
+    --color-tenue: #BDB5A3;
+    --color-control: #6B7A99;
+    --color-enlace: #8DB0FF;
+    --color-noche-tenue: #BDB5A3;
+    --color-noche-suave: #2C3B5C;
+    --color-bloque: #1E2C49;
+    --color-bloque-texto: #EFE6D2;
+    --color-pagado: #5CC98A;
+    --color-pagado-fondo: #123828;
+    --color-pagando: #F6C97A;
+    --color-pagando-fondo: #3A2A10;
+    --color-rechazo: #FF8A7A;
+    --color-rechazo-fondo: #3D1A1A;
+    --color-error: #FF8A7A;
+    --color-error-fondo: #3D1A1A;
+    --color-azul-suave: #1E2C49;
+    --bloque-borde: inset 0 0 0 1px rgb(246 166 35 / 0.4);
+}
 @layer base {
   * {
     @apply border-border;
@@ -174,6 +228,7 @@
 @utility bloque {
   background-color: var(--color-bloque);
   color: var(--color-bloque-texto);
+  box-shadow: var(--bloque-borde);
 }
 
 @utility mono {

@@ -12,6 +12,7 @@ import { cifrasCaja, useConsultaCedula, useHoy, usePunto } from './datos'
 import { FormCedulaEscritorio, PagosEscritorio } from './NuevoCobro'
 import { AvisoArena, BotonEnlace, CuadroVolver, PantallaPuntoEscritorio, TarjetaCifra, VolverEscritorio } from './piezas'
 import { VentaConBono } from './VentaConBono'
+import { BotonTema } from '@/componentes/BotonTema'
 
 /** P0: el inicio del punto en el celular. */
 function InicioCelular() {
@@ -23,6 +24,7 @@ function InicioCelular() {
       <div className="flex items-center gap-2.5">
         <CuadroVolver a="/" etiqueta="Volver a elegir rol" />
         <Marca />
+        <BotonTema className="ml-auto" />
       </div>
       <div className="-mt-1.5 text-[15px] text-tinta-suave">{punto.nombre} · Punto de retiro</div>
       <h1 className="sr-only">Inicio del punto</h1>

@@ -77,7 +77,7 @@ export default function CerrarPrograma() {
             aria-labelledby="titulo-cierre"
             aria-describedby="texto-cierre"
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-[560px] flex-col gap-[18px] rounded-[14px] bg-papel p-6 text-noche shadow-[0_24px_60px_rgba(10,16,30,0.35)] sm:p-7"
+            className="flex w-full max-w-[560px] flex-col gap-[18px] rounded-[14px] bg-papel p-6 text-foreground shadow-[0_24px_60px_rgba(10,16,30,0.35)] sm:p-7"
           >
             <div className="flex flex-col gap-2">
               <h2 id="titulo-cierre" className="titular m-0 text-[28px]">
