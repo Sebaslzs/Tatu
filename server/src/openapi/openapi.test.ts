@@ -285,7 +285,7 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     })
 
     it('la liquidación: personas, inscribir, PIN y validar', async () => {
-      for (const p of (await e.pedir('GET', '/liquidacion/personas?cedulas=1000000001,1000000002')).cuerpo) Persona.parse(p)
+      for (const p of (await e.pedir('GET', '/liquidacion/personas?documentos=1000000001,1000000002')).cuerpo) Persona.parse(p)
       Persona.parse((await e.pedir('POST', '/liquidacion/personas', { documento: '1000000020', nombre: 'Nueva' })).cuerpo)
       PinRegistrado.parse((await e.pedir('POST', '/liquidacion/personas/1000000001/pin', { pin: '9999' })).cuerpo)
       expect(RespuestaPin.parse((await e.pedir('POST', '/liquidacion/pin/validar', { documento: '1000000001', pin: '9999' })).cuerpo).valido).toBe(true)

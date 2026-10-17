@@ -5,7 +5,15 @@
 // lo recibe de vuelta.
 import { z } from 'zod'
 
-export const documento = z.string().regex(/^\d{5,12}$/, 'cédula inválida').meta({ description: 'Número de cédula (5 a 12 dígitos).', examples: ['1000000001'] })
+export const documento = z
+  .string()
+  .regex(/^[A-Za-z0-9]{3,20}$/, 'documento inválido')
+  .meta({ description: 'Documento de la persona, sin puntos ni espacios (3 a 20 letras o dígitos).', examples: ['1000000001'] })
+/** La cédula con que se registra una persona (POST /beneficiarios): solo dígitos, de 5 a 12. */
+export const cedula = z
+  .string()
+  .regex(/^\d{5,12}$/, 'la cédula va sin puntos ni espacios: de 5 a 12 dígitos')
+  .meta({ description: 'Número de cédula (5 a 12 dígitos).', examples: ['1000000001'] })
 const unidades = z.string().regex(/^\d+$/, 'monto en unidades mínimas')
 export const pin = z.string().regex(/^\d{4}$/, 'el PIN tiene 4 dígitos').meta({ description: 'PIN de 4 dígitos.', examples: ['1234'] })
 

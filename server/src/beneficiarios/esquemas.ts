@@ -1,11 +1,11 @@
 // Validación en la frontera de lo que llega a /beneficiarios. Las descripciones alimentan OpenAPI.
 import { z } from 'zod'
 import { billeteraTexto } from '../comun/billeteras.ts'
-import { documento, pin } from '../liquidacion/contrato.ts'
+import { cedula, pin } from '../liquidacion/contrato.ts'
 
 /** Registro del equipo: la cédula y la billetera; el nombre y el PIN son opcionales. */
 export const EntradaPersona = z.strictObject({
-  documento,
+  documento: cedula,
   billetera: billeteraTexto.meta({ description: 'Billetera Open Payments de la persona; `$dominio/ruta` o `https://…`.' }),
   nombre: z
     .string()

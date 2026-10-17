@@ -25,7 +25,7 @@ describe('nombres y PIN', () => {
   })
 
   it('no devuelve el PIN ni su hash', async () => {
-    const { cuerpo } = await e.pedir('GET', '/liquidacion/personas?cedulas=1000000001')
+    const { cuerpo } = await e.pedir('GET', '/liquidacion/personas?documentos=1000000001')
     expect(JSON.stringify(cuerpo)).not.toMatch(/1111|hash|pin"/)
   })
 
@@ -87,6 +87,6 @@ describe('inscribir y cambiar el PIN', () => {
   })
 
   it('consultar más de 500 cédulas o una inválida es 400', async () => {
-    expect((await e.pedir('GET', '/liquidacion/personas?cedulas=abc')).status).toBe(400)
+    expect((await e.pedir('GET', '/liquidacion/personas?documentos=ab%24')).status).toBe(400)
   })
 })

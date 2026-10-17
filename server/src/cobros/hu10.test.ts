@@ -57,7 +57,7 @@ describe('CA-10.01 · el punto consulta', () => {
 
   it('un punto que no existe es 404; una cédula inválida, 400', async () => {
     expect((await e.pedir('GET', `/puntos/00000000-0000-4000-8000-000000000000/pagos?documento=${ANA.documento}`)).status).toBe(404)
-    expect((await e.pedir('GET', `/puntos/${s.puntoId}/pagos?documento=abc`)).status).toBe(400)
+    expect((await e.pedir('GET', `/puntos/${s.puntoId}/pagos?documento=ab%24`)).status).toBe(400)
   })
 
   it('quien ya cobró no aparece como pendiente', async () => {

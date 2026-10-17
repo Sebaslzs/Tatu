@@ -53,7 +53,7 @@ export function rutasLiquidacion(): Json {
         description:
           'Nombre y si tiene PIN de varias cédulas a la vez; las que no están, no vienen. **Nunca devuelve el PIN ni su hash.** Tatú no guarda nombres: los pide aquí.',
         parameters: [
-          { name: 'cedulas', in: 'query', required: true, description: 'Cédulas separadas por coma (hasta 500).', schema: { type: 'string' }, example: '1000000001,1000000002' },
+          { name: 'documentos', in: 'query', required: true, description: 'Cédulas separadas por coma (hasta 500).', schema: { type: 'string' }, example: '1000000001,1000000002' },
         ],
         responses: {
           200: ok('Las personas encontradas, por cédula.', { type: 'array', items: ref('Persona') }, [{ documento: '1000000001', nombre: 'Ana Pérez', tienePin: true }]),

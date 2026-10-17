@@ -44,7 +44,7 @@ export class ClienteLiquidacion implements PuertoLiquidacion {
   async personas(cedulas: readonly string[]): Promise<Map<string, Persona>> {
     const unicas = [...new Set(cedulas)]
     if (!unicas.length) return new Map()
-    const { cuerpo } = await this.pedir(`/personas?cedulas=${encodeURIComponent(unicas.join(','))}`)
+    const { cuerpo } = await this.pedir(`/personas?documentos=${encodeURIComponent(unicas.join(','))}`)
     return new Map(leer(Personas, cuerpo).map((p) => [p.documento, p]))
   }
 

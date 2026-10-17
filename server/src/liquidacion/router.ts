@@ -18,21 +18,21 @@ const cedulaNoEncontrada = (res: Response) => error(res, 404, 'CedulaNoEncontrad
 export function routerLiquidacion(simulador: LiquidacionSimulada): Router {
   const r = Router()
 
-  r.get('/programas/:programaId/resumen', (req, res) => {
-    res.json(simulador.resumen(req.params.programaId))
+  r.get('/programas/:programaId/resumen', async (req, res) => {
+    res.json(await simulador.resumen(req.params.programaId))
   })
 
-  r.get('/programas/:programaId/pagos/:documento', (req, res) => {
+  r.get('/programas/:programaId/pagos/:documento', async (req, res) => {
     const valida = documento.safeParse(req.params.documento)
-    const pago = valida.success ? simulador.pago(req.params.programaId, valida.data) : undefined
+    const pago = valida.success ? await simulador.pago(req.params.programaId, valida.data) : undefined
     // CA-02.04: un formato inválido responde igual que una cédula inexistente
     if (pago) res.json(pago)
     else cedulaNoEncontrada(res)
   })
 
-  // Nombre y si tiene PIN de varias cédulas: ?cedulas=1000000001,1000000002
+  // Nombre y si tiene PIN de varias cédulas: ?documentos=1000000001,1000000002
   r.get('/personas', (req, res) => {
-    const lista = String(req.query.cedulas ?? '')
+    const lista = String(req.query.documentos ?? '')
       .split(',')
       .map((c) => c.trim())
       .filter(Boolean)

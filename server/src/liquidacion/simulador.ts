@@ -61,18 +61,26 @@ export class LiquidacionSimulada {
     this.pagadas = new Set()
   }
 
+  /**
+   * Atajo de la demo: el monto de cada persona es el «monto por persona» del programa, si lo tiene.
+   * En producción la liquidación es otro sistema y trae su propio monto. Lo conecta el contenedor.
+   */
+  montoPorPrograma: (programaId: string) => Promise<number | null> = async () => null
+
   /** CA-02.01: cuántas cédulas y el total que será el tope al autorizar (RN-08), sin novedades. */
-  resumen(_programaId: string): Resumen {
+  async resumen(programaId: string): Promise<Resumen> {
+    const base = await this.montoPorPrograma(programaId)
     const incluidas = [...this.personas.values()].filter((p) => !p.novedad)
-    return { cedulas: incluidas.length, total: String(incluidas.reduce((suma, p) => suma + p.monto, 0)) }
+    return { cedulas: incluidas.length, total: String(incluidas.reduce((suma, p) => suma + (base ?? p.monto), 0)) }
   }
 
   /** CA-02.02 / CA-02.03; undefined si la cédula no está (CA-02.04). */
-  pago(programaId: string, documento: string): Pago | undefined {
+  async pago(programaId: string, documento: string): Promise<Pago | undefined> {
     const persona = this.personas.get(documento)
     if (!persona) return undefined
     if (this.pagadas.has(this.clave(programaId, documento))) return { documento, disponible: false, monto: null }
-    return { documento, disponible: true, monto: String(persona.monto), novedad: persona.novedad }
+    const base = persona.novedad ? null : await this.montoPorPrograma(programaId)
+    return { documento, disponible: true, monto: String(base ?? persona.monto), novedad: persona.novedad }
   }
 
   marcarPagada(programaId: string, documento: string): void {
