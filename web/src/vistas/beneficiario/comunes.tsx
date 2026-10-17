@@ -34,8 +34,8 @@ export function PantallaBeneficiario({
 }) {
   const barra = (
     <BarraSuperior
-      inicio="/beneficiario"
-      etiquetaInicio="Tatú, mis subsidios"
+      inicio="/"
+      etiquetaInicio="Tatú, volver a elegir rol"
       contexto={nombre}
       secciones={SECCIONES}
       etiquetaSecciones="Secciones de la beneficiaria"

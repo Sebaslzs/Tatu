@@ -61,44 +61,47 @@ export function ElegirRol() {
 
   // Celular: la lista de siempre. Tablet y computador: las tres opciones lado a lado, como tarjetas.
   return (
-    <PantallaAdaptable className="justify-center gap-8 py-10 md:max-w-[760px] pc:max-w-[1040px] pc:gap-12 pc:py-16">
-      <div className="-mb-4 flex justify-end">
+    <PantallaAdaptable className="md:max-w-[760px] pc:max-w-[1040px]">
+      {/* Arriba, como en las demás pantallas; la marca y los roles quedan centrados en el resto */}
+      <div className="flex justify-end">
         <BotonTema />
       </div>
-      <Marca tamano="inicio" />
+      <div className="flex flex-1 flex-col justify-center gap-8 pb-10 pc:gap-12 pc:pb-16">
+        <Marca tamano="inicio" />
 
-      <nav aria-labelledby="como-entrar" className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4 pc:gap-6">
-        <h1 id="como-entrar" className="m-0 text-base font-semibold text-tinta-suave md:col-span-3 md:text-center md:text-lg">
-          ¿Cómo quieres entrar?
-        </h1>
-        {OPCIONES.map((o) => (
+        <nav aria-labelledby="como-entrar" className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4 pc:gap-6">
+          <h1 id="como-entrar" className="m-0 text-base font-semibold text-tinta-suave md:col-span-3 md:text-center md:text-lg">
+            ¿Cómo quieres entrar?
+          </h1>
+          {OPCIONES.map((o) => (
+            <Link
+              key={o.a}
+              to={o.a}
+              className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-foreground no-underline transition-colors hover:border-foreground hover:text-foreground md:min-h-[188px] md:flex-col md:items-start md:gap-4 md:p-5 pc:min-h-[210px] pc:p-6"
+            >
+              <span className={`flex size-11 flex-none items-center justify-center rounded-xl md:size-12 ${o.fondo}`}>{o.icono}</span>
+              <span className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-bold pc:text-xl">{o.titulo}</span>
+                <span className="text-[15px] text-tinta-suave">{o.detalle}</span>
+              </span>
+              <Icono className="size-5 md:self-end" stroke="var(--foreground)">
+                <path d="M9 6l6 6-6 6" />
+              </Icono>
+            </Link>
+          ))}
+          {/* La misma entrada del punto se adapta al computador: en el computador sobra este acceso */}
           <Link
-            key={o.a}
-            to={o.a}
-            className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-foreground no-underline transition-colors hover:border-foreground hover:text-foreground md:min-h-[188px] md:flex-col md:items-start md:gap-4 md:p-5 pc:min-h-[210px] pc:p-6"
+            to="/entrar/punto"
+            className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-foreground md:col-span-3 pc:hidden"
           >
-            <span className={`flex size-11 flex-none items-center justify-center rounded-xl md:size-12 ${o.fondo}`}>{o.icono}</span>
-            <span className="flex flex-1 flex-col gap-0.5">
-              <span className="text-lg font-bold pc:text-xl">{o.titulo}</span>
-              <span className="text-[15px] text-tinta-suave">{o.detalle}</span>
-            </span>
-            <Icono className="size-5 md:self-end" stroke="var(--foreground)">
-              <path d="M9 6l6 6-6 6" />
+            <Icono className="size-[18px]" stroke="var(--foreground)">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
             </Icono>
+            Punto de retiro en computador
           </Link>
-        ))}
-        {/* La misma entrada del punto se adapta al computador: en el computador sobra este acceso */}
-        <Link
-          to="/entrar/punto"
-          className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-foreground md:col-span-3 pc:hidden"
-        >
-          <Icono className="size-[18px]" stroke="var(--foreground)">
-            <rect x="3" y="4" width="18" height="12" rx="2" />
-            <path d="M8 20h8M12 16v4" />
-          </Icono>
-          Punto de retiro en computador
-        </Link>
-      </nav>
+        </nav>
+      </div>
     </PantallaAdaptable>
   )
 }

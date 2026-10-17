@@ -1,6 +1,6 @@
-// Mientras se paga en el punto: pidiendo el cobro (antes del PIN) y pagando (después del PIN). La
-// barra de carga es el tatú: de pie se enrolla y rueda mientras se paga, y la pantalla del resultado
-// termina su animación (TatuResultado).
+// Mientras se paga en el punto: pidiendo el cobro (antes del PIN) y pagando (después del PIN). Al
+// pagar, la barra de carga es el tatú: de pie se enrolla y rueda, y la pantalla del resultado termina
+// su animación (TatuResultado).
 import { Check, Hand } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { llegaRodando, marcarPagando, TatuEnrolla } from '@/componentes/tatu/TatuEnrolla'
@@ -59,14 +59,13 @@ export function EsperaPagando({ cobroId, desde, children }: { cobroId: string; d
 }
 
 /**
- * Mientras se pide el cobro (unos segundos): el tatú de los pagos ya rueda. Después sale el PIN o, si
- * se rechazó al pedirlo, el resultado llega rodando y termina en el logo rojo.
+ * Mientras se pide el cobro de un pago elegido (unos segundos), en la misma pantalla y sin el tatú:
+ * después sale el PIN o, si se rechazó al pedirlo, la pantalla del resultado.
  */
 export function PidiendoPago() {
   return (
-    <div role="status" className="flex flex-col gap-4 rounded-[22px] bg-noche px-5 py-[22px] text-arena">
+    <div role="status" className="flex flex-col gap-2 rounded-[22px] bg-noche px-5 py-[22px] text-arena">
       <p className="cifra m-0 text-[30px]">Pidiendo el pago…</p>
-      <TatuEnrolla estado="pagando" sobreColor className="w-44 self-center" />
       <span className="text-[15px] text-noche-texto-tenue">Suele tardar unos segundos.</span>
     </div>
   )

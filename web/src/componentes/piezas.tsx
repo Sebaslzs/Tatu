@@ -104,7 +104,10 @@ function LogoTatu({ tono, className }: { tono: 'claro' | 'oscuro'; className?: s
   )
 }
 
-/** Logo + "Tatú". Claro sobre arena, oscuro sobre el panel azul noche. */
+/**
+ * Logo + "Tatú". Claro sobre arena, oscuro sobre el panel azul noche. Fuera del inicio es un enlace
+ * a elegir rol.
+ */
 export function Marca({ tono = 'claro', tamano = 'cabecera' }: { tono?: 'claro' | 'oscuro'; tamano?: keyof typeof TAMANOS }) {
   const t = TAMANOS[tamano]
   const logo = <LogoTatu tono={tono} className={cn('h-auto', t.logo)} />
@@ -117,11 +120,16 @@ export function Marca({ tono = 'claro', tamano = 'cabecera' }: { tono?: 'claro' 
       </div>
     )
   }
+  // El rol se borra al llegar a "/" (ElegirRol)
   return (
-    <div className={cn('flex items-center', tamano === 'panel' ? 'gap-3' : 'gap-2.5')}>
+    <Link
+      to="/"
+      aria-label="Tatú, volver a elegir rol"
+      className={cn('flex items-center text-inherit no-underline hover:text-inherit', tamano === 'panel' ? 'gap-3' : 'gap-2.5')}
+    >
       {logo}
       {nombre}
-    </div>
+    </Link>
   )
 }
 
