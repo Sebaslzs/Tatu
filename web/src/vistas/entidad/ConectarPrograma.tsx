@@ -205,7 +205,7 @@ export default function ConectarPrograma() {
                     id="entidad"
                     value={entidadId}
                     onChange={(e) => cambiar('entidadId', e.target.value)}
-                    className="min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 font-sans text-base text-noche"
+                    className="min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 font-sans text-base text-foreground"
                   >
                     <option value="">{entidades === null ? 'Cargando…' : entidades.length ? 'Elige la entidad' : 'No hay entidades registradas'}</option>
                     {entidades?.map((e) => (
@@ -219,7 +219,7 @@ export default function ConectarPrograma() {
               <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
                 <legend className="mb-2 p-0 text-sm font-bold">Tipo</legend>
                 <div className="flex flex-wrap gap-3">
-                  <label className={cn('flex flex-[1_1_240px] cursor-pointer items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]', form.tipo === 'subsidio' ? 'border-2 border-noche' : 'border border-control')}>
+                  <label className={cn('flex flex-[1_1_240px] cursor-pointer items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]', form.tipo === 'subsidio' ? 'border-2 border-foreground' : 'border border-control')}>
                     <input type="radio" name="tipo" value="subsidio" checked={form.tipo === 'subsidio'} onChange={() => cambiar('tipo', 'subsidio')} className="mt-0.5 size-5 accent-azul" />
                     <span className="flex flex-col gap-0.5">
                       <strong>Subsidio</strong>
@@ -229,7 +229,7 @@ export default function ConectarPrograma() {
                   <label
                     className={cn(
                       'flex flex-[1_1_240px] items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]',
-                      config.extras.bono ? (form.tipo === 'bono' ? 'cursor-pointer border-2 border-noche' : 'cursor-pointer border border-control') : 'border border-dashed border-control text-tenue',
+                      config.extras.bono ? (form.tipo === 'bono' ? 'cursor-pointer border-2 border-foreground' : 'cursor-pointer border border-control') : 'border border-dashed border-control text-tenue',
                     )}
                   >
                     <input type="radio" name="tipo" value="bono" checked={form.tipo === 'bono'} disabled={!config.extras.bono} onChange={() => cambiar('tipo', 'bono')} className="mt-0.5 size-5 accent-azul" />
@@ -424,8 +424,8 @@ function SeccionPuntos({
   return (
     <Tarjeta className="gap-3.5">
       <h2 className="m-0 text-xl font-bold">4. Puntos de retiro</h2>
-      <div className="rounded-lg border border-linea">
-        <Tabla className="min-w-[620px] text-sm">
+      <div className="rounded-lg border border-linea max-md:px-3">
+        <Tabla apilada className="text-sm md:min-w-[620px]">
           <thead className="bg-nota">
             <Fila>
               <Encabezado className="px-3">Nombre</Encabezado>
@@ -444,12 +444,16 @@ function SeccionPuntos({
             )}
             {puntos.map((p) => (
               <Fila key={p.id}>
-                <Celda className="px-3 font-bold">{p.nombre}</Celda>
-                <Celda className="px-3 text-tinta-suave">{p.direccion || '—'}</Celda>
-                <Celda className="px-3">
+                <Celda titulo className="px-3 font-bold">
+                  {p.nombre}
+                </Celda>
+                <Celda etiqueta="Dirección" className="px-3 text-tinta-suave">
+                  {p.direccion || '—'}
+                </Celda>
+                <Celda etiqueta="Wallet" className="px-3">
                   <BilleteraCorta url={p.billetera} completa className="text-[13px]" />
                 </Celda>
-                <Celda className="px-3">
+                <Celda etiqueta="Moneda" className="px-3">
                   {!p.moneda || !moneda ? (p.moneda?.assetCode ?? '—') : p.moneda.assetCode === moneda.codigo ? 'Igual al programa' : (
                     <span className="inline-flex items-center gap-1 font-bold text-rechazo">
                       <TriangleAlert aria-hidden className="size-4" /> {p.moneda.assetCode}: distinta

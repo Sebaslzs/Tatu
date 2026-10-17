@@ -1,4 +1,4 @@
-// /puntos · HU-03 (registro) y HU-10 (lo que el punto consulta).
+// /puntos · HU-03 (registro) y HU-10 (lo que el punto consulta, con su caja).
 import { Router } from 'express'
 import { z } from 'zod'
 import { conAliasCedula } from '../comun/alias.ts'
@@ -30,6 +30,11 @@ export function rutasPuntos(servicio: ServicioPuntos, consultas: ConsultasPunto)
 
   r.get('/:id/cobros', async (req, res) => {
     res.json(await consultas.cobrosDe(idDe(req), Periodo.parse(req.query.desde)))
+  })
+
+  // La caja del punto: cuánto entregó, cuánto le reembolsaron y en cuánto tiempo
+  r.get('/:id/resumen', async (req, res) => {
+    res.json(await consultas.caja(idDe(req), Periodo.parse(req.query.desde)))
   })
 
   return r

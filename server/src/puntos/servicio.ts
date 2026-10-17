@@ -25,7 +25,7 @@ export interface VistaPuntoRegistrado extends VistaPunto {
   moneda: MonedaApi
 }
 
-const vistaPunto = (p: FilaPunto): VistaPunto => ({
+export const vistaPunto = (p: FilaPunto): VistaPunto => ({
   id: p.id,
   nombre: p.nombre,
   direccion: p.direccion,

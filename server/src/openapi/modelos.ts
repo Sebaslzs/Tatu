@@ -204,6 +204,25 @@ export const Cobro = z.strictObject({
   eventos: z.array(EventoCobro).optional(),
 })
 
+export const TotalCaja = z.strictObject({
+  entregado: Monto.meta({ description: 'Efectivo entregado: los cobros `Pagado`.' }),
+  reembolsado: Monto.meta({ description: 'Igual a lo entregado: el punto solo entrega al ver «Pagado», y `Pagado` es el reembolso ya recibido en su billetera.' }),
+  pendiente: Monto.meta({ description: 'Cobros `Pagando`: el reembolso va en camino y ese efectivo todavía no se entrega.' }),
+  giradoPorAdelantado: Monto.meta({ description: 'Siempre 0: el punto nunca pone plata antes de que le paguen.' }),
+})
+
+export const CajaPunto = z.strictObject({
+  punto: Punto,
+  periodo: z.enum(['hoy', '7d', 'todo']),
+  totales: z.array(TotalCaja).meta({ description: 'Una fila por moneda (en la demo, solo COP); vacío si el periodo no tiene cobros pagados ni en curso.' }),
+  cobros: z.strictObject({
+    pagados: z.number().int(),
+    enCurso: z.number().int().meta({ description: '`Solicitado`, `PorConfirmar` o `Pagando`.' }),
+    rechazados: z.number().int().meta({ description: '`Rechazado` o `Fallido`.' }),
+  }),
+  reembolsoSegundos: z.number().nullable().meta({ description: 'Promedio de segundos del PIN a `Pagado`; `null` sin retiros pagados en el periodo.', examples: [4.2] }),
+})
+
 export const PuntoDeRetiro = z.strictObject({
   id: uuid('Punto de retiro.'),
   nombre: z.string(),
@@ -299,6 +318,8 @@ export const MODELOS = {
   MotivoCobro,
   EventoCobro,
   Cobro,
+  TotalCaja,
+  CajaPunto,
   PuntoDeRetiro,
   ResumenBeneficiario,
   PorCanal,

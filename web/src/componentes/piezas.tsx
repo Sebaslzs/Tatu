@@ -2,17 +2,22 @@
 import type { ReactNode, SVGProps } from 'react'
 import { Link } from 'react-router'
 import { cn } from '@/lib/utils'
+import { BotonTema } from '@/componentes/BotonTema'
 
 const LOGO_CLARO = '/brand/tatu-logo-claro.svg'
 const LOGO_OSCURO = '/brand/tatu-logo-oscuro.svg'
 
-/** Columna de celular: 480 px centrada, con bordes laterales desde 560 px. */
-export function PantallaCelular({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Columna de celular: 480 px centrada, con bordes laterales desde 560 px. `amplia`: en la tablet
+ * (768 px o más) se abre a 720 px, para pantallas de contenido (inicio, caja) que no son un formulario.
+ */
+export function PantallaCelular({ children, className, amplia = false }: { children: ReactNode; className?: string; amplia?: boolean }) {
   return (
     <div
       className={cn(
-        'mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-arena pt-[18px] pb-6 text-noche',
+        'mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-background pt-[18px] pb-6 text-foreground',
         'px-[max(20px,env(safe-area-inset-left))] min-[560px]:border-x min-[560px]:border-linea',
+        amplia && 'md:max-w-[720px] md:px-8',
         className,
       )}
     >
@@ -21,12 +26,55 @@ export function PantallaCelular({ children, className }: { children: ReactNode; 
   )
 }
 
+/**
+ * Pantalla que se siente app en el celular y plataforma en el computador, con el mismo árbol de
+ * componentes en todos los tamaños (solo cambian las clases): girar el celular o redimensionar la
+ * ventana no desmonta nada, así un formulario no pierde lo digitado.
+ *   · Celular: la columna de 480 px de PantallaCelular.
+ *   · Tablet (768 px): `amplio` se abre a 720 px; `formulario` sigue en 480.
+ *   · Computador (960 px, `pc:`): aparece `barra` arriba y el contenido llega a 1200 px (`amplio`) o
+ *     queda en una columna centrada de 600 px (`formulario`: PIN, enlazar cuenta, confirmar).
+ * Lo que solo va en el celular (su cabecera con la marca) se marca `pc:hidden` en cada pantalla.
+ */
+export function PantallaAdaptable({
+  barra,
+  ancho = 'amplio',
+  className,
+  children,
+}: {
+  barra?: ReactNode
+  ancho?: 'amplio' | 'formulario'
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      {barra && <div className="hidden pc:block">{barra}</div>}
+      <div
+        className={cn(
+          'mx-auto flex w-full max-w-[480px] flex-1 flex-col pt-[18px] pb-6',
+          'px-[max(20px,env(safe-area-inset-left))] min-[560px]:border-x min-[560px]:border-linea',
+          ancho === 'amplio' && 'md:max-w-[720px] md:px-8',
+          'pc:border-x-0 pc:px-8 pc:pt-8 pc:pb-14',
+          ancho === 'amplio' ? 'pc:max-w-[1200px]' : 'pc:max-w-[600px]',
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 /** Pantalla de computador: panel azul noche con la marca + columna del formulario. */
 export function PantallaPartida({ titulo, texto, children }: { titulo: string; texto: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-wrap bg-arena text-noche">
+    <div className="flex min-h-dvh flex-wrap bg-background text-foreground">
       <aside className="flex flex-[1_1_420px] flex-col justify-between gap-10 bg-noche px-12 py-14 text-arena max-sm:px-6 max-sm:py-10">
-        <Marca tono="oscuro" tamano="panel" />
+        <div className="flex items-start justify-between gap-3">
+          <Marca tono="oscuro" tamano="panel" />
+          <BotonTema sobreBloque />
+        </div>
         <div className="flex max-w-[460px] flex-col gap-4">
           <h2 className="ancho m-0 text-[38px] leading-[1.1] font-extrabold max-sm:text-[30px]">{titulo}</h2>
           <p className="m-0 text-lg leading-normal text-panel-texto">{texto}</p>
@@ -45,10 +93,24 @@ const TAMANOS = {
   panel: { logo: 'w-[52px]', texto: 'text-[30px]' },
 } as const
 
-/** Logo + "Tatú". Claro sobre arena, oscuro sobre el panel azul noche. */
+/** El logo seg?n el fondo: en el modo oscuro, el claro se cambia por el oscuro. */
+function LogoTatu({ tono, className }: { tono: 'claro' | 'oscuro'; className?: string }) {
+  if (tono === 'oscuro') return <img src={LOGO_OSCURO} alt="" className={className} />
+  return (
+    <>
+      <img src={LOGO_CLARO} alt="" className={cn(className, 'oscuro:hidden')} />
+      <img src={LOGO_OSCURO} alt="" className={cn(className, 'hidden oscuro:block')} />
+    </>
+  )
+}
+
+/**
+ * Logo + "Tatú". Claro sobre arena, oscuro sobre el panel azul noche. Fuera del inicio es un enlace
+ * a elegir rol.
+ */
 export function Marca({ tono = 'claro', tamano = 'cabecera' }: { tono?: 'claro' | 'oscuro'; tamano?: keyof typeof TAMANOS }) {
   const t = TAMANOS[tamano]
-  const logo = <img src={tono === 'claro' ? LOGO_CLARO : LOGO_OSCURO} alt="" className={cn('h-auto', t.logo)} />
+  const logo = <LogoTatu tono={tono} className={cn('h-auto', t.logo)} />
   const nombre = <span className={cn('ancho font-extrabold', t.texto)}>Tatú</span>
   if (tamano === 'inicio') {
     return (
@@ -58,19 +120,25 @@ export function Marca({ tono = 'claro', tamano = 'cabecera' }: { tono?: 'claro' 
       </div>
     )
   }
+  // El rol se borra al llegar a "/" (ElegirRol)
   return (
-    <div className={cn('flex items-center', tamano === 'panel' ? 'gap-3' : 'gap-2.5')}>
+    <Link
+      to="/"
+      aria-label="Tatú, volver a elegir rol"
+      className={cn('flex items-center text-inherit no-underline hover:text-inherit', tamano === 'panel' ? 'gap-3' : 'gap-2.5')}
+    >
       {logo}
       {nombre}
-    </div>
+    </Link>
   )
 }
 
 /** Cabecera de las pantallas de celular: la marca a la izquierda. */
 export function CabeceraCelular() {
   return (
-    <div className="flex items-center">
+    <div className="flex items-center justify-between">
       <Marca />
+      <BotonTema />
     </div>
   )
 }
@@ -80,7 +148,7 @@ export function VolverARol({ className }: { className?: string }) {
     <Link
       to="/"
       className={cn(
-        'inline-flex min-h-11 items-center gap-1 self-start text-base font-semibold text-noche no-underline',
+        'inline-flex min-h-11 items-center gap-1 self-start text-base font-semibold text-foreground no-underline',
         className,
       )}
     >
@@ -116,9 +184,9 @@ export function MensajeError({ id, children }: { id: string; children: ReactNode
     <div
       id={id}
       role="alert"
-      className="flex items-center gap-2.5 rounded-xl bg-[#F8E4DF] px-3 py-2.5 text-base font-bold text-[#A3261C]"
+      className="flex items-center gap-2.5 rounded-xl bg-error-fondo px-3 py-2.5 text-base font-bold text-error"
     >
-      <Icono className="size-5" stroke="#A3261C">
+      <Icono className="size-5" stroke="var(--color-error)">
         <path d="M12 3l10 18H2z" />
         <path d="M12 10v5" />
         <path d="M12 18h.01" />

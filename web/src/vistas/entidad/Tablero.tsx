@@ -90,7 +90,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
             <TriangleAlert aria-hidden className="size-5 shrink-0" />
             El permiso en tu banco venció
           </h2>
-          <p className="m-0 text-noche">Mientras tanto, los cobros fallan sin mover dinero. Hay que aprobar de nuevo el permiso en tu banco por lo que falta del tope.</p>
+          <p className="m-0 text-foreground">Mientras tanto, los cobros fallan sin mover dinero. Hay que aprobar de nuevo el permiso en tu banco por lo que falta del tope.</p>
         </section>
       )}
       {pausado && (
@@ -133,7 +133,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
           aria-valuetext={`${Math.round(pct)} %`}
           className="h-3.5 overflow-hidden rounded-full bg-nota"
         >
-          <div className="h-full rounded-full bg-noche transition-[width]" style={{ width: `${Math.min(100, pct)}%` }} />
+          <div className="h-full rounded-full bg-foreground transition-[width]" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
         <div className="flex justify-between text-sm text-tinta-suave">
           <span>Cobrado {t ? `${Math.round(pct)} %` : '—'}</span>
@@ -193,7 +193,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
                   onClick={() => setFiltro(valor)}
                   className={cn(
                     'min-h-11 cursor-pointer rounded-lg border-0 px-3 font-sans text-sm',
-                    filtro === valor ? 'bg-papel font-bold text-noche shadow-sm' : 'bg-transparent text-tinta-suave',
+                    filtro === valor ? 'bg-papel font-bold text-foreground shadow-sm' : 'bg-transparent text-tinta-suave',
                   )}
                 >
                   {texto}
@@ -210,7 +210,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
 
 export function TablaCobros({ cobros }: { cobros: CobroResumen[] }) {
   return (
-    <Tabla aria-labelledby="titulo-cobros" className="min-w-[860px]">
+    <Tabla aria-labelledby="titulo-cobros" apilada className="md:min-w-[860px]">
       <thead>
         <FilaEncabezado>
           {['Referencia', 'Persona', 'Canal', 'Dónde'].map((h) => (
@@ -237,18 +237,22 @@ export function TablaCobros({ cobros }: { cobros: CobroResumen[] }) {
           const sinReferencia = c.estado === 'Rechazado'
           return (
             <Fila key={c.id}>
-              <Celda className={sinReferencia ? 'text-tenue' : 'mono text-sm'}>{sinReferencia ? '—' : c.referencia}</Celda>
-              <Celda>{personaTexto(c)}</Celda>
-              <Celda>{c.canal === 'cuenta' ? 'Cuenta' : c.canal === 'compra' ? 'Compra' : 'Punto'}</Celda>
-              <Celda>{c.canal === 'cuenta' ? <span className="mono text-[13px]">{c.cuenta?.billeteraCorta ?? '—'}</span> : (c.punto?.nombre ?? '—')}</Celda>
-              <Celda className="text-right">{textoMonto(c.monto)}</Celda>
-              <Celda>
+              <Celda etiqueta="Referencia" className={sinReferencia ? 'text-tenue' : 'mono text-sm'}>
+                {sinReferencia ? '—' : c.referencia}
+              </Celda>
+              <Celda etiqueta="Persona">{personaTexto(c)}</Celda>
+              <Celda etiqueta="Canal">{c.canal === 'cuenta' ? 'Cuenta' : c.canal === 'compra' ? 'Compra' : 'Punto'}</Celda>
+              <Celda etiqueta="Dónde">{c.canal === 'cuenta' ? <span className="mono text-[13px]">{c.cuenta?.billeteraCorta ?? '—'}</span> : (c.punto?.nombre ?? '—')}</Celda>
+              <Celda etiqueta="Monto" className="text-right font-bold md:font-normal">
+                {textoMonto(c.monto)}
+              </Celda>
+              <Celda etiqueta="Estado">
                 <EstadoCobro estado={c.estado} motivo={c.motivo} />
               </Celda>
-              <Celda className="text-tinta-suave">
+              <Celda etiqueta="Hora" className="text-tinta-suave">
                 <time dateTime={c.creado}>{formatHora(c.creado, false)}</time>
               </Celda>
-              <Celda>
+              <Celda etiqueta="Detalle">
                 <Link to={`/entidad/cobros/${c.id}`} className="inline-flex min-h-11 min-w-11 items-center justify-center" aria-label={`Ver el cobro de ${personaTexto(c)} de las ${formatHora(c.creado, false)}`}>
                   Ver
                 </Link>

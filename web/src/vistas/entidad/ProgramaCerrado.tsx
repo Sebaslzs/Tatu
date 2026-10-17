@@ -80,7 +80,7 @@ export default function ProgramaCerrado({ datos }: { datos: DatosPrograma }) {
               {verTodos ? 'Ocultar los cobros' : 'Ver todos los cobros'}
             </Boton>
           </div>
-          <Tabla className="min-w-[520px]">
+          <Tabla apilada className="md:min-w-[520px]">
             <thead>
               <FilaEncabezado>
                 <Encabezado>Resultado</Encabezado>
@@ -98,9 +98,13 @@ export default function ProgramaCerrado({ datos }: { datos: DatosPrograma }) {
                 ] as const
               ).map(([a, b, c]) => (
                 <Fila key={a}>
-                  <Celda>{a}</Celda>
-                  <Celda className="text-right">{b}</Celda>
-                  <Celda className="text-right">{c}</Celda>
+                  <Celda titulo>{a}</Celda>
+                  <Celda etiqueta="Cobros" className="text-right">
+                    {b}
+                  </Celda>
+                  <Celda etiqueta="Monto" className="text-right">
+                    {c}
+                  </Celda>
                 </Fila>
               ))}
             </tbody>

@@ -91,7 +91,7 @@ export default function AprobarEnBanco() {
       </div>
 
       {mensajeResultado && !esperando && (
-        <div role="alert" className="flex items-start gap-3 rounded-xl border-2 border-noche bg-papel px-5 py-4">
+        <div role="alert" className="flex items-start gap-3 rounded-xl border-2 border-foreground bg-papel px-5 py-4">
           <TriangleAlert aria-hidden className="size-6 shrink-0" />
           <div className="flex flex-col gap-1">
             <strong className="text-[17px]">{mensajeResultado}</strong>

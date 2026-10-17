@@ -2,6 +2,8 @@
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
 import { useEffect, useId, useRef, type ComponentProps, type ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router'
+import { TatuAnimado } from '@/componentes/tatu/TatuAnimado'
+import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { claseBoton, type TamanoBoton, type VarianteBoton } from '@/lib/boton'
 import { billeteraCorta } from '@/lib/textos'
 import { cn } from '@/lib/utils'
@@ -86,7 +88,7 @@ export function ListaDatos({ filas, className }: { filas: Array<[ReactNode, Reac
 /** Volver, como en el prototipo: el ‹ en un cuadro claro, junto al texto. */
 export function Volver({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="group inline-flex min-h-11 items-center gap-2.5 self-start text-base font-bold text-noche no-underline hover:text-noche">
+    <Link to={to} className="group inline-flex min-h-11 items-center gap-2.5 self-start text-base font-bold text-foreground no-underline hover:text-foreground">
       <span aria-hidden className="flex size-10 items-center justify-center rounded-[10px] border border-linea bg-papel group-hover:border-control">
         <ChevronLeft className="size-5" strokeWidth={2.5} />
       </span>
@@ -95,13 +97,18 @@ export function Volver({ to, children }: { to: string; children: ReactNode }) {
   )
 }
 
-/** Mientras carga: el tatú animado de la marca, después de 200 ms. */
+/** Mientras carga: el tatú del logo rodando (TatuCargando), después de 200 ms. */
 export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {
+  return <TatuCargando texto={texto} />
+}
+
+/** Lo mismo, en chico, para una lista que todavía no llega: el tatú solo rueda. */
+export function CargandoEnLinea({ texto = 'Cargando…' }: { texto?: string }) {
   return (
-    <div role="status" className="aparece-tarde flex min-h-[40dvh] flex-col items-center justify-center gap-4 py-12 text-tinta-suave">
-      <img src="/brand/tatu-animacion.webp" alt="" className="size-24 motion-reduce:hidden" />
-      <span className="text-[17px]">{texto}</span>
-    </div>
+    <span role="status" className="aparece-tarde inline-flex items-center gap-2.5">
+      <TatuAnimado estado="pagando" variante="rodar" className="size-8" />
+      {texto}
+    </span>
   )
 }
 
@@ -174,7 +181,7 @@ export function Campo({
         id={id}
         aria-describedby={ayuda ? `${id}-ayuda` : undefined}
         className={cn(
-          'min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 py-2.5 font-sans text-base text-noche',
+          'min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 py-2.5 font-sans text-base text-foreground',
           'disabled:opacity-60',
           mono && 'mono text-[15px]',
         )}

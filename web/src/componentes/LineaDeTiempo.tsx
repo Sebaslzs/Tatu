@@ -15,7 +15,7 @@ export function LineaDeTiempo({ eventos }: { eventos: EventoCobro[] }) {
         return (
           <li key={i} className="flex gap-4">
             <div aria-hidden className="flex flex-col items-center">
-              <span className={cn('size-3.5 shrink-0 rounded-full border-2 border-noche', ultimo ? 'bg-noche' : 'bg-arena')} />
+              <span className={cn('size-3.5 shrink-0 rounded-full border-2 border-foreground', ultimo ? 'bg-foreground' : 'bg-background')} />
               {!ultimo && <span className="w-0.5 flex-1 bg-linea" />}
             </div>
             <div className={cn('flex flex-1 flex-col gap-1', !ultimo && 'pb-[22px]')}>

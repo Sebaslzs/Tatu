@@ -18,7 +18,7 @@ import { rutasSistema } from './rutas/sistema.ts'
 const DESCRIPCION = [
   'Tatú convierte una liquidación ya aprobada de un subsidio en pagos bajo demanda con **Open Payments** (Interledger).',
   '',
-  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18), las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B, el **resumen de la persona** (HU-08), los **cobros** (HU-10, HU-11) y el **tablero y cierre del programa** (HU-15, HU-17).',
+  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18), las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B, el **resumen de la persona** (HU-08), los **cobros** (HU-10, HU-11), la **caja del punto** y el **tablero y cierre del programa** (HU-15, HU-17).',
   '',
   '### Convenciones',
   '- **Errores**: siempre `{ "error": { "codigo", "mensaje" } }`. Decide con `codigo`; `mensaje` es para la persona.',
@@ -34,7 +34,7 @@ const ETIQUETAS = [
   { name: 'Programas', description: 'HU-01 · Conectar un subsidio, editarlo y listarlo.' },
   { name: 'Autorización', description: 'HU-04 y HU-05 · Permiso con tope en el banco, su callback y la cancelación.' },
   { name: 'Ciclo de vida', description: 'HU-18 · Pausar y reanudar.' },
-  { name: 'Puntos', description: 'HU-03 · Puntos de retiro y sedes de comercio.' },
+  { name: 'Puntos', description: 'HU-03 · Puntos de retiro y sedes de comercio; lo que el punto consulta y su caja.' },
   { name: 'Cuentas', description: 'HU-07 · Enlazar y verificar la cuenta del beneficiario (llave Bre-B o billetera).' },
   { name: 'Beneficiarios', description: 'Registro del equipo de prueba, el selector demo y el resumen HU-08.' },
   { name: 'Billeteras', description: 'Resolver una dirección de billetera antes de guardarla.' },

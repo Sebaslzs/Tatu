@@ -4,19 +4,59 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { PagoPendiente } from '@/api/beneficiario'
 import { mensajeDeError } from '@/api/client'
-import { Icono } from '@/componentes/piezas'
+import { BarraSuperior, type Seccion } from '@/componentes/BarraSuperior'
+import { Icono, PantallaAdaptable } from '@/componentes/piezas'
 import { formatearDiaMes, formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
 import { nombreTipo } from './datos'
+
+const SECCIONES: Seccion[] = [
+  { a: '/beneficiario', texto: 'Mis subsidios', fin: true },
+  { a: '/beneficiario/cuenta', texto: 'Mi cuenta' },
+  { a: '/beneficiario/puntos', texto: 'Dónde cobrar' },
+]
+
+/**
+ * Marco de las pantallas de la beneficiaria (PantallaAdaptable): app en el celular; en el computador,
+ * la barra con sus secciones y el contenido a lo ancho (`amplio`) o en columna (`formulario`).
+ */
+export function PantallaBeneficiario({
+  ancho = 'amplio',
+  nombre,
+  className,
+  children,
+}: {
+  ancho?: 'amplio' | 'formulario'
+  /** El nombre de la persona, si la pantalla ya lo tiene (va junto a la marca). */
+  nombre?: string
+  className?: string
+  children: ReactNode
+}) {
+  const barra = (
+    <BarraSuperior
+      inicio="/"
+      etiquetaInicio="Tatú, volver a elegir rol"
+      contexto={nombre}
+      secciones={SECCIONES}
+      etiquetaSecciones="Secciones de la beneficiaria"
+      rol="Beneficiaria"
+    />
+  )
+  return (
+    <PantallaAdaptable barra={barra} ancho={ancho} className={className}>
+      {children}
+    </PantallaAdaptable>
+  )
+}
 
 export function BotonVolver({ a, etiqueta }: { a: string; etiqueta: string }) {
   return (
     <Link
       to={a}
       aria-label={etiqueta}
-      className="flex size-11 flex-none items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel text-noche hover:border-noche"
+      className="flex size-11 flex-none items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel text-foreground hover:border-foreground"
     >
-      <Icono className="size-6" stroke="#13203A" strokeWidth={2.4}>
+      <Icono className="size-6" stroke="var(--foreground)" strokeWidth={2.4}>
         <path d="M15 6l-6 6 6 6" />
       </Icono>
     </Link>
@@ -29,8 +69,8 @@ export function Cabecera({ volver, etiquetaVolver, titulo, subtitulo }: { volver
     <div className="flex items-center gap-2.5">
       <BotonVolver a={volver} etiqueta={etiquetaVolver} />
       <div className="flex min-w-0 flex-col">
-        <span className="text-lg leading-[1.2] font-extrabold">{titulo}</span>
-        {subtitulo && <span className="truncate text-sm text-tinta-suave">{subtitulo}</span>}
+        <span className="text-lg leading-[1.2] font-extrabold pc:text-[26px]">{titulo}</span>
+        {subtitulo && <span className="line-clamp-2 text-sm text-tinta-suave pc:text-base">{subtitulo}</span>}
       </div>
     </div>
   )
@@ -39,7 +79,7 @@ export function Cabecera({ volver, etiquetaVolver, titulo, subtitulo }: { volver
 const BASE_BOTON = 'flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] px-4 text-center font-sans text-lg font-bold no-underline transition-colors'
 const VARIANTES = {
   primario: 'border-0 bg-azul text-white hover:bg-[#2752c4] hover:text-white',
-  contorno: 'border-2 border-noche bg-transparent text-noche hover:bg-papel hover:text-noche',
+  contorno: 'border-2 border-foreground bg-transparent text-foreground hover:bg-papel hover:text-foreground',
 }
 
 export function BotonEnlace({ a, variante = 'primario', className, children }: { a: string; variante?: keyof typeof VARIANTES; className?: string; children: ReactNode }) {

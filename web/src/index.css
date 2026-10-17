@@ -5,9 +5,16 @@
 @import "@fontsource-variable/archivo/wdth.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Modo oscuro: `data-tema` en <html> lo pone el script de index.html antes de pintar (lo guardado o,
+   si no hay, el sistema). `oscuro:` cambia lo que no es un color (el logo, por ejemplo). */
+@custom-variant oscuro (&:where([data-tema="oscuro"], [data-tema="oscuro"] *));
 
 /* Paleta de Tatú */
 @theme {
+    /* Punto de corte del computador (960 px), el mismo de lib/useEnComputador.ts: `pc:` en las clases.
+       Celular < 768 (md) ≤ tablet < 960 (pc) ≤ computador. */
+    --breakpoint-pc: 60rem;
+
     --color-arena: #F5F0E6;
     --color-noche: #13203A;
     --color-azul: #2E5FE0;
@@ -121,8 +128,59 @@
     --sidebar-accent-foreground: #F5F0E6;
     --sidebar-border: #1E2C49;
     --sidebar-ring: #2E5FE0;
+    --bloque-borde: none;
 }
 
+/* Modo oscuro, paleta «Noche» (la del logo oscuro): fondo hondo, texto arena clara y acentos ámbar.
+   Solo se reasignan los tokens: los componentes no cambian de clase. `noche` pasa a ser el tono de
+   los bloques sobre el fondo oscuro (con borde ámbar fino, ver `--bloque-borde`); el texto principal
+   usa `foreground`. Contrastes (texto / fondo): principal 14,9 · gris arena #BDB5A3 8,0 sobre
+   #1E2C49 · enlace #8DB0FF 8,6 · estados 6,3 a 8,9. Los rellenos (azul, verde, rojo) no cambian:
+   blanco encima da ≥ 5:1. */
+[data-tema="oscuro"] {
+    color-scheme: dark;
+    --background: #0B1324;
+    --foreground: #EFE6D2;
+    --card: #13203A;
+    --card-foreground: #EFE6D2;
+    --popover: #13203A;
+    --popover-foreground: #EFE6D2;
+    --secondary: #1E2C49;
+    --secondary-foreground: #EFE6D2;
+    --muted: #1E2C49;
+    --muted-foreground: #BDB5A3;
+    --accent: #F6A623;
+    --accent-foreground: #13203A;
+    --destructive: #FF8A7A;
+    --border: #2C3B5C;
+    --input: #6B7A99;
+    --ring: #5B85FF;
+    --sidebar-ring: #5B85FF;
+
+    --color-noche: #1E2C49;
+    --color-papel: #13203A;
+    --color-linea: #2C3B5C;
+    --color-tinta-suave: #BDB5A3;
+    --color-borde-campo: #6B7A99;
+    --color-nota: #1E2C49;
+    --color-tenue: #BDB5A3;
+    --color-control: #6B7A99;
+    --color-enlace: #8DB0FF;
+    --color-noche-tenue: #BDB5A3;
+    --color-noche-suave: #2C3B5C;
+    --color-bloque: #1E2C49;
+    --color-bloque-texto: #EFE6D2;
+    --color-pagado: #5CC98A;
+    --color-pagado-fondo: #123828;
+    --color-pagando: #F6C97A;
+    --color-pagando-fondo: #3A2A10;
+    --color-rechazo: #FF8A7A;
+    --color-rechazo-fondo: #3D1A1A;
+    --color-error: #FF8A7A;
+    --color-error-fondo: #3D1A1A;
+    --color-azul-suave: #1E2C49;
+    --bloque-borde: inset 0 0 0 1px rgb(246 166 35 / 0.4);
+}
 @layer base {
   * {
     @apply border-border;
@@ -174,10 +232,65 @@
 @utility bloque {
   background-color: var(--color-bloque);
   color: var(--color-bloque-texto);
+  box-shadow: var(--bloque-borde);
 }
 
 @utility mono {
   font-family: var(--font-mono);
+}
+
+/* Tabla apilada (componentes/Tabla.tsx, `apilada`): por debajo de 768 px cada fila es una tarjeta y
+   cada celda muestra su encabezado (`data-etiqueta`) a la izquierda. Desde 768 px es una tabla normal. */
+@media (width < 48rem) {
+  .tabla-apilada thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .tabla-apilada,
+  .tabla-apilada tbody,
+  .tabla-apilada tr,
+  .tabla-apilada td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .tabla-apilada tr {
+    padding: 10px 0;
+  }
+  .tabla-apilada td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 5px 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .tabla-apilada td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    flex: none;
+    max-width: 45%;
+    text-align: left;
+    font-weight: 400;
+    color: var(--color-tinta-suave);
+  }
+  /* La primera celda hace de título de la tarjeta; una fila de una sola celda («Todavía no hay…») va sin etiqueta */
+  .tabla-apilada td.titulo-fila {
+    font-size: 17px;
+    font-weight: 700;
+    text-align: left;
+  }
+  .tabla-apilada td.titulo-fila::before,
+  .tabla-apilada td[colspan]::before {
+    display: none;
+  }
+  .tabla-apilada td[colspan] {
+    text-align: left;
+  }
 }
 
 /* Cargando: aparece después de 200 ms, para que una respuesta rápida no muestre un destello */
@@ -197,62 +310,32 @@ h1:focus {
   outline: none;
 }
 
-/* Tatú: rueda en las cerdas, rayitas del suelo y salto al mostrar el resultado de un pago */
-@keyframes tatu-rueda {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes tatu-suelo {
-  to {
-    background-position: -24px 0;
-  }
-}
-@keyframes tatu-salto {
-  0% {
-    transform: scale(0.92);
-  }
-  55% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-@keyframes tatu-aparece {
-  0% {
-    transform: scale(0);
-  }
-  70% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.tatu-rueda {
-  animation: tatu-rueda 1.1s linear infinite;
-}
+/* El tatú animado (componentes/tatu): el suelo por el que rueda y el halo verde al quedar pagado.
+   Lo que se mueve lo anima cada componente con `transform`; con «reducir movimiento» quedan quietos. */
 .tatu-suelo {
-  border-radius: 999px;
-  background-image: repeating-linear-gradient(90deg, rgb(19 32 58 / 0.35) 0 12px, transparent 12px 24px);
-  animation: tatu-suelo 0.35s linear infinite;
+  background-image: repeating-linear-gradient(90deg, var(--color-control) 0 14px, transparent 14px 24px);
 }
-.tatu-resultado {
-  animation: tatu-salto 0.45s ease-out;
+.tatu-suelo-claro {
+  background-image: repeating-linear-gradient(90deg, var(--color-noche-texto-tenue) 0 14px, transparent 14px 24px);
 }
-.tatu-insignia {
-  animation: tatu-aparece 0.4s 0.15s ease-out both;
+.tatu-halo {
+  translate: -50% -50%;
+  background: var(--color-pagado-relleno);
+  animation: tatu-halo 900ms ease-out 250ms both;
+}
+@keyframes tatu-halo {
+  from {
+    opacity: 0.35;
+    scale: 0.6;
+  }
+  to {
+    opacity: 0;
+    scale: 2.2;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
-  }
-  .tatu-rueda,
-  .tatu-suelo,
-  .tatu-resultado,
-  .tatu-insignia {
-    animation: none;
   }
 }

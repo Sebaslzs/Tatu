@@ -1,24 +1,13 @@
 // Acceso del punto de retiro eligiendo su tienda, en celular o en computador.
-import { useCallback, useEffect, useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { listarPuntos, type PuntoRegistrado } from '@/api/client'
 import { useRol } from '@/contexto/Rol'
+import { useEnComputador } from '@/lib/useEnComputador'
 import { cn } from '@/lib/utils'
 import { BotonEntrar, CabeceraCelular, Icono, PantallaCelular, PantallaPartida, VolverARol } from '@/componentes/piezas'
 
-// Punto elegido al entrar: solo su id, para que la caja sepa desde dónde se atiende.
-const CLAVE_PUNTO = 'tatu.punto'
-
 type Carga = { estado: 'cargando' } | { estado: 'error' } | { estado: 'listo'; puntos: PuntoRegistrado[] }
-
-// Desde 960 px de ancho se usa la versión de computador.
-const COMPUTADOR = '(min-width: 960px)'
-const suscribir = (aviso: () => void) => {
-  const mq = window.matchMedia(COMPUTADOR)
-  mq.addEventListener('change', aviso)
-  return () => mq.removeEventListener('change', aviso)
-}
-const useEnComputador = () => useSyncExternalStore(suscribir, () => window.matchMedia(COMPUTADOR).matches)
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
@@ -27,7 +16,7 @@ export function EntrarPunto() {
   const [busqueda, setBusqueda] = useState('')
   const [elegido, setElegido] = useState<string | null>(null)
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' })
-  const { elegirRol } = useRol()
+  const { entrarComoPunto } = useRol()
   const navegar = useNavigate()
   const nombreGrupo = useId()
 
@@ -50,12 +39,8 @@ export function EntrarPunto() {
   const entrar = (e: FormEvent) => {
     e.preventDefault()
     if (!punto) return
-    try {
-      sessionStorage.setItem(CLAVE_PUNTO, punto.id)
-    } catch {
-      // Sin almacenamiento la caja vuelve a pedir el punto; no bloquea la entrada
-    }
-    elegirRol('punto')
+    // Solo su id: así la caja sabe desde dónde se atiende
+    entrarComoPunto(punto.id)
     navegar('/punto')
   }
 
@@ -66,7 +51,7 @@ export function EntrarPunto() {
     <form onSubmit={entrar} className={cn('flex flex-1 flex-col', computador ? 'gap-5' : 'gap-4')}>
       <div className="relative">
         <span className="absolute top-1/2 left-3.5 flex -translate-y-1/2">
-          <Icono className="size-5" stroke="#4A5468">
+          <Icono className="size-5" stroke="var(--color-tinta-suave)">
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-4-4" />
           </Icono>
@@ -77,7 +62,7 @@ export function EntrarPunto() {
           placeholder="Buscar por nombre o dirección"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="h-[52px] w-full rounded-xl border-[1.5px] border-borde-campo bg-papel pr-3.5 pl-11 font-sans text-[17px] text-noche placeholder:text-tinta-suave"
+          className="h-[52px] w-full rounded-xl border-[1.5px] border-borde-campo bg-papel pr-3.5 pl-11 font-sans text-[17px] text-foreground placeholder:text-tinta-suave"
         />
       </div>
 
@@ -91,7 +76,7 @@ export function EntrarPunto() {
               className={cn(
                 'flex cursor-pointer items-center gap-3.5 bg-papel py-3',
                 computador ? 'min-h-[68px] rounded-[14px] px-4' : 'min-h-[72px] rounded-2xl px-3.5',
-                activo ? 'border-[2.5px] border-azul' : 'border-[1.5px] border-linea hover:border-noche',
+                activo ? 'border-[2.5px] border-azul' : 'border-[1.5px] border-linea hover:border-foreground',
               )}
             >
               <input
@@ -113,7 +98,7 @@ export function EntrarPunto() {
         {carga.estado === 'error' && (
           <AvisoLista>
             No pudimos traer los puntos.{' '}
-            <button type="button" onClick={reintentar} className="cursor-pointer border-0 bg-transparent p-0 font-sans text-[15px] font-bold text-azul underline">
+            <button type="button" onClick={reintentar} className="cursor-pointer border-0 bg-transparent p-0 font-sans text-[15px] font-bold text-enlace underline">
               Intentar de nuevo
             </button>
           </AvisoLista>

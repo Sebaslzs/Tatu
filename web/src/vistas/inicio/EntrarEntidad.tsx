@@ -46,7 +46,7 @@ export function EntrarEntidad() {
             }}
             aria-invalid={error !== null}
             aria-describedby={error ? 'nit-error' : 'nit-ayuda'}
-            className="h-[60px] w-full rounded-[14px] border-2 border-noche bg-papel px-4 font-sans text-2xl font-bold tracking-[0.03em] text-noche"
+            className="h-[60px] w-full rounded-[14px] border-2 border-foreground bg-papel px-4 font-sans text-2xl font-bold tracking-[0.03em] text-foreground"
           />
           <span id="nit-ayuda" className="text-[15px] text-tinta-suave">
             Con el dígito de verificación, sin puntos.
@@ -57,7 +57,7 @@ export function EntrarEntidad() {
       </form>
 
       <div className="flex items-start gap-2.5 rounded-[14px] bg-nota px-4 py-3.5 text-[15px] leading-[1.45]">
-        <IconoCandado stroke="#13203A" />
+        <IconoCandado stroke="var(--foreground)" />
         <span>Entrar no mueve dinero. Cada programa se autoriza aparte, en tu banco.</span>
       </div>
     </PantallaPartida>

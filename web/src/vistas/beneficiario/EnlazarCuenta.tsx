@@ -5,12 +5,12 @@ import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { consultarLlave, enlazarCuenta, type Cuenta, type DatosCuenta, type LlaveConsultada, type Resumen, type TipoLlave } from '@/api/beneficiario'
 import { mensajeDeError } from '@/api/client'
-import { IconoCandado, MensajeError, PantallaCelular } from '@/componentes/piezas'
+import { IconoCandado, MensajeError } from '@/componentes/piezas'
 import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { useRol } from '@/contexto/Rol'
 import { formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
-import { Aviso, Boton, BotonEnlace, Cabecera, ErrorCarga, FilasDatos, IconoEnlace } from './comunes'
+import { Aviso, Boton, BotonEnlace, Cabecera, ErrorCarga, FilasDatos, IconoEnlace, PantallaBeneficiario } from './comunes'
 import { pagoDe, useResumen } from './datos'
 
 type Tipo = TipoLlave | 'billetera'
@@ -55,7 +55,7 @@ export function EnlazarCuenta() {
   const lista = cuenta && !cambiar
 
   return (
-    <PantallaCelular className="gap-4">
+    <PantallaBeneficiario ancho="formulario" nombre={r?.persona.nombre} className="gap-4">
       <Cabecera
         volver={volver}
         etiquetaVolver={programaId ? 'Volver al subsidio' : 'Volver a mis subsidios'}
@@ -76,7 +76,7 @@ export function EnlazarCuenta() {
           }}
         />
       )}
-    </PantallaCelular>
+    </PantallaBeneficiario>
   )
 }
 
@@ -177,7 +177,7 @@ function Formulario({ resumen, aviso, onEnlazada }: { resumen: Resumen; aviso?: 
               key={t.tipo}
               className={cn(
                 'flex min-h-11 cursor-pointer items-center rounded-full border-[1.5px] px-4 text-base font-semibold has-focus-visible:outline-3 has-focus-visible:outline-azul',
-                tipo === t.tipo ? 'border-noche bg-noche text-arena' : 'border-linea bg-papel text-noche hover:border-noche',
+                tipo === t.tipo ? 'border-foreground bg-noche text-arena' : 'border-linea bg-papel text-foreground hover:border-foreground',
               )}
             >
               <input type="radio" name="tipo" value={t.tipo} checked={tipo === t.tipo} onChange={() => elegirTipo(t.tipo)} className="sr-only" />
@@ -202,7 +202,7 @@ function Formulario({ resumen, aviso, onEnlazada }: { resumen: Resumen; aviso?: 
             setLlave(e.target.value)
             setError(null)
           }}
-          className="h-14 w-full rounded-xl border-2 border-borde-campo bg-papel px-3.5 font-sans text-lg text-noche"
+          className="h-14 w-full rounded-xl border-2 border-borde-campo bg-papel px-3.5 font-sans text-lg text-foreground"
         />
         {definicion.ayuda && <span className="text-sm text-tinta-suave">{definicion.ayuda}</span>}
       </div>
@@ -223,14 +223,14 @@ function Formulario({ resumen, aviso, onEnlazada }: { resumen: Resumen; aviso?: 
               setPin(soloDigitos(e.target.value))
               setError(null)
             }}
-            className="h-14 w-full rounded-xl border-2 border-borde-campo bg-papel px-3.5 font-sans text-lg tracking-[0.3em] text-noche"
+            className="h-14 w-full rounded-xl border-2 border-borde-campo bg-papel px-3.5 font-sans text-lg tracking-[0.3em] text-foreground"
           />
           <span className="text-sm text-tinta-suave">Es el que te entregó la entidad con tu subsidio.</span>
         </div>
       )}
 
       <div className="flex items-start gap-2.5 text-[15px] leading-[1.4] text-tinta-suave">
-        <IconoCandado stroke="#4A5468" />
+        <IconoCandado stroke="var(--color-tinta-suave)" />
         <span>
           Solo guardamos a dónde llega tu dinero, nunca tus claves.
           {tipo === 'billetera' && ' En el paso 2 apruebas el enlace en tu billetera.'}
@@ -286,7 +286,7 @@ function CuentaLista({
         <button
           type="button"
           onClick={onCambiar}
-          className="mt-1 min-h-11 cursor-pointer border-0 bg-transparent font-sans text-[17px] font-semibold text-noche underline underline-offset-[3px]"
+          className="mt-1 min-h-11 cursor-pointer border-0 bg-transparent font-sans text-[17px] font-semibold text-foreground underline underline-offset-[3px]"
         >
           Enlazar otra cuenta
         </button>
