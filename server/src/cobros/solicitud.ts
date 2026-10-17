@@ -1,10 +1,5 @@
-// Solicitar un cobro (HU-09, HU-10, HU-14, HU-26, HU-27): liquidación → reglas → cobro. Aquí se
-// aplican RN-01 a RN-06, RN-17/18 y las del saldo (RN-19 a RN-23); no se mueve dinero: el pago lo
-// dispara el pagador cuando el cobro llega a Pagando.
-//
-// Un subsidio maneja saldo: en el punto se retira por partes (el punto dice cuánto) y a la cuenta se
-// paga todo lo que queda. Un bono sigue siendo de un solo uso. La venta que el punto registra con un
-// retiro nace con el cobro, en la misma transacción.
+// Solicitar un cobro (HU-09, HU-10, HU-14): liquidación → reglas → cobro. Aquí se aplican RN-01 a
+// RN-06 y RN-17/18; no se mueve dinero: el pago lo dispara el pagador cuando el cobro llega a Pagando.
 import { ErrorApi, noEncontrado } from '../comun/errores.ts'
 import type { Reloj } from '../comun/fechas.ts'
 import { enmascararDocumento } from '../comun/log.ts'
@@ -31,7 +26,6 @@ import { MOTIVOS, type Motivo } from './mensajes.ts'
 import { textoEvento } from './movimientos.ts'
 import type { PagadorCobros } from './pagador.ts'
 import * as reglas from './reglas.ts'
-import { manejaSaldo, rn21MontoRetiro, rn23Venta, saldoDe, type Saldo } from './saldo.ts'
 import type { VistaCobro, VistasCobro } from './vista.ts'
 
 export interface EntradaCobro {
@@ -41,12 +35,8 @@ export interface EntradaCobro {
   puntoId?: string | undefined
   /** CA-10.07: la web genera un UUID por intento; repetirla devuelve el mismo cobro. */
   llaveIdempotencia: string
-  /** RN-11: el total de una compra (bono); el monto del bono lo calcula el backend. */
+  /** RN-11: el monto nunca viene del navegador; solo el total de una compra (bono). */
   totalCompra?: string | undefined
-  /** HU-26: solo en un retiro, cuánto retirar; sin él, todo el saldo. Se valida contra el saldo. */
-  monto?: string | undefined
-  /** HU-27: solo en un retiro, la compra que la persona hizo en el punto; es parte del retiro. */
-  venta?: { valor: string; descripcion?: string | undefined } | undefined
 }
 
 export interface DependenciasSolicitud {
@@ -74,10 +64,6 @@ interface Contexto {
   programa: FilaPrograma
   persona: { id: string }
   punto: FilaPunto | undefined
-  /** Lo que dice la liquidación de un programa con saldo: la API lo deja en `asignacion` (null en un bono). */
-  asignado: number | null
-  /** La venta del retiro, ya validada (RN-23). */
-  venta: { valor: number; descripcion: string | null } | null
 }
 
 export class SolicitudCobro {
@@ -94,10 +80,6 @@ export class SolicitudCobro {
 
     const punto = await this.resolverPunto(e)
     if ((e.canal === 'compra') !== (e.totalCompra !== undefined)) throw new ErrorApi(400, 'EntradaInvalida', 'totalCompra va solo en el canal compra')
-    // HU-26 y HU-27: elegir cuánto y registrar una venta existen solo en el retiro en el punto
-    if (e.canal !== 'retiro' && (e.monto !== undefined || e.venta !== undefined)) {
-      throw new ErrorApi(400, 'EntradaInvalida', 'monto y venta van solo en un retiro en el punto')
-    }
 
     let programa: FilaPrograma
     let pago: PagoConsultado | undefined
@@ -122,25 +104,12 @@ export class SolicitudCobro {
     }
     // El retiro en un punto se confirma con rostro o huella: ya no exige un PIN registrado
 
-    const { motivo, cuenta, pago: pagoFinal, saldo } = await this.evaluar(e, programa, persona, punto, pago)
-    const disponibleEnLiquidacion = pagoFinal && pagoFinal !== 'falla' && pagoFinal.tipo === 'disponible' ? pagoFinal : null
-    let monto: number | null = null
-    if (disponibleEnLiquidacion) {
-      // Con saldo: el retiro es lo que pide el punto (o todo) y la cuenta, todo lo que queda (RN-22)
-      if (saldo) monto = e.canal === 'retiro' && e.monto !== undefined ? Number(e.monto) : saldo.disponible
-      else monto = reglas.rn05Monto({ tipo: programa.tipo, valorDisponible: disponibleEnLiquidacion.monto, totalCompra: e.totalCompra ? Number(e.totalCompra) : undefined })
-    }
-    // RN-19 a RN-21 y RN-23: un monto o una venta que no cumplen se corrigen en el punto; no dejan cobro
-    let venta: Contexto['venta'] = null
-    if (!motivo && saldo && monto !== null && e.canal === 'retiro') {
-      const moneda = monedaDe(programa)
-      const falla =
-        rn21MontoRetiro({ monto, disponible: saldo.disponible, moneda, minimo: programa.montoMinimoCobro }) ??
-        (e.venta ? rn23Venta({ valor: Number(e.venta.valor), montoRetiro: monto, moneda }) : null)
-      if (falla) throw new ErrorApi(422, falla.codigo, falla.mensaje)
-      if (e.venta) venta = { valor: Number(e.venta.valor), descripcion: e.venta.descripcion ?? null }
-    }
-    const esNovedad = disponibleEnLiquidacion?.novedad
+    const { motivo, cuenta, pago: pagoFinal } = await this.evaluar(e, programa, persona, punto, pago)
+    const monto =
+      pagoFinal && pagoFinal !== 'falla' && pagoFinal.tipo === 'disponible'
+        ? reglas.rn05Monto({ tipo: programa.tipo, valorDisponible: pagoFinal.monto, totalCompra: e.totalCompra ? Number(e.totalCompra) : undefined })
+        : null
+    const esNovedad = pagoFinal && pagoFinal !== 'falla' && pagoFinal.tipo === 'disponible' && pagoFinal.novedad
     const novedad: Record<string, boolean> = esNovedad ? { novedad: true } : {}
     const ctx: Contexto = {
       base: {
@@ -159,8 +128,6 @@ export class SolicitudCobro {
       programa,
       persona,
       punto,
-      asignado: saldo ? saldo.asignado : null,
-      venta,
     }
 
     const creado = await this.crear(ctx, motivo)
@@ -185,15 +152,9 @@ export class SolicitudCobro {
     const candidatos = delCanal.length ? delCanal : todos
     if (!candidatos.length) throw new ErrorApi(409, 'SinProgramas', 'No hay programas recibiendo cobros')
     const ahora = this.deps.reloj()
-    const persona = await this.deps.uow.repos.beneficiarios.porCedula(documento)
     for (const p of candidatos) {
       if (reglas.rn06ProgramaRecibe({ estado: p.estado, vigenciaInicio: p.vigenciaInicio, vigenciaFin: p.vigenciaFin, ahora })) continue
       const pago = await this.consultarPago(p.id, documento)
-      // Un subsidio ya cobrado por completo no es «un pago disponible», aunque la liquidación lo tenga
-      if (pago !== 'falla' && pago.tipo === 'disponible' && persona && manejaSaldo(p)) {
-        const saldo = saldoDe(pago.monto, await this.deps.uow.repos.cobros.dePersonaEnPrograma(p.id, persona.id))
-        if (saldo.disponible <= 0 && saldo.enVuelo === 0) continue
-      }
       if (pago === 'falla' || pago.tipo === 'disponible') return { programa: p, pago }
     }
     // Si ninguno recibe o tiene pago, el más relevante, para que el rechazo quede en su tablero
@@ -222,14 +183,12 @@ export class SolicitudCobro {
     persona: FilaBeneficiario,
     punto: FilaPunto | undefined,
     pagoPrevio: PagoConsultado | undefined,
-  ): Promise<{ motivo: Motivo | null; cuenta: FilaCuenta | undefined; pago: PagoConsultado | undefined; saldo: Saldo | undefined }> {
+  ): Promise<{ motivo: Motivo | null; cuenta: FilaCuenta | undefined; pago: PagoConsultado | undefined }> {
     const { uow, cuentas, billeteras, reloj } = this.deps
     const beneficiarioId = persona.id
     const ahora = reloj()
-    const conSaldo = manejaSaldo(programa)
     let pago = pagoPrevio
     let cuenta: FilaCuenta | undefined
-    let saldo: Saldo | undefined
 
     // RN-06 · Activo y en vigencia
     let motivo: reglas.Resultado = reglas.rn06ProgramaRecibe({
@@ -249,21 +208,12 @@ export class SolicitudCobro {
       const bloqueo = await uow.repos.bloqueos.de(programa.id, beneficiarioId)
       if (reglas.rn07Bloqueada({ bloqueadoHasta: bloqueo?.bloqueadoHasta ?? null, ahora })) motivo = 'PinBloqueado'
     }
-    // RN-02 · aviso temprano, antes de ir a la red (la base lo arbitra igual con el índice). Con saldo,
-    // solo estorba otro cobro en vuelo; en un bono, también uno ya pagado.
-    if (!motivo) {
-      if (conSaldo) motivo = (await uow.repos.cobros.enVueloDe(programa.id, beneficiarioId)) ? 'EnProceso' : null
-      else motivo = reglas.rn02CobroExistente((await uow.repos.cobros.vivoDe(programa.id, beneficiarioId))?.estado ?? null)
-    }
+    // RN-02 · aviso temprano, antes de ir a la red (la base lo arbitra igual con el índice)
+    motivo ??= reglas.rn02CobroExistente((await uow.repos.cobros.vivoDe(programa.id, beneficiarioId))?.estado ?? null)
     // RN-01 · la liquidación
     if (!motivo) {
       pago ??= await this.consultarPago(programa.id, e.documento)
       motivo = pago === 'falla' ? 'LiquidacionNoResponde' : reglas.rn01PagoDisponible({ disponible: pago.tipo === 'disponible' })
-    }
-    // RN-19 · el saldo: lo asignado menos lo pagado y lo que está en vuelo. Sin saldo, ya cobró todo.
-    if (!motivo && conSaldo && pago !== undefined && pago !== 'falla' && pago.tipo === 'disponible') {
-      saldo = saldoDe(pago.monto, await uow.repos.cobros.dePersonaEnPrograma(programa.id, beneficiarioId))
-      if (saldo.disponible <= 0) motivo = 'YaCobrado'
     }
     // RN-04 · cuenta Verificada y en la misma moneda; RN-17 y RN-18 para la llave Bre-B
     if (!motivo && e.canal === 'cuenta') {
@@ -293,7 +243,7 @@ export class SolicitudCobro {
         motivo = reglas.rn04CuentaLista({ cuenta: cuenta ?? null, monedaCuenta, monedaPrograma: monedaDe(programa) })
       }
     }
-    return { motivo, cuenta, pago, saldo }
+    return { motivo, cuenta, pago }
   }
 
   private async consultarPago(programaId: string, documento: string): Promise<PagoConsultado> {
@@ -317,14 +267,11 @@ export class SolicitudCobro {
     } catch (err) {
       const otro = await uow.repos.cobros.porLlave(ctx.base.llaveIdempotencia)
       if (otro) return otro // dos envíos con la misma llave a la vez
-      const deLaBase = err instanceof SaldoCambio ? 'SaldoInsuficiente' : this.motivoDeLaBase(err)
+      const deLaBase = this.motivoDeLaBase(err)
       if (deLaBase) return uow.transaccion((repos) => this.crearRechazado(repos, ctx, deLaBase))
       if (esViolacionUnica(err)) {
-        // CA-14.01: lo decidió el índice único parcial; llegaron dos a la vez. Con saldo, el que ganó
-        // está en vuelo; en un bono, puede estar ya pagado.
-        const vivo = manejaSaldo(ctx.programa)
-          ? await uow.repos.cobros.enVueloDe(ctx.programa.id, ctx.persona.id)
-          : await uow.repos.cobros.vivoDe(ctx.programa.id, ctx.persona.id)
+        // CA-14.01: RN-02 lo decidió el índice único parcial; llegaron dos a la vez
+        const vivo = await uow.repos.cobros.vivoDe(ctx.programa.id, ctx.persona.id)
         if (vivo) return uow.transaccion((repos) => this.crearRechazado(repos, ctx, reglas.rn02CobroExistente(vivo.estado)!))
       }
       throw err
@@ -332,15 +279,7 @@ export class SolicitudCobro {
   }
 
   private async crearVivo(repos: Repos, ctx: Contexto): Promise<FilaCobro> {
-    const { base, monto, novedad, actor, punto, venta } = ctx
-    if (ctx.asignado !== null) {
-      // La asignación queda con lo que dice la liquidación y su fila bloqueada hasta el final de la
-      // transacción: dos solicitudes de la misma persona se ordenan aquí. Con el bloqueo puesto se
-      // vuelve a contar el saldo: si otro cobro se pagó entretanto, este no pasa (RN-19).
-      await repos.asignaciones.asegurar(ctx.programa.id, ctx.persona.id, ctx.asignado)
-      const actual = saldoDe(ctx.asignado, await repos.cobros.dePersonaEnPrograma(ctx.programa.id, ctx.persona.id))
-      if (monto === null || monto > actual.disponible) throw new SaldoCambio()
-    }
+    const { base, monto, novedad, actor, punto } = ctx
     const c = await repos.cobros.crear({ ...base, monto, estado: 'Solicitado' })
     await repos.eventos.registrar({
       tipoEntidad: 'cobro',
@@ -359,17 +298,6 @@ export class SolicitudCobro {
       detalle: { texto: textoEvento(c, hacia, punto) },
       actor,
     })
-    // HU-27: la venta nace con el retiro, antes del PIN. Si el cobro no llega a Pagado, se anula.
-    if (venta) {
-      const v = await repos.ventas.crear({ cobroId: c.id, puntoId: c.puntoId!, beneficiarioId: c.beneficiarioId, valor: venta.valor, descripcion: venta.descripcion })
-      await repos.eventos.registrar({
-        tipoEntidad: 'venta',
-        idEntidad: v.id,
-        estadoNuevo: 'Registrada',
-        detalle: { texto: `${punto?.nombre ?? 'El punto'} registró una compra con el retiro ${c.referencia}.`, cobro: c.id },
-        actor,
-      })
-    }
     return (await repos.cobros.obtener(c.id))!
   }
 
@@ -403,18 +331,6 @@ export class SolicitudCobro {
     if (m.startsWith('RN-03')) return 'ProgramaNoRecibe'
     if (m.startsWith('RN-04')) return 'CuentaNoVerificada'
     if (m.startsWith('RN-07')) return 'PinBloqueado'
-    // ACTUALIZACIONES 01 y 02: un bono ya cobrado, el saldo, el monto y la venta
-    if (m.startsWith('RN-02')) return 'EnProceso'
-    if (m.startsWith('RN-19')) return 'SaldoInsuficiente'
-    if (m.startsWith('RN-20') || m.startsWith('RN-21') || m.startsWith('RN-22')) return 'MontoNoPermitido'
-    if (m.startsWith('RN-23')) return 'VentaNoPermitida'
     return null
-  }
-}
-
-/** Con la asignación bloqueada, el saldo ya no alcanza: otro cobro de la persona se pagó entretanto. */
-class SaldoCambio extends Error {
-  constructor() {
-    super('El saldo cambió mientras se pedía el cobro')
   }
 }

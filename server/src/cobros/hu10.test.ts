@@ -39,10 +39,6 @@ describe('CA-10.01 · el punto consulta', () => {
           programa: { id: s.programaId, nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
           monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
           moneda: { codigo: 'COP', escala: 2 },
-          asignado: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
-          cobrado: { valor: '0', assetCode: 'COP', assetScale: 2 },
-          retiroParcial: true,
-          montoMinimo: null,
           vigenciaFin: '2026-12-31',
         },
       ],
@@ -123,11 +119,9 @@ describe('CA-10.02 · la solicitud', () => {
   })
 })
 
-describe('CA-10.03 · el monto no viene del navegador (RN-11, ampliado por HU-26)', () => {
-  it('el punto no puede pedir más que el saldo ni centavos; sin monto, el cobro usa el valor de la liquidación', async () => {
-    expect((await retiro(JORGE.documento, { monto: '1' })).cuerpo.error.codigo).toBe('MontoInvalido')
-    expect((await retiro(JORGE.documento, { monto: '23000100' })).cuerpo.error.codigo).toBe('SaldoInsuficiente')
-    expect(await e.contar('cobro')).toBe(0)
+describe('CA-10.03 · el monto no viene del navegador (RN-11)', () => {
+  it('un monto en el cuerpo se rechaza, y el cobro usa el valor de la liquidación', async () => {
+    expect((await retiro(JORGE.documento, { monto: '1' })).status).toBe(400)
     const { cuerpo } = await retiro(JORGE.documento)
     expect(cuerpo.monto.valor).toBe('23000000')
     expect((await cobro(cuerpo.id)).monto).toBe(23_000_000)

@@ -1,6 +1,6 @@
 // Acceso a datos de cobros. Sin reglas de negocio: las decide cobros/.
 import { and, asc, count, desc, eq, gte, inArray, sql } from 'drizzle-orm'
-import { ESTADOS_EN_VUELO, ESTADOS_VIVOS, type EstadoCobro } from '../../cobros/estados.ts'
+import { ESTADOS_VIVOS, type EstadoCobro } from '../../cobros/estados.ts'
 import type { Db } from '../conexion.ts'
 import { cobro } from '../generado/schema.ts'
 
@@ -17,12 +17,8 @@ export interface RepoCobros {
   crear(datos: NuevoCobro): Promise<FilaCobro>
   obtener(id: string): Promise<FilaCobro | undefined>
   porLlave(llave: string): Promise<FilaCobro | undefined>
-  /** El cobro vivo o pagado de la persona en el programa (RN-02 de los bonos). */
+  /** El cobro vivo o pagado de la persona en el programa (lo que vigila el índice de RN-02). */
   vivoDe(programaId: string, beneficiarioId: string): Promise<FilaCobro | undefined>
-  /** El cobro en vuelo de la persona en el programa: hay uno a lo sumo (índice `un_cobro_en_vuelo_por_persona`). */
-  enVueloDe(programaId: string, beneficiarioId: string): Promise<FilaCobro | undefined>
-  /** Todos los cobros de la persona en el programa: de ellos sale su saldo (cobros/saldo.ts). */
-  dePersonaEnPrograma(programaId: string, beneficiarioId: string): Promise<FilaCobro[]>
   /**
    * Bloqueo optimista (CA-14.03): cambia solo si la versión es la esperada y la sube. Si no cambió
    * ninguna fila, otra petición ganó y devuelve false.
@@ -73,18 +69,6 @@ export function repoCobros(db: Db): RepoCobros {
         .limit(1)
       return fila
     },
-
-    async enVueloDe(programaId, beneficiarioId) {
-      const [fila] = await db
-        .select()
-        .from(cobro)
-        .where(and(eq(cobro.programaId, programaId), eq(cobro.beneficiarioId, beneficiarioId), inArray(cobro.estado, [...ESTADOS_EN_VUELO])))
-        .limit(1)
-      return fila
-    },
-
-    dePersonaEnPrograma: (programaId, beneficiarioId) =>
-      db.select().from(cobro).where(and(eq(cobro.programaId, programaId), eq(cobro.beneficiarioId, beneficiarioId))).orderBy(...recientePrimero),
 
     async actualizar(id, versionEsperada, campos) {
       // La base también sube `version` con un trigger; hacerlo aquí mantiene el bloqueo en una base

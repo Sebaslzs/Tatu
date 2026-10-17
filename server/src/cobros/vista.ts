@@ -4,23 +4,20 @@
 import { billeteraCorta } from '../comun/billeteras.ts'
 import { etiquetaDe } from '../comun/etiqueta.ts'
 import { enmascararDocumento } from '../comun/log.ts'
-import { monedaApi, monto, montoOpcional, type MonedaApi, type Monto } from '../comun/montos.ts'
+import { monedaApi, montoOpcional, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
 import type { FilaCuenta } from '../db/repositorios/cuentas.ts'
 import { detalleDe, ultimoHaciaEn, type FilaEvento } from '../db/repositorios/eventos.ts'
 import type { FilaPrograma } from '../db/repositorios/programas.ts'
 import type { FilaPunto } from '../db/repositorios/puntos.ts'
-import type { FilaVenta } from '../db/repositorios/ventas.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
-import { vistaVenta, type VistaVenta } from '../facturacion/vista.ts'
 import type { Persona, PuertoLiquidacion } from '../liquidacion/contrato.ts'
 import { monedaDe } from '../programas/vista.ts'
 import type { Canal } from '../programas/reglas.ts'
 import type { EstadoCobro } from './estados.ts'
 import { motivoDesdeBd, type MotivoVisible } from './mensajes.ts'
 import { confirmarAntesDe } from './reglas.ts'
-import { efectivoDe, manejaSaldo, saldoDe } from './saldo.ts'
 
 export interface VistaEvento {
   desde: string | null
@@ -47,12 +44,6 @@ export interface VistaCobro {
   /** Hasta cuándo se puede confirmar; solo mientras el cobro espera el PIN. */
   confirmarAntesDe: string | null
   segundosHastaPagado: number | null
-  /** HU-27: la compra registrada con un retiro y su envío a facturación; null si no hubo. */
-  venta: VistaVenta | null
-  /** Retiro: lo que el punto entrega en efectivo (el retiro menos la compra). null en otros canales. */
-  efectivo: Monto | null
-  /** HU-26: lo que le queda a la persona en el programa. Solo al consultar un cobro; null en las listas. */
-  saldoRestante: Monto | null
   creado: string
   actualizado: string
   eventos?: VistaEvento[]
@@ -66,7 +57,6 @@ export interface ContextoCobros {
   cuentas: Map<string, FilaCuenta>
   eventos: Map<string, FilaEvento[]>
   personas: Map<string, Persona>
-  ventas: Map<string, FilaVenta>
 }
 
 export interface ParametrosVista {
@@ -121,15 +111,14 @@ export class VistasCobro {
     const conPersonas = repos.beneficiarios
       .deIds(lista.map((c) => c.beneficiarioId))
       .then(async (bs) => ({ bs, personas: await this.personas([...bs.values()].map((b) => b.numeroDocumento)) }))
-    const [programas, puntos, cuentas, eventos, ventas, { bs, personas }] = await Promise.all([
+    const [programas, puntos, cuentas, eventos, { bs, personas }] = await Promise.all([
       repos.programas.deIds(lista.map((c) => c.programaId)),
       repos.puntos.deIds(definidos(lista.map((c) => c.puntoId))),
       repos.cuentas.deIds(definidos(lista.map((c) => c.cuentaId))),
       repos.eventos.deVarias('cobro', lista.map((c) => c.id)),
-      repos.ventas.deCobros(lista.filter((c) => c.canal === 'retiro').map((c) => c.id)),
       conPersonas,
     ])
-    return { programas, puntos, beneficiarios: bs, cuentas, eventos, personas, ventas }
+    return { programas, puntos, beneficiarios: bs, cuentas, eventos, personas }
   }
 
   vista(c: FilaCobro, ctx: ContextoCobros, opciones: { eventos?: boolean } = { eventos: true }): VistaCobro {
@@ -138,7 +127,6 @@ export class VistasCobro {
     const persona = ctx.beneficiarios.get(c.beneficiarioId)!
     const cuenta = c.cuentaId ? ctx.cuentas.get(c.cuentaId) : undefined
     const eventos = ctx.eventos.get(c.id) ?? []
-    const venta = ctx.ventas.get(c.id)
     const moneda = monedaDe(programa)
     const { confirmacionTtlSeg, pinMaxIntentos } = this.parametros
     return {
@@ -162,9 +150,6 @@ export class VistasCobro {
       intentosRestantes: c.estado === 'PorConfirmar' ? Math.max(0, pinMaxIntentos - c.intentosPin) : null,
       confirmarAntesDe: c.estado === 'PorConfirmar' ? confirmarAntesDe(c.creadoEn, confirmacionTtlSeg) : null,
       segundosHastaPagado: segundosHastaPagado(c, eventos),
-      venta: venta ? vistaVenta(venta, moneda) : null,
-      efectivo: c.canal === 'retiro' && c.monto !== null ? monto(efectivoDe(c.monto, venta?.valor ?? null), moneda) : null,
-      saldoRestante: null,
       creado: c.creadoEn,
       actualizado: c.actualizadoEn,
       ...(opciones.eventos ? { eventos: vistaEventos(eventos) } : {}),
@@ -177,26 +162,6 @@ export class VistasCobro {
   }
 
   async una(c: FilaCobro, opciones: { eventos?: boolean } = { eventos: true }): Promise<VistaCobro> {
-    const ctx = await this.contextoDe([c])
-    const v = this.vista(c, ctx, opciones)
-    return { ...v, saldoRestante: await this.saldoRestante(c, ctx) }
-  }
-
-  /**
-   * HU-26: lo que le queda a la persona después de este cobro (para el resumen del punto y el
-   * comprobante). Sale de la liquidación y de sus cobros; si la liquidación no responde, null.
-   */
-  private async saldoRestante(c: FilaCobro, ctx: ContextoCobros): Promise<Monto | null> {
-    const programa = ctx.programas.get(c.programaId)!
-    if (!manejaSaldo(programa)) return null
-    const persona = ctx.beneficiarios.get(c.beneficiarioId)!
-    try {
-      const pago = await this.liquidacion.pago(programa.id, persona.numeroDocumento)
-      if (pago.tipo !== 'disponible') return null
-      const cobros = await this.uow.repos.cobros.dePersonaEnPrograma(programa.id, persona.id)
-      return monto(saldoDe(pago.monto, cobros).disponible, monedaDe(programa))
-    } catch {
-      return null
-    }
+    return this.vista(c, await this.contextoDe([c]), opciones)
   }
 }

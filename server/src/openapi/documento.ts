@@ -14,12 +14,11 @@ import { rutasProgramas } from './rutas/programas.ts'
 import { rutasPuente } from './rutas/puente.ts'
 import { rutasPuntos } from './rutas/puntos.ts'
 import { rutasSistema } from './rutas/sistema.ts'
-import { rutasVentas } from './rutas/ventas.ts'
 
 const DESCRIPCION = [
   'Tatú convierte una liquidación ya aprobada de un subsidio en pagos bajo demanda con **Open Payments** (Interledger).',
   '',
-  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18), las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B, el **resumen de la persona** (HU-08), los **cobros** (HU-10, HU-11), el **retiro parcial** y la **venta con el retiro** que se envía a facturación (HU-26, HU-27), la **caja del punto** y el **tablero y cierre del programa** (HU-15, HU-17).',
+  'Cubre la **épica 1 · Conexión del subsidio** (HU-01 a HU-03), la **autorización con Open Payments** (HU-04, HU-05), pausar el programa (HU-18), las **cuentas del beneficiario** (HU-07) con su banco puente de Bre-B, el **resumen de la persona** (HU-08), los **cobros** (HU-10, HU-11), la **caja del punto** y el **tablero y cierre del programa** (HU-15, HU-17).',
   '',
   '### Convenciones',
   '- **Errores**: siempre `{ "error": { "codigo", "mensaje" } }`. Decide con `codigo`; `mensaje` es para la persona.',
@@ -40,10 +39,8 @@ const ETIQUETAS = [
   { name: 'Beneficiarios', description: 'Registro del equipo de prueba, el selector demo y el resumen HU-08.' },
   { name: 'Billeteras', description: 'Resolver una dirección de billetera antes de guardarla.' },
   { name: 'Cobros', description: 'HU-10 y HU-11 · Solicitar, confirmar con PIN, cancelar y consultar un cobro.' },
-  { name: 'Ventas', description: 'HU-27 · La compra que la persona hizo en el punto durante su retiro y su envío a facturación.' },
   { name: 'Tablero', description: 'HU-15 y HU-17 · Autorizado, cobrado, lo que nunca salió y el cierre del programa.' },
   { name: 'Liquidación', description: 'HU-02 · Liquidación de la entidad (la plataforma consulta, no copia): pagos, personas y PIN.' },
-  { name: 'Facturación', description: 'HU-27 · Sistema de facturación del comercio simulado: recibe las ventas con su llave de idempotencia.' },
   { name: 'Banco puente', description: 'AD-21 · Banco puente de Bre-B simulado: resuelve llaves a billeteras, sin revelar al titular.' },
 ]
 
@@ -68,7 +65,6 @@ export function construirDocumentoOpenApi(): Json {
       ...rutasBeneficiarios(),
       ...rutasBilleteras(),
       ...rutasCobros(),
-      ...rutasVentas(),
       ...rutasLiquidacion(),
       ...rutasPuente(),
     },

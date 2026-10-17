@@ -156,12 +156,8 @@ export const PagoPendiente = z.strictObject({
     estado: z.string(),
     tipo: z.enum(['subsidio', 'bono']),
   }),
-  monto: Monto.meta({ description: 'Lo que puede cobrar hoy. En un subsidio es el saldo que le queda (HU-26).' }),
+  monto: Monto,
   moneda: MonedaCodigo,
-  asignado: Monto.meta({ description: 'Lo que le asignó la liquidación en este programa.' }),
-  cobrado: Monto.meta({ description: 'Lo que ya cobró (cobros `Pagado`). En un bono, 0: es de un solo uso.' }),
-  retiroParcial: z.boolean().meta({ description: 'HU-26: en un punto de retiro puede retirar solo una parte del saldo (todo subsidio).' }),
-  montoMinimo: Monto.nullable().meta({ description: 'Retiro mínimo del programa; el último retiro puede ser menor (lo que quede). `null` sin mínimo.' }),
   vigenciaFin: z.string().meta({ description: 'Día en que vence, en hora de Bogotá.', examples: ['2026-12-31'] }),
 })
 
@@ -180,20 +176,6 @@ export const EventoCobro = z.strictObject({
   hacia: z.string().nullable(),
   texto: z.string().nullable(),
   creado: z.string(),
-})
-
-export const Venta = z.strictObject({
-  id: uuid('Identificador de la venta; es también la llave de idempotencia ante facturación.'),
-  valor: Monto.meta({ description: 'Valor de la compra. Es parte del retiro.' }),
-  descripcion: z.string().nullable().meta({ examples: ['Mercado'] }),
-  estado: z.enum(['Registrada', 'PorEnviar', 'Enviada', 'Rechazada', 'Anulada']).meta({
-    description:
-      '`Registrada` (el retiro no se ha pagado) · `PorEnviar` (retiro `Pagado`; falta que facturación la reciba) · `Enviada` · `Rechazada` (facturación rechazó los datos; se puede reenviar) · `Anulada` (el retiro no se pagó).',
-  }),
-  intentosEnvio: z.number().int().meta({ description: 'Veces que se intentó enviar a facturación.' }),
-  ultimoError: z.string().nullable().meta({ description: 'Por qué falló el último envío, si falló.' }),
-  referenciaFactura: z.string().nullable().meta({ description: 'Identificador que devolvió el sistema de facturación.', examples: ['FAC-0001'] }),
-  enviadaEn: z.string().nullable(),
 })
 
 export const Cobro = z.strictObject({
@@ -217,18 +199,14 @@ export const Cobro = z.strictObject({
   intentosRestantes: z.number().int().nullable(),
   confirmarAntesDe: z.string().nullable(),
   segundosHastaPagado: z.number().nullable(),
-  venta: Venta.nullable().meta({ description: 'HU-27: la compra registrada con un retiro; `null` si no hubo.' }),
-  efectivo: Monto.nullable().meta({ description: 'Solo en `retiro`: lo que el punto entrega en efectivo (`monto` menos la compra).' }),
-  saldoRestante: Monto.nullable().meta({ description: 'HU-26: lo que le queda a la persona en el programa. Solo al consultar un cobro (`null` en listas, en bonos o si la liquidación no respondió).' }),
   creado: z.string(),
   actualizado: z.string(),
   eventos: z.array(EventoCobro).optional(),
 })
 
 export const TotalCaja = z.strictObject({
-  entregado: Monto.meta({ description: 'Efectivo entregado: los retiros `Pagado` menos las compras registradas en ellos (HU-27).' }),
-  vendido: Monto.meta({ description: 'HU-27: compras que las personas pagaron con su retiro (mercancía, no efectivo).' }),
-  reembolsado: Monto.meta({ description: 'Entregado + vendido: el punto solo entrega al ver «Pagado», y `Pagado` es el reembolso ya recibido en su billetera.' }),
+  entregado: Monto.meta({ description: 'Efectivo entregado: los cobros `Pagado`.' }),
+  reembolsado: Monto.meta({ description: 'Igual a lo entregado: el punto solo entrega al ver «Pagado», y `Pagado` es el reembolso ya recibido en su billetera.' }),
   pendiente: Monto.meta({ description: 'Cobros `Pagando`: el reembolso va en camino y ese efectivo todavía no se entrega.' }),
   giradoPorAdelantado: Monto.meta({ description: 'Siempre 0: el punto nunca pone plata antes de que le paguen.' }),
 })
@@ -339,7 +317,6 @@ export const MODELOS = {
   PagosPunto,
   MotivoCobro,
   EventoCobro,
-  Venta,
   Cobro,
   TotalCaja,
   CajaPunto,

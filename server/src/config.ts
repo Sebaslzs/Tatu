@@ -31,9 +31,6 @@ const esquema = z.object({
   LIQUIDACION_TIMEOUT_MS: entero(5000),
   PUENTE_URL: z.url().default('http://localhost:3000/api/puente'),
   PUENTE_TIMEOUT_MS: entero(5000),
-  /** HU-27: sistema externo de facturación que recibe las ventas registradas en un retiro (en la demo, el simulador). */
-  FACTURACION_URL: z.url().default('http://localhost:3000/api/facturacion'),
-  FACTURACION_TIMEOUT_MS: entero(5000),
   /** CA-07.05: `subject` pide un permiso en la billetera; `simulada` (plan B) la da por verificada. */
   VERIFICACION_CUENTA: z.enum(['subject', 'simulada']).default('subject'),
   POLL_INTERVALO_MS: entero(1000),

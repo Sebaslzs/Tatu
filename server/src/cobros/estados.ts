@@ -24,14 +24,8 @@ const TRANSICIONES: Record<EstadoCobro, readonly EstadoCobro[]> = {
   Rechazado: [],
 }
 
-/** Estados en los que un cobro cuenta para RN-02 en un bono (de un solo uso). */
+/** Estados en los que un cobro cuenta para RN-02 (el índice `un_cobro_vivo_por_persona`). */
 export const ESTADOS_VIVOS: readonly EstadoCobro[] = ['Solicitado', 'PorConfirmar', 'Pagando', 'Pagado']
-
-/**
- * Estados en vuelo: el cobro reserva saldo y todavía no termina. Uno solo a la vez por persona y
- * programa (índice `un_cobro_en_vuelo_por_persona`, ACTUALIZACIÓN 01).
- */
-export const ESTADOS_EN_VUELO: readonly EstadoCobro[] = ['Solicitado', 'PorConfirmar', 'Pagando']
 
 export function puedeTransicionar(desde: EstadoCobro, hacia: EstadoCobro): boolean {
   return TRANSICIONES[desde].includes(hacia)

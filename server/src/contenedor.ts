@@ -19,10 +19,6 @@ import { ServicioCuentas } from './cuentas/servicio.ts'
 import type { Db } from './db/conexion.ts'
 import { crearUnidadDeTrabajo, type UnidadDeTrabajo } from './db/unidadDeTrabajo.ts'
 import type { ConfigPublica } from './extras.ts'
-import { ClienteFacturacion } from './facturacion/cliente.ts'
-import type { PuertoFacturacion } from './facturacion/contrato.ts'
-import { ServicioFacturacion } from './facturacion/servicio.ts'
-import { FacturacionSimulada } from './facturacion/simulador.ts'
 import { ClienteLiquidacion } from './liquidacion/cliente.ts'
 import type { DatosLiquidacion, PuertoLiquidacion } from './liquidacion/contrato.ts'
 import { LiquidacionEnBase } from './liquidacion/enBase.ts'
@@ -61,8 +57,6 @@ export interface Contenedor {
   billeteras: PuertoBilleteras
   simuladorLiquidacion: DatosLiquidacion
   simuladorPuente: DatosPuente
-  facturacion: ServicioFacturacion
-  simuladorFacturacion: FacturacionSimulada
 }
 
 export interface PiezasContenedor {
@@ -76,8 +70,6 @@ export interface PiezasContenedor {
   puente?: PuertoPuente
   simuladorLiquidacion?: DatosLiquidacion
   simuladorPuente?: DatosPuente
-  facturacion?: PuertoFacturacion
-  simuladorFacturacion?: FacturacionSimulada
   reloj?: Reloj
   nuevoNonce?: () => string
   /** Candado de la base (pg_try_advisory_lock) para rotar tokens sin choques entre servidores. */
@@ -96,8 +88,6 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const liquidacion =
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
   const puente = piezas.puente ?? new ClientePuente({ baseUrl: config.PUENTE_URL, timeoutMs: config.PUENTE_TIMEOUT_MS })
-  const puertoFacturacion =
-    piezas.facturacion ?? new ClienteFacturacion({ baseUrl: config.FACTURACION_URL, timeoutMs: config.FACTURACION_TIMEOUT_MS })
 
   // La liquidación simulada paga el «monto por persona» de cada programa (atajo de la demo)
   const simuladorLiquidacion = piezas.simuladorLiquidacion ?? new LiquidacionEnBase(piezas.db)
@@ -139,9 +129,6 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   })
   const solicitud = new SolicitudCobro({ uow, lector, liquidacion, cuentas, billeteras, vistas, pagador, reloj })
   const pagosPendientes = new PagosPendientes({ uow, liquidacion, reloj })
-  // HU-27: la venta de un retiro Pagado se envía a facturación, aparte del pago
-  const facturacion = new ServicioFacturacion({ uow, facturacion: puertoFacturacion, liquidacion, reloj })
-  movimientos.alPagarVenta((ventaId) => facturacion.disparar(ventaId))
 
   return {
     config,
@@ -152,12 +139,10 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     billeteras,
     simuladorLiquidacion: simuladorLiquidacion,
     simuladorPuente: piezas.simuladorPuente ?? new PuenteEnBase(piezas.db),
-    simuladorFacturacion: piezas.simuladorFacturacion ?? new FacturacionSimulada(),
-    facturacion,
     cuentas,
     beneficiarios: new ServicioBeneficiarios({ uow, liquidacion, puente, billeteras, reloj }),
     resumenBeneficiario: new ConsultaResumenBeneficiario({ uow, pagosPendientes, vistas }),
-    cobros: new ServicioCobros({ solicitud, confirmacion, pagador, movimientos, vistas, facturacion }),
+    cobros: new ServicioCobros({ solicitud, confirmacion, pagador, movimientos, vistas }),
     programas: {
       programas: new ServicioProgramas({ uow, billeteras, liquidacion, lector, transiciones, bonoHabilitado: config.EXTRA_BONO }),
       autorizacion: new ServicioAutorizacion({

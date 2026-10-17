@@ -1,22 +1,14 @@
 // Lo que el punto consulta y pide a la API: los pagos de una cédula, sus cobros, su caja y los pasos
-// del cobro (pedir, confirmar con el PIN, cancelar) y el reenvío de una venta a facturación. En un
-// retiro el punto puede pedir solo una parte del saldo; la API lo valida y decide (HU-26).
+// del cobro (pedir, confirmar con el PIN, cancelar). El monto nunca sale de aquí: lo calcula la API.
 import { http } from './http'
-import type { Canal, Cobro, CobroResumen, Monto, Punto, Venta } from './tipos'
+import type { Canal, Cobro, CobroResumen, Monto, Punto } from './tipos'
 
 export type PeriodoCaja = 'hoy' | '7d' | 'todo'
 
 /** Un subsidio (o un bono, en una sede de comercio) que el punto puede pagarle hoy a la cédula. */
 export interface PagoPendiente {
   programa: { id: string; nombre: string; estado: string; tipo: 'subsidio' | 'bono' }
-  /** Lo que puede cobrar hoy: en un subsidio, el saldo que le queda. */
   monto: Monto
-  /** HU-26: lo que le asignó la liquidación y lo que ya cobró. */
-  asignado: Monto
-  cobrado: Monto
-  /** HU-26: en un punto de retiro puede retirar solo una parte. */
-  retiroParcial: boolean
-  montoMinimo: Monto | null
   /** Último día para cobrar (AAAA-MM-DD, hora de Bogotá). */
   vigenciaFin: string
 }
@@ -29,10 +21,7 @@ export interface PagosEnPunto {
 
 /** Lo que movió el punto en una moneda. Lo entregado es lo reembolsado: se entrega al ver «Pagado». */
 export interface TotalCaja {
-  /** El efectivo entregado: los retiros pagados menos las compras registradas en ellos. */
   entregado: Monto
-  /** HU-27: compras que las personas pagaron con su retiro. */
-  vendido: Monto
   reembolsado: Monto
   /** Cobros Pagando: el reembolso va en camino y ese efectivo todavía no se entrega. */
   pendiente: Monto
@@ -59,10 +48,6 @@ export interface PedidoCobro {
   programaId?: string
   /** Solo en una compra con bono: el total de la compra en unidades mínimas. */
   totalCompra?: string
-  /** HU-26: solo en un retiro, cuánto retirar (unidades mínimas); sin él, todo el saldo. */
-  monto?: string
-  /** HU-27: solo en un retiro, la compra que la persona hizo en el punto; es parte del retiro. */
-  venta?: { valor: string; descripcion?: string }
   /** Una por intento: el doble clic devuelve el mismo cobro (CA-10.07). */
   llaveIdempotencia: string
 }
@@ -89,6 +74,3 @@ export const confirmarConPin = (id: string, pin: string) => http.post<Cobro>(`${
 export const confirmarConBiometria = (id: string, metodo: 'rostro' | 'huella') => http.post<Cobro>(`${delCobro(id)}/confirmar`, { metodo })
 
 export const cancelarCobro = (id: string) => http.post<Cobro>(`${delCobro(id)}/cancelar`)
-
-/** HU-27: reenviar a facturación una venta pendiente; una ya enviada vuelve tal cual (no se duplica). */
-export const reenviarVenta = (id: string) => http.post<Venta>(`/ventas/${encodeURIComponent(id)}/reenviar`)

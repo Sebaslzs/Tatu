@@ -129,8 +129,7 @@ export class ServicioTablero {
       reembolsoSegundos,
       giradoPorAdelantado: m(0),
       sinCobrar: resumen
-        ? // Con retiros parciales una persona puede tener varios Pagado: se cuentan personas, no cobros
-          { cedulas: Math.max(0, resumen.cedulas - new Set(pagados.map((c) => c.beneficiarioId)).size), monto: m(Math.max(0, resumen.total - sumar(pagados))) }
+        ? { cedulas: Math.max(0, resumen.cedulas - pagados.length), monto: m(Math.max(0, resumen.total - sumar(pagados))) }
         : null,
       cobrosPagando: lista.filter((c) => c.estado === 'Pagando').length,
       rechazadosYFallidos: lista.filter((c) => c.estado === 'Rechazado' || c.estado === 'Fallido').length,

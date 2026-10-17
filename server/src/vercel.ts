@@ -45,13 +45,6 @@ function preparar(): Promise<Lista> {
         .then((n) => n && log.info(`Recuperación al arrancar: ${n} cobros en Pagando`))
         .catch((e) => log.warn('Falló la recuperación al arrancar', { error: e })),
     )
-    // HU-27: las ventas que quedaron por enviar a facturación
-    waitUntil(
-      contenedor.facturacion
-        .recuperarAlArrancar()
-        .then((n) => n && log.info(`Recuperación al arrancar: ${n} ventas por enviar a facturación`))
-        .catch((e) => log.warn('Falló el reenvío de ventas al arrancar', { error: e })),
-    )
     return { app: crearApp(contenedor), base, contenedor }
   })().catch((e) => {
     listo = undefined

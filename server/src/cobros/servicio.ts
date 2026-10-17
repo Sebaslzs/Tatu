@@ -1,6 +1,5 @@
 // Fachada del módulo de cobros: las rutas hablan con esta clase; cada paso lo hace su colaborador
 // (solicitud, confirmación, pagador). Aquí solo está la consulta, que une reconciliación y vencimiento.
-import type { ServicioFacturacion } from '../facturacion/servicio.ts'
 import type { Confirmacion } from './esquemas.ts'
 import type { ConfirmacionCobro } from './confirmacion.ts'
 import type { MovimientosCobro } from './movimientos.ts'
@@ -14,8 +13,6 @@ export interface DependenciasServicioCobros {
   pagador: PagadorCobros
   movimientos: MovimientosCobro
   vistas: VistasCobro
-  /** HU-27: al consultar un retiro pagado, reintenta su venta si quedó por enviar a facturación. */
-  facturacion?: ServicioFacturacion
 }
 
 export class ServicioCobros {
@@ -39,15 +36,13 @@ export class ServicioCobros {
 
   /** CA-12.02: consultar vence lo que venció y, si el cobro está Pagando, pregunta al banco (RN-10). */
   async consultar(id: string): Promise<VistaCobro> {
-    const { confirmacion, movimientos, pagador, vistas, facturacion } = this.deps
+    const { confirmacion, movimientos, pagador, vistas } = this.deps
     let c = await confirmacion.aplicarVencimiento(await movimientos.exigir(id))
     if (c.estado === 'Pagando') {
       await pagador.reconciliar(c)
       c = await movimientos.exigir(id)
     }
-    const vista = await vistas.una(c)
-    if (facturacion && vista.venta) facturacion.intentarSiToca(vista.venta)
-    return vista
+    return vistas.una(c)
   }
 
   /** Para pruebas y para el cierre ordenado: espera los pagos que estén en curso. */

@@ -39,16 +39,9 @@ export function actorDe(c: Pick<FilaCobro, 'puntoId' | 'beneficiarioId'>): Actor
 
 export class MovimientosCobro {
   private readonly uow: UnidadDeTrabajo
-  /** Quién envía a facturación la venta de un retiro que quedó Pagado (lo conecta el contenedor). */
-  private alQuedarPorEnviar: ((ventaId: string) => void) | undefined
 
   constructor(uow: UnidadDeTrabajo) {
     this.uow = uow
-  }
-
-  /** HU-27: al quedar Pagado un retiro con venta, se avisa para enviarla a facturación (después de guardar). */
-  alPagarVenta(enviar: (ventaId: string) => void): void {
-    this.alQuedarPorEnviar = enviar
   }
 
   /** El cobro o 404. */
@@ -73,10 +66,7 @@ export class MovimientosCobro {
     if (!puedeTransicionar(c.estado, hacia)) throw new TransicionInvalida(c.estado, hacia)
     const motivo = (extra.motivoRechazo ?? undefined) as Motivo | undefined
     const punto = c.puntoId ? await this.uow.repos.puntos.obtener(c.puntoId) : undefined
-    let ventaPorEnviar: string | null = null
-    const hecho = await this.uow.transaccion(async (repos) => {
-      // La venta se lee antes: en Supabase el trigger `cobro_mueve_venta` la mueve con el cobro
-      const venta = c.canal === 'retiro' ? await repos.ventas.deCobro(c.id) : undefined
+    return this.uow.transaccion(async (repos) => {
       if (!(await repos.cobros.actualizar(c.id, c.version, { ...extra, estado: hacia }))) return false
       await repos.eventos.registrar({
         tipoEntidad: 'cobro',
@@ -86,33 +76,9 @@ export class MovimientosCobro {
         detalle: { texto: textoEvento(c, hacia, punto, motivo), ...(motivo ? { motivo } : {}), ...detalle },
         actor,
       })
-      if (venta?.estado === 'Registrada') ventaPorEnviar = await this.seguirVenta(repos, venta.id, c, hacia)
       await tambien?.(repos)
       return true
     })
-    if (hecho && ventaPorEnviar) this.alQuedarPorEnviar?.(ventaPorEnviar)
-    return hecho
-  }
-
-  /**
-   * La venta sigue al retiro (HU-27): Pagado → por enviar a facturación; Rechazado o Fallido → anulada,
-   * porque sin pago no hubo venta. Devuelve el id si quedó por enviar.
-   */
-  private async seguirVenta(repos: Repos, ventaId: string, c: FilaCobro, hacia: EstadoCobro): Promise<string | null> {
-    const destino = hacia === 'Pagado' ? 'PorEnviar' : hacia === 'Rechazado' || hacia === 'Fallido' ? 'Anulada' : null
-    if (!destino) return null
-    await repos.ventas.seguirAlCobro(c.id, destino)
-    await repos.eventos.registrar({
-      tipoEntidad: 'venta',
-      idEntidad: ventaId,
-      estadoAnterior: 'Registrada',
-      estadoNuevo: destino,
-      detalle: {
-        texto: destino === 'PorEnviar' ? `Retiro ${c.referencia} pagado: la compra queda lista para facturar.` : `El retiro ${c.referencia} no se pagó: la compra se anula.`,
-        cobro: c.id,
-      },
-    })
-    return destino === 'PorEnviar' ? ventaId : null
   }
 
   /** Un evento que no cambia el estado (p. ej. «el banco no respondió»). */

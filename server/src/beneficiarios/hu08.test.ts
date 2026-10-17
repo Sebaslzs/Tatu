@@ -26,10 +26,6 @@ describe('GET /beneficiarios/:cedula/resumen', () => {
         programa: { id: s.programaId, nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
         monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
         moneda: { codigo: 'COP', escala: 2 },
-        asignado: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
-        cobrado: { valor: '0', assetCode: 'COP', assetScale: 2 },
-        retiroParcial: true,
-        montoMinimo: null,
         vigenciaFin: '2026-12-31',
       },
     ])
