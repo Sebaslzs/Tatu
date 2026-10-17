@@ -7,6 +7,7 @@ import { log } from '../comun/log.ts'
 import { ErrorOpenPayments } from '../comun/openPayments.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
+import { candadoDeCobro, sinCandado, type Candado } from '../programas/candados.ts'
 import { monedaDe } from '../programas/vista.ts'
 import { PermisoVencido, type ServicioPermisoToken } from '../programas/permisoToken.ts'
 import type { MovimientosCobro } from './movimientos.ts'
@@ -18,6 +19,15 @@ export interface DependenciasPagador {
   movimientos: MovimientosCobro
   pagos: PuertoPagos
   token: ServicioPermisoToken
+  /** Candado de la base: entre instancias (Vercel) o servidores, un solo proceso paga cada cobro. */
+  candado?: Candado
+}
+
+/** Otro proceso ya guardó la URL de este pago: este se retira sin crear nada más. */
+class OtroProcesoPaga extends Error {
+  constructor() {
+    super('Otro proceso ya está pagando este cobro')
+  }
 }
 
 /** Como máximo una consulta a Open Payments por cobro cada tanto, para no saturar al banco. */
@@ -25,7 +35,7 @@ const ESPERA_ENTRE_CONSULTAS_MS = 1000
 
 export class PagadorCobros {
   private readonly deps: DependenciasPagador
-  /** Un solo `pagar()` por cobro a la vez. */
+  /** Un solo `pagar()` por cobro a la vez dentro de este proceso (entre procesos, el candado de la base). */
   private readonly enCurso = new Map<string, Promise<void>>()
   private readonly ultimaConsulta = new Map<string, number>()
 
@@ -102,7 +112,17 @@ export class PagadorCobros {
 
   // ---------------------------------------------------------------------------------------------
 
+  /**
+   * Con el candado de la base por cobro: si otro proceso (otra instancia de Vercel que atendió una
+   * consulta del mismo cobro) ya lo está pagando, este no hace nada. Sin esto, cada instancia creaba
+   * su propio pago entrante y podía llegar a un segundo pago saliente.
+   */
   private async pagar(id: string): Promise<void> {
+    const candado = this.deps.candado ?? sinCandado
+    await candado(candadoDeCobro(id), () => this.pagarConCandado(id))
+  }
+
+  private async pagarConCandado(id: string): Promise<void> {
     const { uow, movimientos, pagos, token } = this.deps
     let c = await movimientos.exigir(id)
     if (c.estado !== 'Pagando') return
@@ -118,7 +138,7 @@ export class PagadorCobros {
           referencia: c.referencia,
           descripcion: `${programa.nombre} · ${c.referencia}`,
         })
-        c = await this.guardar(id, { urlPagoEntrante: entrante.id })
+        c = await this.guardar(c, { urlPagoEntrante: entrante.id })
       }
       // 3: el saliente, con el token del permiso (que se rota si el banco ya no lo acepta)
       if (!c.urlPagoSaliente) {
@@ -133,10 +153,15 @@ export class PagadorCobros {
             referencia: c.referencia,
           }),
         )
-        c = await this.guardar(id, { urlPagoSaliente: saliente.id })
+        c = await this.guardar(c, { urlPagoSaliente: saliente.id })
         await this.cerrarSegun(c, rn10Resultado({ saliente }))
       }
     } catch (e) {
+      // Otro proceso ganó el cobro: él lo cierra; este no lo marca Fallido
+      if (e instanceof OtroProcesoPaga) {
+        log.warn('Otro proceso ya pagaba este cobro; este se retira', { cobro: id })
+        return
+      }
       await this.manejarErrorPago(id, e)
     }
   }
@@ -178,11 +203,14 @@ export class PagadorCobros {
     else if (resultado === 'Fallido') await movimientos.mover(c, 'Fallido', { motivoRechazo: 'ErrorPago' }, {}, 'banco')
   }
 
-  private async guardar(id: string, campos: { urlPagoEntrante?: string; urlPagoSaliente?: string }): Promise<FilaCobro> {
+  /**
+   * Guarda la URL solo si el cobro sigue como este proceso lo leyó (misma versión). Si otro ya guardó
+   * la suya, no se sobrescribe: este proceso se retira y no crea el pago saliente (sin doble pago).
+   */
+  private async guardar(leido: FilaCobro, campos: { urlPagoEntrante?: string; urlPagoSaliente?: string }): Promise<FilaCobro> {
     const { uow, movimientos } = this.deps
-    const c = await movimientos.exigir(id)
-    if (!(await uow.repos.cobros.actualizar(c.id, c.version, campos))) throw new Error('El cobro cambió mientras se guardaba la URL del pago')
-    return movimientos.exigir(id)
+    if (!(await uow.repos.cobros.actualizar(leido.id, leido.version, campos))) throw new OtroProcesoPaga()
+    return movimientos.exigir(leido.id)
   }
 
   private async requiereConciliacion(id: string): Promise<void> {
