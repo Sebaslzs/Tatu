@@ -39,7 +39,7 @@ function Botonera<T extends string>({ opciones, valor, cambiar, etiqueta }: { op
           onClick={() => cambiar(v)}
           className={cn(
             'min-h-10 cursor-pointer rounded-lg border-0 px-3.5 font-sans text-[15px]',
-            valor === v ? 'bg-arena font-bold text-noche shadow-sm' : 'bg-transparent text-tinta-suave hover:text-noche',
+            valor === v ? 'bg-background font-bold text-foreground shadow-sm' : 'bg-transparent text-tinta-suave hover:text-foreground',
           )}
         >
           {texto}
@@ -138,7 +138,7 @@ export function MiCaja() {
               <li key={x.id}>
                 <Link
                   to={`/punto/cobros/${x.id}`}
-                  className="flex min-h-14 items-center gap-3 rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-noche no-underline hover:border-noche hover:text-noche"
+                  className="flex min-h-14 items-center gap-3 rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-foreground no-underline hover:border-foreground hover:text-foreground"
                 >
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="flex flex-wrap items-center gap-x-2">

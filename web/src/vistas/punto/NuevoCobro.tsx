@@ -26,8 +26,8 @@ function CampoCedula({ consulta, computador = false }: { consulta: ConsultaCedul
       aria-invalid={consulta.error ? true : undefined}
       onChange={(e) => consulta.cambiarCedula(e.target.value)}
       className={cn(
-        'box-border w-full rounded-[14px] border-2 border-noche px-4 font-sans text-[28px] font-bold tracking-[0.04em] text-noche placeholder:font-normal placeholder:tracking-normal placeholder:text-tinta-suave',
-        computador ? 'h-16 bg-white' : 'h-[68px] bg-papel',
+        'box-border w-full rounded-[14px] border-2 border-foreground px-4 font-sans text-[28px] font-bold tracking-[0.04em] text-foreground placeholder:font-normal placeholder:tracking-normal placeholder:text-tinta-suave',
+        computador ? 'h-16 bg-papel' : 'h-[68px] bg-papel',
       )}
     />
   )
@@ -84,7 +84,7 @@ function TarjetaPago({ consulta, i, computador }: { consulta: ConsultaCedula; i:
 
   if (computador) {
     return (
-      <div className="flex flex-[1_1_360px] flex-col gap-2.5 rounded-[20px] border-2 border-noche bg-papel p-[22px]">
+      <div className="flex flex-[1_1_360px] flex-col gap-2.5 rounded-[20px] border-2 border-foreground bg-papel p-[22px]">
         {encabezado}
         {monto}
         <span className="text-[15px] text-tinta-suave">Se entrega el valor completo</span>
@@ -99,13 +99,13 @@ function TarjetaPago({ consulta, i, computador }: { consulta: ConsultaCedula; i:
       type="button"
       onClick={() => void consulta.pedir(p.programa.id)}
       disabled={consulta.enviando || pausado}
-      className="flex w-full cursor-pointer flex-col gap-2 rounded-[18px] border-2 border-noche bg-papel p-4 text-left font-sans text-noche disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full cursor-pointer flex-col gap-2 rounded-[18px] border-2 border-foreground bg-papel p-4 text-left font-sans text-foreground disabled:cursor-not-allowed disabled:opacity-60"
     >
       {encabezado}
       {monto}
       <span className="flex items-center justify-between gap-2.5">
         <span className="text-[15px] text-tinta-suave">Se entrega el valor completo</span>
-        <span className="inline-flex items-center gap-1 text-base font-bold text-azul">
+        <span className="inline-flex items-center gap-1 text-base font-bold text-enlace">
           Pagar <ChevronRight aria-hidden className="size-[18px]" strokeWidth={2.4} />
         </span>
       </span>

@@ -66,7 +66,7 @@ export function EntrarBeneficiario() {
             }}
             aria-invalid={error !== null}
             aria-describedby={error ? 'cc-error' : 'cc-ayuda'}
-            className="h-16 w-full rounded-[14px] border-2 border-noche bg-papel px-4 font-sans text-[26px] font-bold tracking-[0.04em] text-noche"
+            className="h-16 w-full rounded-[14px] border-2 border-foreground bg-papel px-4 font-sans text-[26px] font-bold tracking-[0.04em] text-foreground"
           />
           <span id="cc-ayuda" className="text-[15px] text-tinta-suave">
             Solo números, sin puntos.
@@ -77,7 +77,7 @@ export function EntrarBeneficiario() {
       </form>
 
       <div className="mt-auto flex items-start gap-2.5 text-[15px] leading-[1.45] text-tinta-suave">
-        <IconoCandado stroke="#4A5468" />
+        <IconoCandado stroke="var(--color-tinta-suave)" />
         <span>
           Para cobrar siempre te pediremos algo más: tu cuenta verificada o tu PIN en el punto. Con la cédula sola nadie
           puede cobrar tu subsidio.

@@ -5,8 +5,8 @@ import { MOTIVO_CORTO, NOMBRE_ESTADO_COBRO } from '@/lib/textos'
 import { cn } from '@/lib/utils'
 
 const ESTILO: Record<Estado, string> = {
-  Solicitado: 'border-control bg-arena text-noche',
-  PorConfirmar: 'border-control bg-arena text-noche',
+  Solicitado: 'border-control bg-background text-foreground',
+  PorConfirmar: 'border-control bg-background text-foreground',
   Pagando: 'border-pagando-fondo bg-pagando-fondo text-pagando',
   Pagado: 'border-pagado-relleno bg-pagado-relleno text-white',
   Rechazado: 'border-rechazo-fondo bg-rechazo-fondo text-rechazo',

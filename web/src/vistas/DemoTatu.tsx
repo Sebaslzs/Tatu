@@ -25,7 +25,7 @@ export default function DemoTatu() {
   const [finalError, setFinalError] = useState<'de-pie' | 'logo'>('logo')
 
   return (
-    <div className="min-h-dvh bg-arena text-noche">
+    <div className="min-h-dvh bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pt-6 pb-12 sm:px-6">
         <Marca />
         <div className="flex flex-col gap-2">
@@ -68,7 +68,7 @@ export default function DemoTatu() {
               <label className="flex min-h-11 items-center gap-2 text-[15px]">
                 Al fallar
                 <select
-                  className="min-h-11 rounded-lg border border-control bg-arena px-2 font-sans text-[15px] text-noche"
+                  className="min-h-11 rounded-lg border border-control bg-background px-2 font-sans text-[15px] text-foreground"
                   value={finalError}
                   onChange={(e) => setFinalError(e.target.value as 'de-pie' | 'logo')}
                 >

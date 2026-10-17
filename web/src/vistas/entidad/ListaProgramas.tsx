@@ -92,7 +92,7 @@ export default function ListaProgramas() {
               <Link
                 key={p.id}
                 to={rutaDelPrograma(p.id, p.estado)}
-                className="grid grid-cols-1 items-center gap-4 rounded-[18px] border border-linea bg-papel px-5 py-[18px] text-noche no-underline hover:border-control hover:text-noche md:grid-cols-[minmax(220px,2fr)_repeat(3,minmax(120px,1fr))_auto]"
+                className="grid grid-cols-1 items-center gap-4 rounded-[18px] border border-linea bg-papel px-5 py-[18px] text-foreground no-underline hover:border-control hover:text-foreground md:grid-cols-[minmax(220px,2fr)_repeat(3,minmax(120px,1fr))_auto]"
               >
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[19px] font-bold">{p.nombre}</span>

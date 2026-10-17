@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils'
 
 const VARIANTES = {
   primario: 'border-transparent bg-azul text-white hover:bg-[#2752c4] hover:text-white',
-  contorno: 'border-noche bg-transparent text-noche hover:bg-nota hover:text-noche',
-  suave: 'border-transparent bg-transparent text-noche hover:bg-nota hover:text-noche',
+  contorno: 'border-foreground bg-transparent text-foreground hover:bg-nota hover:text-foreground',
+  suave: 'border-transparent bg-transparent text-foreground hover:bg-nota hover:text-foreground',
   peligro: 'border-transparent bg-rechazo-relleno text-white hover:bg-[#7f1d16] hover:text-white',
 } as const
 

@@ -51,7 +51,7 @@ export function EntrarPunto() {
     <form onSubmit={entrar} className={cn('flex flex-1 flex-col', computador ? 'gap-5' : 'gap-4')}>
       <div className="relative">
         <span className="absolute top-1/2 left-3.5 flex -translate-y-1/2">
-          <Icono className="size-5" stroke="#4A5468">
+          <Icono className="size-5" stroke="var(--color-tinta-suave)">
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-4-4" />
           </Icono>
@@ -62,7 +62,7 @@ export function EntrarPunto() {
           placeholder="Buscar por nombre o dirección"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="h-[52px] w-full rounded-xl border-[1.5px] border-borde-campo bg-papel pr-3.5 pl-11 font-sans text-[17px] text-noche placeholder:text-tinta-suave"
+          className="h-[52px] w-full rounded-xl border-[1.5px] border-borde-campo bg-papel pr-3.5 pl-11 font-sans text-[17px] text-foreground placeholder:text-tinta-suave"
         />
       </div>
 
@@ -76,7 +76,7 @@ export function EntrarPunto() {
               className={cn(
                 'flex cursor-pointer items-center gap-3.5 bg-papel py-3',
                 computador ? 'min-h-[68px] rounded-[14px] px-4' : 'min-h-[72px] rounded-2xl px-3.5',
-                activo ? 'border-[2.5px] border-azul' : 'border-[1.5px] border-linea hover:border-noche',
+                activo ? 'border-[2.5px] border-azul' : 'border-[1.5px] border-linea hover:border-foreground',
               )}
             >
               <input
@@ -98,7 +98,7 @@ export function EntrarPunto() {
         {carga.estado === 'error' && (
           <AvisoLista>
             No pudimos traer los puntos.{' '}
-            <button type="button" onClick={reintentar} className="cursor-pointer border-0 bg-transparent p-0 font-sans text-[15px] font-bold text-azul underline">
+            <button type="button" onClick={reintentar} className="cursor-pointer border-0 bg-transparent p-0 font-sans text-[15px] font-bold text-enlace underline">
               Intentar de nuevo
             </button>
           </AvisoLista>

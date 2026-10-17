@@ -24,5 +24,5 @@ export function Celda({ className, ...props }: ComponentProps<'td'>) {
 
 /** Fila de encabezado con la línea gruesa del prototipo. */
 export function FilaEncabezado({ className, ...props }: ComponentProps<'tr'>) {
-  return <tr className={cn('border-b-2 border-noche', className)} {...props} />
+  return <tr className={cn('border-b-2 border-foreground', className)} {...props} />
 }

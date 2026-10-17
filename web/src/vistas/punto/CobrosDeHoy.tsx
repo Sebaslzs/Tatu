@@ -18,7 +18,7 @@ export function ListaCobrosHoy({ cobros, cargando }: { cobros: CobroResumen[] | 
     <ul className="m-0 mt-1.5 list-none p-0">
       {cobros.map((c) => (
         <li key={c.id}>
-          <Link to={`/punto/cobros/${c.id}`} className="flex items-center gap-3 border-t border-linea py-3 text-noche no-underline hover:text-noche">
+          <Link to={`/punto/cobros/${c.id}`} className="flex items-center gap-3 border-t border-linea py-3 text-foreground no-underline hover:text-foreground">
             <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
               <span className="text-base font-bold">{personaTexto(c)}</span>
               <span className="text-sm text-tinta-suave">{lineaCobro(c)}</span>
@@ -76,7 +76,7 @@ export function TablaCobrosHoy({ cobros, cargando }: { cobros: CobroResumen[] | 
                 <td className={cn(TD, 'whitespace-nowrap')}>
                   <Link
                     to={`/punto/cobros/${c.id}`}
-                    className="font-bold text-noche hover:text-azul"
+                    className="font-bold text-foreground hover:text-enlace"
                     aria-label={c.estado === 'Rechazado' ? `Ver el cobro rechazado de ${personaTexto(c)}` : undefined}
                   >
                     {c.estado === 'Rechazado' ? '—' : c.referencia}

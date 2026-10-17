@@ -88,7 +88,7 @@ export function ListaDatos({ filas, className }: { filas: Array<[ReactNode, Reac
 /** Volver, como en el prototipo: el ‹ en un cuadro claro, junto al texto. */
 export function Volver({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="group inline-flex min-h-11 items-center gap-2.5 self-start text-base font-bold text-noche no-underline hover:text-noche">
+    <Link to={to} className="group inline-flex min-h-11 items-center gap-2.5 self-start text-base font-bold text-foreground no-underline hover:text-foreground">
       <span aria-hidden className="flex size-10 items-center justify-center rounded-[10px] border border-linea bg-papel group-hover:border-control">
         <ChevronLeft className="size-5" strokeWidth={2.5} />
       </span>
@@ -181,7 +181,7 @@ export function Campo({
         id={id}
         aria-describedby={ayuda ? `${id}-ayuda` : undefined}
         className={cn(
-          'min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 py-2.5 font-sans text-base text-noche',
+          'min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 py-2.5 font-sans text-base text-foreground',
           'disabled:opacity-60',
           mono && 'mono text-[15px]',
         )}

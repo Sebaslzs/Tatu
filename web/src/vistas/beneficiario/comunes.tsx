@@ -14,9 +14,9 @@ export function BotonVolver({ a, etiqueta }: { a: string; etiqueta: string }) {
     <Link
       to={a}
       aria-label={etiqueta}
-      className="flex size-11 flex-none items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel text-noche hover:border-noche"
+      className="flex size-11 flex-none items-center justify-center rounded-xl border-[1.5px] border-linea bg-papel text-foreground hover:border-foreground"
     >
-      <Icono className="size-6" stroke="#13203A" strokeWidth={2.4}>
+      <Icono className="size-6" stroke="var(--foreground)" strokeWidth={2.4}>
         <path d="M15 6l-6 6 6 6" />
       </Icono>
     </Link>
@@ -39,7 +39,7 @@ export function Cabecera({ volver, etiquetaVolver, titulo, subtitulo }: { volver
 const BASE_BOTON = 'flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] px-4 text-center font-sans text-lg font-bold no-underline transition-colors'
 const VARIANTES = {
   primario: 'border-0 bg-azul text-white hover:bg-[#2752c4] hover:text-white',
-  contorno: 'border-2 border-noche bg-transparent text-noche hover:bg-papel hover:text-noche',
+  contorno: 'border-2 border-foreground bg-transparent text-foreground hover:bg-papel hover:text-foreground',
 }
 
 export function BotonEnlace({ a, variante = 'primario', className, children }: { a: string; variante?: keyof typeof VARIANTES; className?: string; children: ReactNode }) {

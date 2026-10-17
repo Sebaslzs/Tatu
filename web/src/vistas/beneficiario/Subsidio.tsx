@@ -45,7 +45,7 @@ export function Subsidio() {
                 <ProgramaSinCobros />
               )}
               <div className="-mt-1 flex items-start gap-2.5 text-base leading-[1.4]">
-                <Icono className="mt-px size-5" stroke="#2E5FE0">
+                <Icono className="mt-px size-5" stroke="var(--color-enlace)">
                   <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
                   <path d="M9 12l2 2 4-4" />
                 </Icono>
@@ -58,7 +58,7 @@ export function Subsidio() {
             <div className="flex flex-col gap-3 rounded-[18px] border-[1.5px] border-linea bg-papel p-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-azul-suave">
-                  <IconoEnlace color="#2E5FE0" />
+                  <IconoEnlace color="var(--color-enlace)" />
                 </span>
                 <h1 className="m-0 text-lg leading-[1.25] font-extrabold">Enlaza tu cuenta para cobrar aquí</h1>
               </div>

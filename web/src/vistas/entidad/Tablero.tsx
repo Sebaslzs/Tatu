@@ -90,7 +90,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
             <TriangleAlert aria-hidden className="size-5 shrink-0" />
             El permiso en tu banco venció
           </h2>
-          <p className="m-0 text-noche">Mientras tanto, los cobros fallan sin mover dinero. Hay que aprobar de nuevo el permiso en tu banco por lo que falta del tope.</p>
+          <p className="m-0 text-foreground">Mientras tanto, los cobros fallan sin mover dinero. Hay que aprobar de nuevo el permiso en tu banco por lo que falta del tope.</p>
         </section>
       )}
       {pausado && (
@@ -133,7 +133,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
           aria-valuetext={`${Math.round(pct)} %`}
           className="h-3.5 overflow-hidden rounded-full bg-nota"
         >
-          <div className="h-full rounded-full bg-noche transition-[width]" style={{ width: `${Math.min(100, pct)}%` }} />
+          <div className="h-full rounded-full bg-foreground transition-[width]" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
         <div className="flex justify-between text-sm text-tinta-suave">
           <span>Cobrado {t ? `${Math.round(pct)} %` : '—'}</span>
@@ -193,7 +193,7 @@ export default function Tablero({ datos, error, recargar }: { datos: DatosProgra
                   onClick={() => setFiltro(valor)}
                   className={cn(
                     'min-h-11 cursor-pointer rounded-lg border-0 px-3 font-sans text-sm',
-                    filtro === valor ? 'bg-papel font-bold text-noche shadow-sm' : 'bg-transparent text-tinta-suave',
+                    filtro === valor ? 'bg-papel font-bold text-foreground shadow-sm' : 'bg-transparent text-tinta-suave',
                   )}
                 >
                   {texto}

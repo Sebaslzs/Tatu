@@ -205,7 +205,7 @@ export default function ConectarPrograma() {
                     id="entidad"
                     value={entidadId}
                     onChange={(e) => cambiar('entidadId', e.target.value)}
-                    className="min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 font-sans text-base text-noche"
+                    className="min-h-12 w-full rounded-lg border-2 border-borde-campo bg-papel px-3 font-sans text-base text-foreground"
                   >
                     <option value="">{entidades === null ? 'Cargando…' : entidades.length ? 'Elige la entidad' : 'No hay entidades registradas'}</option>
                     {entidades?.map((e) => (
@@ -219,7 +219,7 @@ export default function ConectarPrograma() {
               <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
                 <legend className="mb-2 p-0 text-sm font-bold">Tipo</legend>
                 <div className="flex flex-wrap gap-3">
-                  <label className={cn('flex flex-[1_1_240px] cursor-pointer items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]', form.tipo === 'subsidio' ? 'border-2 border-noche' : 'border border-control')}>
+                  <label className={cn('flex flex-[1_1_240px] cursor-pointer items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]', form.tipo === 'subsidio' ? 'border-2 border-foreground' : 'border border-control')}>
                     <input type="radio" name="tipo" value="subsidio" checked={form.tipo === 'subsidio'} onChange={() => cambiar('tipo', 'subsidio')} className="mt-0.5 size-5 accent-azul" />
                     <span className="flex flex-col gap-0.5">
                       <strong>Subsidio</strong>
@@ -229,7 +229,7 @@ export default function ConectarPrograma() {
                   <label
                     className={cn(
                       'flex flex-[1_1_240px] items-start gap-2.5 rounded-[10px] px-3.5 py-3 text-[15px]',
-                      config.extras.bono ? (form.tipo === 'bono' ? 'cursor-pointer border-2 border-noche' : 'cursor-pointer border border-control') : 'border border-dashed border-control text-tenue',
+                      config.extras.bono ? (form.tipo === 'bono' ? 'cursor-pointer border-2 border-foreground' : 'cursor-pointer border border-control') : 'border border-dashed border-control text-tenue',
                     )}
                   >
                     <input type="radio" name="tipo" value="bono" checked={form.tipo === 'bono'} disabled={!config.extras.bono} onChange={() => cambiar('tipo', 'bono')} className="mt-0.5 size-5 accent-azul" />
