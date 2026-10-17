@@ -11,9 +11,9 @@ let s: Escenario
 beforeAll(async () => {
   e = await crearEntorno({
     liquidacion: [
-      { cedula: ANA.cedula, nombre: 'Ana Pérez', monto: 23_000_000, pin: ANA.pin },
-      { cedula: LUIS.cedula, nombre: 'Luis Gómez', monto: 23_000_000, pin: LUIS.pin },
-      { cedula: JORGE.cedula, nombre: 'Jorge Ruiz', monto: 15_000_000, pin: JORGE.pin },
+      { documento: ANA.documento, nombre: 'Ana Pérez', monto: 23_000_000, pin: ANA.pin },
+      { documento: LUIS.documento, nombre: 'Luis Gómez', monto: 23_000_000, pin: LUIS.pin },
+      { documento: JORGE.documento, nombre: 'Jorge Ruiz', monto: 15_000_000, pin: JORGE.pin },
     ],
   })
 })
@@ -25,8 +25,8 @@ beforeEach(async () => {
 
 const pesos = (valor: string) => ({ valor, assetCode: 'COP', assetScale: 2 })
 
-const retiro = (extra: Record<string, unknown> = {}, cedula = JORGE.cedula) =>
-  e.pedir('POST', '/cobros', { cedula, canal: 'retiro', puntoId: s.puntoId, programaId: s.programaId, llaveIdempotencia: llaveNueva(), ...extra })
+const retiro = (extra: Record<string, unknown> = {}, documento = JORGE.documento) =>
+  e.pedir('POST', '/cobros', { documento, canal: 'retiro', puntoId: s.puntoId, programaId: s.programaId, llaveIdempotencia: llaveNueva(), ...extra })
 
 /** Confirma con el PIN y espera el pago y el envío a facturación, que corren en segundo plano. */
 async function confirmar(id: string, pin = JORGE.pin) {
@@ -37,7 +37,7 @@ async function confirmar(id: string, pin = JORGE.pin) {
 }
 
 const consultar = async (id: string) => (await e.pedir('GET', `/cobros/${id}`)).cuerpo
-const pagosDeJorge = () => e.pedir('GET', `/puntos/${s.puntoId}/pagos?cedula=${JORGE.cedula}`)
+const pagosDeJorge = () => e.pedir('GET', `/puntos/${s.puntoId}/pagos?documento=${JORGE.documento}`)
 
 describe('HU-26 · retiro completo y parcial', () => {
   it('sin monto, el retiro es todo el saldo y todo se entrega en efectivo', async () => {
@@ -80,10 +80,10 @@ describe('HU-26 · retiro completo y parcial', () => {
   })
 
   it('a la cuenta se paga todo lo que queda, sin elegir monto', async () => {
-    await confirmar((await retiro({ monto: '10000000' }, ANA.cedula)).cuerpo.id, ANA.pin)
-    const cuenta = await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'cuenta', programaId: s.programaId, llaveIdempotencia: llaveNueva() })
+    await confirmar((await retiro({ monto: '10000000' }, ANA.documento)).cuerpo.id, ANA.pin)
+    const cuenta = await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'cuenta', programaId: s.programaId, llaveIdempotencia: llaveNueva() })
     expect(cuenta.cuerpo).toMatchObject({ canal: 'cuenta', monto: pesos('13000000'), efectivo: null })
-    expect((await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'cuenta', programaId: s.programaId, llaveIdempotencia: llaveNueva(), monto: '1000000' })).status).toBe(400)
+    expect((await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'cuenta', programaId: s.programaId, llaveIdempotencia: llaveNueva(), monto: '1000000' })).status).toBe(400)
   })
 })
 
@@ -146,7 +146,7 @@ describe('HU-27 · venta registrada con el retiro', () => {
     expect(f!.solicitud).toMatchObject({
       idVenta: c.venta.id,
       establecimiento: { puntoId: s.puntoId, nombre: 'Tienda Marta' },
-      comprador: { tipoDocumento: 'CC', numeroDocumento: JORGE.cedula, nombre: 'Jorge Ruiz' },
+      comprador: { tipoDocumento: 'CC', numeroDocumento: JORGE.documento, nombre: 'Jorge Ruiz' },
       venta: { valor: pesos('5000000'), descripcion: 'Mercado' },
       medioDePago: { tipo: 'subsidio', referenciaCobro: c.referencia, valorRetiro: pesos('9000000'), efectivoEntregado: pesos('4000000') },
     })
@@ -162,7 +162,7 @@ describe('HU-27 · venta registrada con el retiro', () => {
   })
 
   it('la venta existe solo en un retiro en el punto', async () => {
-    const r = await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'cuenta', llaveIdempotencia: llaveNueva(), venta: { valor: '1000000' } })
+    const r = await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'cuenta', llaveIdempotencia: llaveNueva(), venta: { valor: '1000000' } })
     expect(r.status).toBe(400)
   })
 })

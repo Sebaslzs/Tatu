@@ -123,7 +123,7 @@ export function PagosEscritorio({ consulta }: { consulta: ConsultaCedula }) {
       titulo={`Pagos de ${o.persona.nombre}`}
     >
       <p className="m-0 text-lg">
-        Tiene <b>{textoPagos(o.pagos.length)}</b>. Elige uno y di cuánto retira: puede dejar saldo para después. Antes del PIN no se mueve dinero.
+        Tiene <b>{textoPagos(o.pagos.length)}</b>. Elige uno y di cuánto retira: puede dejar saldo para después. Antes de verificar la identidad no se mueve dinero.
       </p>
       <MensajeError id="pagos-error">{consulta.error}</MensajeError>
       {consulta.pidiendo ? (
@@ -176,7 +176,7 @@ export function NuevoCobro() {
         <MensajeError id="pagos-error">{consulta.error}</MensajeError>
         {consulta.pidiendo ? <PidiendoPago /> : o.pagos.map((p, i) => <TarjetaPago key={p.programa.id} consulta={consulta} i={i} computador={false} />)}
         <NotaGris icono={Lock} className="mt-auto">
-          Al elegir un pago, {o.persona.nombre} confirma con su PIN. Antes de eso no se mueve dinero.
+          Al elegir un pago, {o.persona.nombre} verifica su identidad con rostro o huella. Antes de eso no se mueve dinero.
         </NotaGris>
       </PantallaCelular>
     )
@@ -209,7 +209,7 @@ export function NuevoCobro() {
         </Boton>
       </form>
       <AvisoArena icono={ShieldCheck} className="mt-auto">
-        La cédula sola no autoriza el cobro: el beneficiario confirma con su PIN en este celular.
+        La cédula sola no autoriza el cobro: el beneficiario verifica su identidad con rostro o huella en este dispositivo.
       </AvisoArena>
     </PantallaCelular>
   )

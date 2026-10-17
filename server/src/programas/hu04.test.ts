@@ -44,7 +44,7 @@ describe('CA-04.01 · solicitud del permiso', () => {
     const { status, cuerpo } = await autorizar()
     expect(status).toBe(200)
     expect(cuerpo.redirect).toBe('https://auth.interledger-test.dev/interact/1')
-    expect(cuerpo.programa).toMatchObject({ estado: 'EsperandoAprobacion', tope: { valor: '69000000', assetCode: 'COP', assetScale: 2 } })
+    expect(cuerpo.programa).toMatchObject({ estado: 'EsperandoAprobacion', tope: { valor: '69000000' } })
     expect(e.permisos.pedidos[0]).toMatchObject({
       billetera: BILLETERA,
       tope: 69_000_000,

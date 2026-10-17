@@ -85,6 +85,9 @@ export const consultarCobro = (id: string) => http.get<Cobro>(delCobro(id))
 /** 202 si pasa a Pagando; 422 `PinIncorrecto` con los intentos que quedan; 200 con el rechazo al tercer error. */
 export const confirmarConPin = (id: string, pin: string) => http.post<Cobro>(`${delCobro(id)}/confirmar`, { pin })
 
+/** Retiro en un punto: la persona ya se verificó con rostro o huella en el dispositivo (biometría simulada). 202 → Pagando. */
+export const confirmarConBiometria = (id: string, metodo: 'rostro' | 'huella') => http.post<Cobro>(`${delCobro(id)}/confirmar`, { metodo })
+
 export const cancelarCobro = (id: string) => http.post<Cobro>(`${delCobro(id)}/cancelar`)
 
 /** HU-27: reenviar a facturación una venta pendiente; una ya enviada vuelve tal cual (no se duplica). */

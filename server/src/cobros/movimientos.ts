@@ -21,7 +21,8 @@ export function textoEvento(c: Pick<FilaCobro, 'canal'>, hacia: EstadoCobro, pun
     case 'Solicitado':
       return enCuenta ? 'Solicitaste el cobro a tu cuenta.' : `${punto?.nombre ?? 'El punto'} digitó la cédula.`
     case 'PorConfirmar':
-      return 'Esperando el PIN de la persona.'
+      // En un retiro la persona se verifica con rostro o huella; en una compra con bono, con su PIN
+      return c.canal === 'retiro' ? 'Esperando que la persona verifique su identidad.' : 'Esperando el PIN de la persona.'
     case 'Pagando':
       return enCuenta ? 'Enviando el pago a tu cuenta.' : 'PIN correcto. Enviando el pago al punto.'
     case 'Pagado':

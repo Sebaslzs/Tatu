@@ -23,8 +23,8 @@ const DIA_MS = 86_400_000
 const caja = async (desde?: string, puntoId = s.puntoId) => (await e.pedir('GET', `/puntos/${puntoId}/resumen${desde ? `?desde=${desde}` : ''}`)).cuerpo
 
 /** Un retiro en el punto, confirmado con el PIN; espera a que termine el pago en segundo plano. */
-async function retiroPagado(persona: { cedula: string; pin: string }, puntoId = s.puntoId) {
-  const c = (await e.pedir('POST', '/cobros', { cedula: persona.cedula, canal: 'retiro', puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+async function retiroPagado(persona: { documento: string; pin: string }, puntoId = s.puntoId) {
+  const c = (await e.pedir('POST', '/cobros', { documento: persona.documento, canal: 'retiro', puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
   await e.pedir('POST', `/cobros/${c.id}/confirmar`, { pin: persona.pin })
   await e.esperarPagos()
   return c.id as string
@@ -61,8 +61,8 @@ describe('caja del punto', () => {
   })
 
   it('cuenta lo que espera el PIN como en curso y lo cancelado o fallido como rechazado', async () => {
-    const pendiente = (await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
-    const cancelado = (await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+    const pendiente = (await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+    const cancelado = (await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
     await e.pedir('POST', `/cobros/${cancelado.id}/cancelar`)
     // El banco rechaza el tercero por el tope (RN-09): Fallido, sin plata entregada
     e.pagos.tope = 0

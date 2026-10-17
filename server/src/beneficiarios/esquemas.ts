@@ -5,7 +5,7 @@ import { cedula, pin } from '../liquidacion/contrato.ts'
 
 /** Registro del equipo: la cédula y la billetera; el nombre y el PIN son opcionales. */
 export const EntradaPersona = z.strictObject({
-  cedula,
+  documento: cedula,
   billetera: billeteraTexto.meta({ description: 'Billetera Open Payments de la persona; `$dominio/ruta` o `https://…`.' }),
   nombre: z
     .string()

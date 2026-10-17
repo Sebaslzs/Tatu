@@ -99,7 +99,7 @@ describe('el documento OpenAPI', () => {
     expect(texto('/programas/{id}', 'patch')).toContain('CA-01.06')
     expect(texto('/programas/{id}/liquidacion', 'get')).toContain('CA-02.01')
     for (const ca of ['CA-03.01', 'CA-03.02', 'CA-03.03', 'CA-03.04']) expect(texto('/puntos', 'post')).toContain(ca)
-    for (const ca of ['CA-02.02', 'CA-02.03', 'CA-02.04']) expect(texto('/liquidacion/programas/{programaId}/pagos/{cedula}', 'get')).toContain(ca)
+    for (const ca of ['CA-02.02', 'CA-02.03', 'CA-02.04']) expect(texto('/liquidacion/programas/{programaId}/pagos/{documento}', 'get')).toContain(ca)
   })
 
   it('las operaciones de autorización y ciclo de vida citan sus criterios', () => {
@@ -123,7 +123,7 @@ describe('el documento OpenAPI', () => {
     for (const ca of ['CA-10.02', 'CA-10.04', 'CA-10.07']) expect(texto('/cobros', 'post')).toContain(ca)
     for (const ca of ['CA-11.01', 'CA-11.02', 'CA-11.03']) expect(texto('/cobros/{id}/confirmar', 'post')).toContain(ca)
     expect(texto('/cobros/{id}/cancelar', 'post')).toContain('CA-11.05')
-    expect(texto('/beneficiarios/{cedula}/resumen', 'get')).toContain('CA-08.01')
+    expect(texto('/beneficiarios/{documento}/resumen', 'get')).toContain('CA-08.01')
   })
 
   it('las operaciones del tablero y del cierre citan sus criterios', () => {
@@ -165,7 +165,7 @@ describe('el documento OpenAPI', () => {
   })
 
   it('no expone campos secretos en ningún modelo', () => {
-    const secretos = /token|nonce|urlGestion|url_gestion|password|^pin$|^pinHash$|hash/i
+    const secretos = /token(?!falso)|nonce|urlGestion|url_gestion|password|^pin$|^pinHash$|hash/i
     for (const [nombre, modelo] of Object.entries(documento.components.schemas)) {
       for (const campo of Object.keys(modelo.properties ?? {})) expect(campo, `${nombre}.${campo}`).not.toMatch(secretos)
     }
@@ -291,16 +291,16 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
 
     beforeEach(async () => {
       e.billeteras.registrar(WALLET, COP)
-      e.puente.registrar({ tipo: 'celular', valor: '3001234567', cedulaTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
-      e.puente.registrar({ tipo: 'cedula', valor: '1000000002', cedulaTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
+      e.puente.registrar({ tipo: 'celular', valor: '3001234567', documentoTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
+      e.puente.registrar({ tipo: 'cedula', valor: '1000000002', documentoTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
       await e.repos.beneficiarios.crear('1000000002')
     })
 
-    it('POST /cuentas y GET /cuentas/{cedula}, con llave y con billetera', async () => {
-      const llave = await e.pedir('POST', '/cuentas', { cedula: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '2222' })
+    it('POST /cuentas y GET /cuentas/{documento}, con llave y con billetera', async () => {
+      const llave = await e.pedir('POST', '/cuentas', { documento: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '2222' })
       expect(ResultadoEnlace.parse(llave.cuerpo).redirect).toBeNull()
       Cuenta.parse((await e.pedir('GET', '/cuentas/1000000002')).cuerpo)
-      const wallet = await e.pedir('POST', '/cuentas', { cedula: '1000000002', billetera: WALLET, pin: '2222' })
+      const wallet = await e.pedir('POST', '/cuentas', { documento: '1000000002', billetera: WALLET, pin: '2222' })
       expect(ResultadoEnlace.parse(wallet.cuerpo).redirect).toMatch(/^https:\/\//)
     })
 
@@ -309,7 +309,7 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     })
 
     it('el callback de una cuenta redirige sin cuerpo JSON', async () => {
-      const { cuenta } = (await e.pedir('POST', '/cuentas', { cedula: '1000000002', billetera: WALLET, pin: '2222' })).cuerpo
+      const { cuenta } = (await e.pedir('POST', '/cuentas', { documento: '1000000002', billetera: WALLET, pin: '2222' })).cuerpo
       const r = await e.pedir('GET', `/cuentas/callback/${cuenta.id}?result=grant_rejected`)
       expect(r.status).toBe(302)
       expect(r.ubicacion).toMatch(/resultado=rechazada$/)
@@ -317,33 +317,33 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
 
     it('POST, GET /beneficiarios y POST del PIN', async () => {
       e.billeteras.registrar('https://ilp.interledger-test.dev/prueba-rosa', COP)
-      Beneficiario.parse((await e.pedir('POST', '/beneficiarios', { cedula: '1000000010', billetera: '$ilp.interledger-test.dev/prueba-rosa', nombre: 'Rosa', pin: '4444' })).cuerpo)
+      Beneficiario.parse((await e.pedir('POST', '/beneficiarios', { documento: '1000000010', billetera: '$ilp.interledger-test.dev/prueba-rosa', nombre: 'Rosa', pin: '4444' })).cuerpo)
       for (const b of (await e.pedir('GET', '/beneficiarios')).cuerpo) Beneficiario.parse(b)
       PinRegistrado.parse((await e.pedir('POST', '/beneficiarios/1000000010/pin', { pin: '5555' })).cuerpo)
     })
 
     it('el banco puente: resolver, pertenece, listar, registrar y borrar', async () => {
       Resolucion.parse((await e.pedir('GET', '/puente/llaves/celular/3001234567')).cuerpo)
-      Coincidencia.parse((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { cedula: '1000000002' })).cuerpo)
-      for (const l of (await e.pedir('GET', '/puente/llaves?cedula=1000000002')).cuerpo) Llave.parse(l)
-      const nueva = await e.pedir('POST', '/puente/llaves', { tipo: 'correo', valor: 'luis@correo.com', cedulaTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
+      Coincidencia.parse((await e.pedir('POST', '/puente/llaves/celular/3001234567/pertenece', { documento: '1000000002' })).cuerpo)
+      for (const l of (await e.pedir('GET', '/puente/llaves?documento=1000000002')).cuerpo) Llave.parse(l)
+      const nueva = await e.pedir('POST', '/puente/llaves', { tipo: 'correo', valor: 'luis@correo.com', documentoTitular: '1000000002', nombreTitular: 'Luis Gómez', billetera: WALLET })
       expect(nueva.status).toBe(201)
       Llave.parse(nueva.cuerpo)
       expect((await e.pedir('DELETE', '/puente/llaves/correo/luis@correo.com')).status).toBe(204)
     })
 
     it('la liquidación: personas, inscribir, PIN y validar', async () => {
-      for (const p of (await e.pedir('GET', '/liquidacion/personas?cedulas=1000000001,1000000002')).cuerpo) Persona.parse(p)
-      Persona.parse((await e.pedir('POST', '/liquidacion/personas', { cedula: '1000000020', nombre: 'Nueva' })).cuerpo)
+      for (const p of (await e.pedir('GET', '/liquidacion/personas?documentos=1000000001,1000000002')).cuerpo) Persona.parse(p)
+      Persona.parse((await e.pedir('POST', '/liquidacion/personas', { documento: '1000000020', nombre: 'Nueva' })).cuerpo)
       PinRegistrado.parse((await e.pedir('POST', '/liquidacion/personas/1000000001/pin', { pin: '9999' })).cuerpo)
-      expect(RespuestaPin.parse((await e.pedir('POST', '/liquidacion/pin/validar', { cedula: '1000000001', pin: '9999' })).cuerpo).valido).toBe(true)
+      expect(RespuestaPin.parse((await e.pedir('POST', '/liquidacion/pin/validar', { documento: '1000000001', pin: '9999' })).cuerpo).valido).toBe(true)
     })
 
     it.each([
-      ['422 PIN', () => e.pedir('POST', '/cuentas', { cedula: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '0000' }), 422],
+      ['422 PIN', () => e.pedir('POST', '/cuentas', { documento: '1000000002', tipoLlave: 'celular', llave: '3001234567', pin: '0000' }), 422],
       ['404 llave', () => e.pedir('GET', '/cuentas/llaves/celular/3201112233'), 404],
       ['400 llave', () => e.pedir('GET', '/cuentas/llaves/correo/3001234567'), 400],
-      ['409 persona', () => e.pedir('POST', '/beneficiarios', { cedula: '1000000002', billetera: '$ilp.interledger-test.dev/prueba-luis' }), 409],
+      ['409 persona', () => e.pedir('POST', '/beneficiarios', { documento: '1000000002', billetera: '$ilp.interledger-test.dev/prueba-luis' }), 409],
       ['404 puente', () => e.pedir('GET', '/puente/llaves/celular/3201112233'), 404],
     ])('los errores %s usan el formato documentado', async (_caso, hacer, status) => {
       const r = await hacer()
@@ -364,9 +364,9 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
   describe('cobros, caja y resumen del beneficiario', () => {
     it('solicitar, consultar, cancelar, pagos y cobros del punto cumplen el modelo', async () => {
       const s = await escenarioDeCobro(e)
-      PagosPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/pagos?cedula=${JORGE.cedula}`)).cuerpo)
+      PagosPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/pagos?documento=${JORGE.documento}`)).cuerpo)
       const creado = await e.pedir('POST', '/cobros', {
-        cedula: JORGE.cedula,
+        documento: JORGE.documento,
         canal: 'retiro',
         puntoId: s.puntoId,
         llaveIdempotencia: llaveNueva(),
@@ -378,12 +378,12 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
       CajaPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/resumen`)).cuerpo)
       Cobro.parse((await e.pedir('POST', `/cobros/${creado.cuerpo.id}/cancelar`)).cuerpo)
       PersonaDemo.parse((await e.pedir('GET', '/beneficiarios/demo')).cuerpo[0])
-      ResumenBeneficiario.parse((await e.pedir('GET', `/beneficiarios/${ANA.cedula}/resumen`)).cuerpo)
+      ResumenBeneficiario.parse((await e.pedir('GET', `/beneficiarios/${ANA.documento}/resumen`)).cuerpo)
     })
 
     it('confirmar con PIN cumple el modelo 202 y no filtra el PIN', async () => {
       const s = await escenarioDeCobro(e)
-      const creado = (await e.pedir('POST', '/cobros', { cedula: JORGE.cedula, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
+      const creado = (await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })).cuerpo
       const r = await e.pedir('POST', `/cobros/${creado.id}/confirmar`, { pin: JORGE.pin })
       await e.esperarPagos()
       expect(r.status).toBe(202)

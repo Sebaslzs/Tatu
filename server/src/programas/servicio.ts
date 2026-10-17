@@ -4,7 +4,7 @@
 import { resolverBilletera, type PuertoBilleteras } from '../comun/billeteras.ts'
 import { conflicto, entradaInvalida, noEncontrado } from '../comun/errores.ts'
 import { finDelDia, inicioDelDia } from '../comun/fechas.ts'
-import { desdeDecimal, monto, type Monto } from '../comun/montos.ts'
+import { desdeDecimal, monedaCodigo, monto, type MonedaCodigo, type Monto } from '../comun/montos.ts'
 import type { CamposPrograma } from '../db/repositorios/programas.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import type { PuertoLiquidacion } from '../liquidacion/contrato.ts'
@@ -28,6 +28,7 @@ export interface DependenciasProgramas {
 export interface ResumenLiquidacion {
   cedulas: number
   total: Monto
+  moneda: MonedaCodigo
 }
 
 const MENSAJE_BILLETERA = 'No encontramos esa cuenta'
@@ -134,7 +135,7 @@ export class ServicioProgramas {
   async resumenLiquidacion(id: string): Promise<ResumenLiquidacion> {
     const p = await this.deps.lector.exigir(id)
     const r = await this.deps.liquidacion.resumen(p.id)
-    return { cedulas: r.cedulas, total: monto(r.total, monedaDe(p)) }
+    return { cedulas: r.cedulas, total: monto(r.total, monedaDe(p)), moneda: monedaCodigo(monedaDe(p)) }
   }
 
   private async exigirEntidad(id: string): Promise<void> {

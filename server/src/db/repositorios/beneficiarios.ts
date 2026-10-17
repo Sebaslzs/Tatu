@@ -8,21 +8,21 @@ export type FilaBeneficiario = typeof beneficiario.$inferSelect
 
 export interface RepoBeneficiarios {
   /** La persona por su cédula (si está como C.C. y como otro tipo, gana la C.C.). */
-  porCedula(cedula: string): Promise<FilaBeneficiario | undefined>
+  porCedula(documento: string): Promise<FilaBeneficiario | undefined>
   obtener(id: string): Promise<FilaBeneficiario | undefined>
   deIds(ids: readonly string[]): Promise<Map<string, FilaBeneficiario>>
   listar(): Promise<FilaBeneficiario[]>
   /** Registro del equipo: la cédula, como C.C. */
-  crear(cedula: string): Promise<FilaBeneficiario>
+  crear(documento: string): Promise<FilaBeneficiario>
 }
 
 export function repoBeneficiarios(db: Db): RepoBeneficiarios {
   return {
-    async porCedula(cedula) {
+    async porCedula(documento) {
       const [fila] = await db
         .select()
         .from(beneficiario)
-        .where(eq(beneficiario.numeroDocumento, cedula))
+        .where(eq(beneficiario.numeroDocumento, documento))
         .orderBy(desc(sql`${beneficiario.tipoDocumento} = 'CC'`))
         .limit(1)
       return fila
@@ -44,8 +44,8 @@ export function repoBeneficiarios(db: Db): RepoBeneficiarios {
       return db.select().from(beneficiario).orderBy(asc(beneficiario.numeroDocumento))
     },
 
-    async crear(cedula) {
-      const [fila] = await db.insert(beneficiario).values({ tipoDocumento: 'CC', numeroDocumento: cedula }).returning()
+    async crear(documento) {
+      const [fila] = await db.insert(beneficiario).values({ tipoDocumento: 'CC', numeroDocumento: documento }).returning()
       return fila!
     },
   }

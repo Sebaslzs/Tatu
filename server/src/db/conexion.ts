@@ -15,6 +15,11 @@ export type TipoBase = 'postgres' | 'pglite'
 export interface Base {
   tipo: TipoBase
   db: Db
+  /**
+   * Corre `fn` solo si nadie más tiene el candado `clave` (pg_try_advisory_lock); si otro lo tiene,
+   * devuelve undefined sin esperar. En Vercel evita que dos instancias hagan la misma tarea a la vez.
+   */
+  conCandado<T>(clave: number, fn: () => Promise<T>): Promise<T | undefined>
   cerrar(): Promise<void>
 }
 
@@ -35,7 +40,26 @@ async function abrirPostgres(url: string): Promise<Base> {
   // El pooler 6543 (modo Transaction) no admite prepared statements
   const sql = postgres(url, { max: 5, prepare: !url.includes(':6543') })
   await sql`SELECT 1`
-  return { tipo: 'postgres', db: drizzle(sql), cerrar: () => sql.end() }
+  return {
+    tipo: 'postgres',
+    db: drizzle(sql),
+    async conCandado(clave, fn) {
+      // El candado vive en la sesión: se toma y se suelta en la misma conexión reservada
+      const reservada = await sql.reserve()
+      try {
+        const [fila] = await reservada<{ ok: boolean }[]>`SELECT pg_try_advisory_lock(${clave}) AS ok`
+        if (!fila?.ok) return undefined
+        try {
+          return await fn()
+        } finally {
+          await reservada`SELECT pg_advisory_unlock(${clave})`
+        }
+      } finally {
+        reservada.release()
+      }
+    },
+    cerrar: () => sql.end(),
+  }
 }
 
 async function abrirPglite(carpeta: string | undefined): Promise<Base> {
@@ -50,5 +74,6 @@ async function abrirPglite(carpeta: string | undefined): Promise<Base> {
         .query(`SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`, [tabla])
         .then((r) => r.rows.length > 0),
   })
-  return { tipo: 'pglite', db: drizzle(cliente), cerrar: () => cliente.close() }
+  // PGlite tiene una sola conexión y un solo proceso: no hace falta candado
+  return { tipo: 'pglite', db: drizzle(cliente), conCandado: (_clave, fn) => fn(), cerrar: () => cliente.close() }
 }

@@ -11,6 +11,7 @@ import { ServicioCobros } from './cobros/servicio.ts'
 import { SolicitudCobro } from './cobros/solicitud.ts'
 import { VistasCobro } from './cobros/vista.ts'
 import type { PuertoBilleteras } from './comun/billeteras.ts'
+import { esUuid } from './comun/parametros.ts'
 import { relojDelSistema, type Reloj } from './comun/fechas.ts'
 import type { Config } from './config.ts'
 import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
@@ -23,8 +24,8 @@ import type { PuertoFacturacion } from './facturacion/contrato.ts'
 import { ServicioFacturacion } from './facturacion/servicio.ts'
 import { FacturacionSimulada } from './facturacion/simulador.ts'
 import { ClienteLiquidacion } from './liquidacion/cliente.ts'
-import type { PuertoLiquidacion } from './liquidacion/contrato.ts'
-import { LiquidacionSimulada } from './liquidacion/simulador.ts'
+import type { DatosLiquidacion, PuertoLiquidacion } from './liquidacion/contrato.ts'
+import { LiquidacionEnBase } from './liquidacion/enBase.ts'
 import { OpenPaymentsService } from './openPaymentsService.ts'
 import { ServicioAutorizacion } from './programas/autorizacion.ts'
 import { CicloPrograma } from './programas/ciclo.ts'
@@ -33,16 +34,20 @@ import { ServicioPermisoToken } from './programas/permisoToken.ts'
 import type { PuertoPermisos } from './programas/puertos.ts'
 import type { ServiciosProgramas } from './programas/rutas.ts'
 import { ServicioProgramas } from './programas/servicio.ts'
+import type { Candado } from './programas/candados.ts'
+import { RenovacionPermisos } from './programas/renovacion.ts'
 import { ServicioTablero } from './programas/tablero.ts'
 import { Transiciones } from './programas/transiciones.ts'
 import { ClientePuente } from './puente/cliente.ts'
 import type { PuertoPuente } from './puente/contrato.ts'
-import { PuenteSimulado } from './puente/simulador.ts'
+import { PuenteEnBase } from './puente/enBase.ts'
+import type { DatosPuente } from './puente/simulador.ts'
 import { ConsultasPunto } from './puntos/consultas.ts'
 import { ServicioPuntos } from './puntos/servicio.ts'
 
 export interface Contenedor {
   config: ConfigPublica
+  configCompleta: Config
   uow: UnidadDeTrabajo
   programas: ServiciosProgramas
   puntos: ServicioPuntos
@@ -52,9 +57,10 @@ export interface Contenedor {
   resumenBeneficiario: ConsultaResumenBeneficiario
   cobros: ServicioCobros
   token: ServicioPermisoToken
+  renovacion: RenovacionPermisos
   billeteras: PuertoBilleteras
-  simuladorLiquidacion: LiquidacionSimulada
-  simuladorPuente: PuenteSimulado
+  simuladorLiquidacion: DatosLiquidacion
+  simuladorPuente: DatosPuente
   facturacion: ServicioFacturacion
   simuladorFacturacion: FacturacionSimulada
 }
@@ -68,12 +74,14 @@ export interface PiezasContenedor {
   pagos?: PuertoPagos
   liquidacion?: PuertoLiquidacion
   puente?: PuertoPuente
-  simuladorLiquidacion?: LiquidacionSimulada
-  simuladorPuente?: PuenteSimulado
+  simuladorLiquidacion?: DatosLiquidacion
+  simuladorPuente?: DatosPuente
   facturacion?: PuertoFacturacion
   simuladorFacturacion?: FacturacionSimulada
   reloj?: Reloj
   nuevoNonce?: () => string
+  /** Candado de la base (pg_try_advisory_lock) para rotar tokens sin choques entre servidores. */
+  candado?: Candado
 }
 
 export function crearContenedor(piezas: PiezasContenedor): Contenedor {
@@ -91,10 +99,14 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   const puertoFacturacion =
     piezas.facturacion ?? new ClienteFacturacion({ baseUrl: config.FACTURACION_URL, timeoutMs: config.FACTURACION_TIMEOUT_MS })
 
+  // La liquidación simulada paga el «monto por persona» de cada programa (atajo de la demo)
+  const simuladorLiquidacion = piezas.simuladorLiquidacion ?? new LiquidacionEnBase(piezas.db)
+  simuladorLiquidacion.montoPorPrograma = async (programaId) => (!esUuid(programaId) ? null : (await uow.repos.programas.obtener(programaId))?.montoPorPersona ?? null)
+
   // Programas
   const lector = new LectorProgramas(uow)
   const transiciones = new Transiciones({ uow, lector, permisos, reloj, aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000 })
-  const token = new ServicioPermisoToken({ uow, lector, permisos, reloj })
+  const token = new ServicioPermisoToken({ uow, lector, permisos, reloj, ...(piezas.candado ? { candado: piezas.candado } : {}) })
 
   // Cuentas
   const cuentas = new ServicioCuentas({
@@ -113,7 +125,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   // Cobros
   const movimientos = new MovimientosCobro(uow)
   const vistas = new VistasCobro(uow, liquidacion, { confirmacionTtlSeg: config.CONFIRMACION_TTL_SEG, pinMaxIntentos: config.PIN_MAX_INTENTOS })
-  const pagador = new PagadorCobros({ uow, movimientos, pagos, token })
+  const pagador = new PagadorCobros({ uow, movimientos, pagos, token, ...(piezas.candado ? { candado: piezas.candado } : {}) })
   const confirmacion = new ConfirmacionCobro({
     uow,
     liquidacion,
@@ -133,11 +145,13 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
 
   return {
     config,
+    configCompleta: config,
     uow,
     token,
+    renovacion: new RenovacionPermisos({ uow, token, ...(piezas.candado ? { candado: piezas.candado } : {}) }),
     billeteras,
-    simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
-    simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
+    simuladorLiquidacion: simuladorLiquidacion,
+    simuladorPuente: piezas.simuladorPuente ?? new PuenteEnBase(piezas.db),
     simuladorFacturacion: piezas.simuladorFacturacion ?? new FacturacionSimulada(),
     facturacion,
     cuentas,

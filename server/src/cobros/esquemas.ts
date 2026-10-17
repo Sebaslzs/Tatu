@@ -1,10 +1,10 @@
 // Validación en la frontera de lo que llega a /cobros. Las descripciones alimentan OpenAPI.
 import { z } from 'zod'
-import { cedula, pin } from '../liquidacion/contrato.ts'
+import { documento, pin } from '../liquidacion/contrato.ts'
 
 export const EntradaCobro = z.strictObject({
   programaId: z.uuid().optional().meta({ description: 'Programa a cobrar. Opcional: el punto no elige; se toma el programa activo con un pago disponible para la cédula (CA-10.04).' }),
-  cedula,
+  documento,
   canal: z.enum(['cuenta', 'retiro', 'compra']).meta({
     description: '`cuenta` paga a la cuenta de la persona sin PIN; `retiro` en un punto de retiro, con PIN; `compra` es un bono en un comercio autorizado (extra HU-21).',
   }),
@@ -35,4 +35,17 @@ export const EntradaCobro = z.strictObject({
 })
 export type EntradaCobro = z.output<typeof EntradaCobro>
 
-export const Confirmacion = z.strictObject({ pin })
+export const METODOS_BIOMETRICOS = ['rostro', 'huella'] as const
+export type MetodoBiometrico = (typeof METODOS_BIOMETRICOS)[number]
+
+/**
+ * Cómo confirma la persona: con su PIN (compra con bono) o con una verificación biométrica en el
+ * punto de retiro. La biometría de la demo es simulada: el navegador verifica y la API registra el método.
+ */
+export const Confirmacion = z.union([
+  z.strictObject({ pin }),
+  z.strictObject({
+    metodo: z.enum(METODOS_BIOMETRICOS).meta({ description: 'Verificación biométrica hecha en el punto: `rostro` o `huella`. No se envía foto ni huella.' }),
+  }),
+])
+export type Confirmacion = z.output<typeof Confirmacion>

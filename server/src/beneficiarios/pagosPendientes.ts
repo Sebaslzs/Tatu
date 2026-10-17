@@ -5,7 +5,7 @@
 // Un subsidio maneja saldo (HU-26): `monto` es lo que queda (lo asignado menos lo pagado y lo que
 // está en vuelo), y desaparece cuando se agota. Un bono desaparece al primer cobro pagado.
 import { diaEnBogota, type Reloj } from '../comun/fechas.ts'
-import { monto, type Monto } from '../comun/montos.ts'
+import { monedaCodigo, monto, type Monto, type MonedaCodigo } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { rn06ProgramaRecibe } from '../cobros/reglas.ts'
@@ -17,6 +17,7 @@ export interface PagoPendiente {
   programa: { id: string; nombre: string; estado: string; tipo: 'subsidio' | 'bono' }
   /** Lo que puede cobrar hoy: en un subsidio, el saldo que le queda. */
   monto: Monto
+  moneda: MonedaCodigo
   /** HU-26: lo que le asignó la liquidación y lo que ya cobró (en un bono, cobrado es 0). */
   asignado: Monto
   cobrado: Monto
@@ -92,6 +93,7 @@ export class PagosPendientes {
       pagos.push({
         programa: { id: p.id, nombre: p.nombre, estado: p.estado, tipo: p.tipo },
         monto: monto(saldo ? saldo.disponible : pago.monto, moneda),
+        moneda: monedaCodigo(moneda),
         asignado: monto(pago.monto, moneda),
         cobrado: monto(saldo ? saldo.pagado : 0, moneda),
         retiroParcial: conSaldo && p.destino === 'libre',

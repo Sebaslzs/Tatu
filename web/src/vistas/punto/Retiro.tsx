@@ -1,5 +1,5 @@
 // El retiro en el punto (HU-26, HU-27): después de elegir el subsidio, el punto dice cuánto retira la
-// persona (todo o una parte) y, si compró algo en la tienda, cuánto fue. Antes de pedir el PIN ve el
+// persona (todo o una parte) y, si compró algo en la tienda, cuánto fue. Antes de verificar su identidad ve el
 // desglose: el retiro, la compra, el EFECTIVO que entrega y lo que le queda a la persona. La compra
 // es parte del retiro, no un descuento aparte. La API vuelve a validar todo.
 import { Lock, ShoppingBag } from 'lucide-react'
@@ -204,17 +204,17 @@ function Formulario({ consulta, p, computador }: { consulta: ConsultaCedula; p: 
     <PidiendoPago />
   ) : computador ? (
     <BotonMedio tamano="grande" className="w-full" onClick={pedir} disabled={!calculo.pedido || consulta.enviando}>
-      Pedir el PIN a {nombre}
+      Verificar a {nombre} y pagar
     </BotonMedio>
   ) : (
     <Boton onClick={pedir} disabled={!calculo.pedido || consulta.enviando}>
-      Pedir el PIN a {nombre}
+      Verificar a {nombre} y pagar
     </Boton>
   )
   const error = <MensajeError id="retiro-error">{consulta.error}</MensajeError>
   const nota = (
     <NotaGris icono={Lock}>
-      Revisa el desglose con {nombre}. Antes del PIN no se mueve dinero; entrega el efectivo solo cuando la pantalla diga Pagado.
+      Revisa el desglose con {nombre}. Antes de verificar su identidad no se mueve dinero; entrega el efectivo solo cuando la pantalla diga Pagado.
     </NotaGris>
   )
 

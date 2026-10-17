@@ -36,7 +36,7 @@ import type { VistaCobro, VistasCobro } from './vista.ts'
 
 export interface EntradaCobro {
   programaId?: string | undefined
-  cedula: string
+  documento: string
   canal: Canal
   puntoId?: string | undefined
   /** CA-10.07: la web genera un UUID por intento; repetirla devuelve el mismo cobro. */
@@ -106,24 +106,21 @@ export class SolicitudCobro {
       if (!indicado) throw noEncontrado('Ese programa no existe', 'ProgramaNoEncontrado')
       programa = indicado
     } else {
-      ;({ programa, pago } = await this.resolverPrograma(e.cedula, e.canal))
+      ;({ programa, pago } = await this.resolverPrograma(e.documento, e.canal))
     }
 
-    const persona = await uow.repos.beneficiarios.porCedula(e.cedula)
+    const persona = await uow.repos.beneficiarios.porCedula(e.documento)
     if (!persona) {
       // Una cédula que no existe no deja cobro, solo un evento con la cédula enmascarada
       await uow.repos.eventos.registrar({
         tipoEntidad: 'programa',
         idEntidad: programa.id,
-        detalle: { texto: 'Se intentó cobrar con una cédula que no está registrada.', cedula: enmascararDocumento(e.cedula) },
+        detalle: { texto: 'Se intentó cobrar con una cédula que no está registrada.', documento: enmascararDocumento(e.documento) },
         actor: punto ? actorPunto(punto.id) : 'sistema',
       })
       throw new ErrorApi(404, 'SinPagoDisponible', MOTIVOS.SinPagoDisponible.mensaje)
     }
-    // CA-10.05: sin PIN no hay cómo confirmar en el punto. Se le pregunta a la liquidación si existe, nunca cuál es.
-    if (e.canal === 'retiro' && !(await this.deps.liquidacion.personas([e.cedula])).get(e.cedula)?.tienePin) {
-      throw new ErrorApi(422, 'SinPin', 'Esta persona no registró un PIN: solo puede cobrar a su cuenta')
-    }
+    // El retiro en un punto se confirma con rostro o huella: ya no exige un PIN registrado
 
     const { motivo, cuenta, pago: pagoFinal, saldo } = await this.evaluar(e, programa, persona, punto, pago)
     const disponibleEnLiquidacion = pagoFinal && pagoFinal !== 'falla' && pagoFinal.tipo === 'disponible' ? pagoFinal : null
@@ -177,7 +174,7 @@ export class SolicitudCobro {
   }
 
   /** CA-10.04: el punto no elige programa; se toma el activo que tenga un pago disponible para esa cédula. */
-  async resolverPrograma(cedula: string, canal?: Canal): Promise<{ programa: FilaPrograma; pago?: PagoConsultado }> {
+  async resolverPrograma(documento: string, canal?: Canal): Promise<{ programa: FilaPrograma; pago?: PagoConsultado }> {
     const todos = (await this.deps.uow.repos.programas.listar())
       .filter((p) => p.estado in PRIORIDAD)
       .sort((a, b) => PRIORIDAD[a.estado]! - PRIORIDAD[b.estado]!)
@@ -188,10 +185,10 @@ export class SolicitudCobro {
     const candidatos = delCanal.length ? delCanal : todos
     if (!candidatos.length) throw new ErrorApi(409, 'SinProgramas', 'No hay programas recibiendo cobros')
     const ahora = this.deps.reloj()
-    const persona = await this.deps.uow.repos.beneficiarios.porCedula(cedula)
+    const persona = await this.deps.uow.repos.beneficiarios.porCedula(documento)
     for (const p of candidatos) {
       if (reglas.rn06ProgramaRecibe({ estado: p.estado, vigenciaInicio: p.vigenciaInicio, vigenciaFin: p.vigenciaFin, ahora })) continue
-      const pago = await this.consultarPago(p.id, cedula)
+      const pago = await this.consultarPago(p.id, documento)
       // Un subsidio ya cobrado por completo no es «un pago disponible», aunque la liquidación lo tenga
       if (pago !== 'falla' && pago.tipo === 'disponible' && persona && manejaSaldo(p)) {
         const saldo = saldoDe(pago.monto, await this.deps.uow.repos.cobros.dePersonaEnPrograma(p.id, persona.id))
@@ -260,7 +257,7 @@ export class SolicitudCobro {
     }
     // RN-01 · la liquidación
     if (!motivo) {
-      pago ??= await this.consultarPago(programa.id, e.cedula)
+      pago ??= await this.consultarPago(programa.id, e.documento)
       motivo = pago === 'falla' ? 'LiquidacionNoResponde' : reglas.rn01PagoDisponible({ disponible: pago.tipo === 'disponible' })
     }
     // RN-19 · el saldo: lo asignado menos lo pagado y lo que está en vuelo. Sin saldo, ya cobró todo.
@@ -299,9 +296,9 @@ export class SolicitudCobro {
     return { motivo, cuenta, pago, saldo }
   }
 
-  private async consultarPago(programaId: string, cedula: string): Promise<PagoConsultado> {
+  private async consultarPago(programaId: string, documento: string): Promise<PagoConsultado> {
     try {
-      return await this.deps.liquidacion.pago(programaId, cedula)
+      return await this.deps.liquidacion.pago(programaId, documento)
     } catch (e) {
       if (e instanceof LiquidacionNoResponde) return 'falla'
       throw e

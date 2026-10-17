@@ -3,7 +3,7 @@
 // Tatú nunca guarda el nombre ni la cédula del titular: pregunta «¿es de esta cédula?» y muestra el
 // nombre enmascarado.
 import { z } from 'zod'
-import { cedula } from '../liquidacion/contrato.ts'
+import { documento } from '../liquidacion/contrato.ts'
 
 export const TIPOS_LLAVE = ['cedula', 'celular', 'correo', 'alfanumerica'] as const
 export const TipoLlave = z.enum(TIPOS_LLAVE).meta({
@@ -42,7 +42,7 @@ export function normalizarLlave(tipo: TipoLlave, valor: string): string | null {
 export const Llave = z.strictObject({
   tipo: TipoLlave,
   valor: z.string().trim().min(3).max(80),
-  cedulaTitular: cedula,
+  documentoTitular: documento,
   nombreTitular: z.string().trim().min(1).max(120),
   billetera: z.string().trim().regex(/^https:\/\//, 'la billetera va en forma https://'),
 })
@@ -58,7 +58,7 @@ export const Resolucion = z.strictObject({
 })
 export type Resolucion = z.infer<typeof Resolucion>
 
-export const PedidoPertenece = z.strictObject({ cedula })
+export const PedidoPertenece = z.strictObject({ documento })
 export const Coincidencia = z.strictObject({ pertenece: z.boolean() })
 
 /** Puerto hacia el banco puente: consulta llaves; los métodos de registro son del «equipo de prueba». */
@@ -66,8 +66,8 @@ export interface PuertoPuente {
   /** A qué billetera llega la llave y el titular enmascarado; null si no existe en Bre-B. */
   resolverLlave(tipo: TipoLlave, valor: string): Promise<Resolucion | null>
   /** RN-16: ¿el titular de la llave es esta cédula? null si la llave no existe. */
-  pertenece(tipo: TipoLlave, valor: string, cedula: string): Promise<boolean | null>
-  llavesDe(cedula: string): Promise<Llave[]>
+  pertenece(tipo: TipoLlave, valor: string, documento: string): Promise<boolean | null>
+  llavesDe(documento: string): Promise<Llave[]>
   registrarLlave(llave: Llave): Promise<Llave>
   /** false si la llave no existía. */
   borrarLlave(tipo: TipoLlave, valor: string): Promise<boolean>

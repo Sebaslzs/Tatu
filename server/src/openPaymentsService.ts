@@ -44,6 +44,12 @@ export function traducir(e: unknown, operacion: Operacion): ErrorOpenPayments {
   if (e instanceof OpenPaymentsClientError) {
     const { status, code, description } = e
     log.warn('Error de Open Payments', { status, code, description, operacion })
+    // El token es de otro cliente (otro servidor con otras llaves): «Signature validation error: could
+    // not find key in list of client keys» al pagar, «could not determine client» al rotar. Tratarlo
+    // como vencido rotaba, fallaba y dejaba el permiso inservible también para quien sí podía usarlo.
+    if ((status === 401 || status === 400) && esErrorDeCliente(description)) {
+      return new ErrorOpenPayments('LlavesDistintas', status, code, description)
+    }
     // La Test Wallet responde 403 «Inactive Token» (no 401) cuando el token del permiso venció: es
     // TokenVencido y se rota; confundirlo con el tope dejaría el programa sin pagar.
     if (status === 401 || (status === 403 && /inactive token/i.test(description ?? ''))) {
@@ -58,6 +64,10 @@ export function traducir(e: unknown, operacion: Operacion): ErrorOpenPayments {
   log.warn('Error sin respuesta de Open Payments', { error: e, operacion })
   return new ErrorOpenPayments('SinRespuesta', undefined, undefined, (e as Error)?.message)
 }
+
+/** El banco no encuentra la llave del cliente que firma, o no sabe qué cliente es. */
+export const esErrorDeCliente = (descripcion: string | undefined) =>
+  /signature validation|list of client keys|could not determine client|invalid client|unknown client/i.test(descripcion ?? '')
 
 /** 4xx del servidor de la billetera = no existe; lo demás (red, 5xx, timeout) = no respondió. */
 const esNoEncontrada = (e: unknown) => e instanceof OpenPaymentsClientError && e.status !== undefined && e.status >= 400 && e.status < 500
@@ -337,14 +347,22 @@ export class OpenPaymentsService implements PuertoBilleteras, PuertoPermisos, Pu
   private cargarLlave(): KeyObject {
     const { OP_PRIVATE_KEY_BASE64, OP_PRIVATE_KEY_PATH } = this.config
     let llave: KeyObject
-    if (OP_PRIVATE_KEY_BASE64) {
-      const bytes = Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64')
-      const texto = bytes.toString('utf8')
-      llave = texto.includes('-----BEGIN') ? createPrivateKey(texto) : createPrivateKey({ key: bytes, format: 'der', type: 'pkcs8' })
-    } else if (OP_PRIVATE_KEY_PATH) {
-      llave = createPrivateKey(readFileSync(resolve(RAIZ_SERVER, OP_PRIVATE_KEY_PATH)))
-    } else {
-      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'Falta OP_PRIVATE_KEY_BASE64 u OP_PRIVATE_KEY_PATH en el .env')
+    // Una llave mal puesta (texto que no es la llave, archivo que no existe) es configuración, no un
+    // error interno: 503 OpenPaymentsNoConfigurado con qué revisar, en vez de un 500 sin pista
+    try {
+      if (OP_PRIVATE_KEY_BASE64) {
+        const bytes = Buffer.from(OP_PRIVATE_KEY_BASE64, 'base64')
+        const texto = bytes.toString('utf8')
+        llave = texto.includes('-----BEGIN') ? createPrivateKey(texto) : createPrivateKey({ key: bytes, format: 'der', type: 'pkcs8' })
+      } else if (OP_PRIVATE_KEY_PATH) {
+        llave = createPrivateKey(readFileSync(resolve(RAIZ_SERVER, OP_PRIVATE_KEY_PATH)))
+      } else {
+        throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'Falta OP_PRIVATE_KEY_BASE64 u OP_PRIVATE_KEY_PATH en el .env')
+      }
+    } catch (e) {
+      if (e instanceof ErrorOpenPayments) throw e
+      const variable = OP_PRIVATE_KEY_BASE64 ? 'OP_PRIVATE_KEY_BASE64 (debe ser el base64 del archivo private.key)' : 'OP_PRIVATE_KEY_PATH (el archivo private.key)'
+      throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, `No se pudo leer la llave privada: revisa ${variable}`)
     }
     if (llave.asymmetricKeyType !== 'ed25519') {
       throw new ErrorOpenPayments('NoConfigurado', undefined, undefined, 'La llave privada no es Ed25519')

@@ -1,5 +1,5 @@
 // Acceso a datos de programas y sus categorías. Sin reglas de negocio.
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { Db } from '../conexion.ts'
 import { programa, programaCategoria } from '../generado/schema.ts'
 import type { EstadoPrograma } from '../../programas/estados.ts'
@@ -13,6 +13,8 @@ export interface RepoProgramas {
   obtener(id: string): Promise<FilaPrograma | undefined>
   deIds(ids: readonly string[]): Promise<Map<string, FilaPrograma>>
   listar(): Promise<FilaPrograma[]>
+  /** Activos o Pausados con un permiso que el banco todavía acepta: los que hay que renovar. */
+  conPermisoVigente(): Promise<{ id: string }[]>
   /** Cambia solo si sigue en `estadoEsperado` (bloqueo optimista); undefined si otro ganó. */
   actualizar(id: string, campos: CamposPrograma, estadoEsperado: EstadoPrograma): Promise<FilaPrograma | undefined>
   ponerCategorias(id: string, categorias: readonly string[]): Promise<void>
@@ -40,6 +42,13 @@ export function repoProgramas(db: Db): RepoProgramas {
 
     listar() {
       return db.select().from(programa).orderBy(asc(programa.creadoEn))
+    },
+
+    conPermisoVigente() {
+      return db
+        .select({ id: programa.id })
+        .from(programa)
+        .where(and(inArray(programa.estado, ['Activo', 'Pausado']), isNotNull(programa.tokenAcceso), isNull(programa.permisoVencidoEn)))
     },
 
     async actualizar(id, campos, estadoEsperado) {

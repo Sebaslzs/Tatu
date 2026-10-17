@@ -1,14 +1,14 @@
 // Un cobro en el punto, de principio a fin (P2 a P7 en el celular, PD2 a PD4 en el computador), en una
 // sola ruta: la pantalla sale del estado del cobro que manda la API y se consulta hasta que termina.
-// PorConfirmar → el PIN · Pagando → «No entregues efectivo todavía» · Pagado → entrega ·
+// PorConfirmar → rostro o huella en un retiro, el PIN en una compra con bono · Pagando → «No entregues efectivo todavía» · Pagado → entrega ·
 // Rechazado o Fallido → «No entregues efectivo». En un retiro con compra (HU-27) se entrega solo el
 // efectivo (retiro − compra), y la compra queda para facturar aparte.
 import { Clock, ReceiptText, TriangleAlert, Wallet } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useConfig } from '@/api/config'
 import { ErrorHttp, mensajeDeError } from '@/api/http'
-import { cancelarCobro, confirmarConPin, consultarCobro, reenviarVenta } from '@/api/punto'
+import { cancelarCobro, confirmarConBiometria, confirmarConPin, consultarCobro, reenviarVenta } from '@/api/punto'
 import type { Cobro, Venta } from '@/api/tipos'
 import { usePolling, type Consulta } from '@/api/usePolling'
 import { BotonEnlace as BotonEnlaceMedio, Boton as BotonMedio, Cargando, ErrorCarga, Titulo } from '@/componentes/Comun'
@@ -27,6 +27,8 @@ import { Desglose } from './Retiro'
 import { Boton, BotonEnlace, Cabecera, Caja, claseEnlaceSuave, Datos, PantallaPuntoEscritorio, VolverEscritorio } from './piezas'
 import { PuntosPin, TecladoPin } from './TecladoPin'
 import { useCuentaRegresiva } from './tiempo'
+import type { MetodoBiometrico } from './biometria/pasos'
+import { VerificacionBiometrica } from './biometria/VerificacionBiometrica'
 
 export function CobroEnPunto() {
   const { id = '' } = useParams()
@@ -44,7 +46,8 @@ export function CobroEnPunto() {
   }
   return (
     <div aria-live="polite">
-      {pantalla === 'confirmarPin' && <ConfirmarPin cobro={c} consulta={consulta} computador={computador} />}
+      {pantalla === 'confirmarPin' && c.canal === 'retiro' && <ConfirmarIdentidad cobro={c} consulta={consulta} computador={computador} />}
+      {pantalla === 'confirmarPin' && c.canal !== 'retiro' && <ConfirmarPin cobro={c} consulta={consulta} computador={computador} />}
       {pantalla === 'pagando' && <Pagando cobro={c} computador={computador} />}
       {pantalla === 'pagado' && <Pagado cobro={c} computador={computador} />}
       {pantalla === 'rechazo' && <Rechazo cobro={c} computador={computador} />}
@@ -88,7 +91,105 @@ function AccionesEscritorio({ cobro: c, nota }: { cobro: Cobro; nota: string }) 
   )
 }
 
-// ── PIN (P2, P3, PD2) ─────────────────────────────────────────────────────────
+// ── Rostro o huella en un retiro ──────────────────────────────────────────────
+
+/**
+ * Retiro en un punto: la persona elige rostro o huella. Con la verificación exitosa se confirma el
+ * cobro (pasa a Pagando y el tatú rueda). Volver o «Cancelar cobro» lo cancela, como con el PIN.
+ */
+function ConfirmarIdentidad({ cobro: c, consulta, computador }: { cobro: Cobro; consulta: Consulta<Cobro>; computador: boolean }) {
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const restante = useCuentaRegresiva(c.confirmarAntesDe, () => void consulta.recargar())
+  const vencido = restante === 0
+  const nombre = c.persona.nombre
+
+  const confirmar = useCallback(
+    async (metodo: MetodoBiometrico) => {
+      setEnviando(true)
+      setError(null)
+      try {
+        const r = await confirmarConBiometria(c.id, metodo)
+        if (r.estado === 'Rechazado' || r.estado === 'Fallido') marcarPagando(r.id)
+        consulta.setDatos(r)
+      } catch (e) {
+        setError(mensajeDeError(e))
+        await consulta.recargar()
+      } finally {
+        setEnviando(false)
+      }
+    },
+    [c.id, consulta],
+  )
+
+  const cancelar = async () => {
+    setEnviando(true)
+    try {
+      consulta.setDatos(await cancelarCobro(c.id))
+    } catch (e) {
+      setError(mensajeDeError(e))
+      await consulta.recargar()
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const reloj = restante !== null && (
+    <span className="inline-flex items-center gap-1.5 text-base font-bold">
+      <Clock aria-hidden className="size-[18px]" strokeWidth={2} />
+      <time aria-label={`${formatCuentaRegresiva(restante)} para confirmar`}>{formatCuentaRegresiva(restante)}</time>
+    </span>
+  )
+  const alerta = error && (
+    <div role="alert" className="flex items-center gap-2.5 rounded-xl bg-rechazo-fondo px-3 py-2.5 text-base font-bold text-rechazo">
+      <TriangleAlert aria-hidden className="size-5 flex-none" />
+      {error.endsWith('.') ? error : `${error}.`}
+    </div>
+  )
+  const contenido = (
+    <>
+      {/* HU-26 y HU-27: lo que sale del subsidio, la compra, el efectivo que se entrega y lo que queda */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-tinta-suave">{c.programa.nombre}</span>
+        <Desglose retiro={c.monto} venta={c.venta?.valor ?? null} efectivo={c.efectivo} saldo={c.saldoRestante} grande={computador} />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <Titulo className="text-lg font-extrabold sm:text-lg">{primerNombre(nombre)}, verifica tu identidad</Titulo>
+        {reloj}
+      </div>
+      {alerta}
+      {vencido ? (
+        <p className="m-0 text-base font-bold">Se acabó el tiempo para confirmar. Empieza un cobro nuevo.</p>
+      ) : (
+        <VerificacionBiometrica alVerificar={(m) => void confirmar(m)} deshabilitado={enviando} />
+      )}
+      {enviando && <Cargando texto="Liberando el pago…" />}
+      <button type="button" onClick={() => void cancelar()} disabled={enviando} className={claseEnlaceSuave}>
+        Cancelar cobro
+      </button>
+    </>
+  )
+
+  if (computador) {
+    return (
+      <PantallaPuntoEscritorio
+        volver={<VolverEscritorio onClick={() => void cancelar()}>Pagos de {nombre}</VolverEscritorio>}
+        subtitulo={personaConCedula(c)}
+        titulo="Verificar identidad"
+      >
+        <div className="flex max-w-[640px] flex-col gap-4">{contenido}</div>
+      </PantallaPuntoEscritorio>
+    )
+  }
+  return (
+    <PantallaCelular className="gap-[11px]">
+      <Cabecera alVolver={() => void cancelar()} etiquetaVolver="Cancelar el cobro y volver" titulo="Verificar identidad" subtitulo={personaConCedula(c)} />
+      {contenido}
+    </PantallaCelular>
+  )
+}
+
+// ── PIN en una compra con bono (P2, P3, PD2) ──────────────────────────────────
 
 function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consulta: Consulta<Cobro>; computador: boolean }) {
   // El PIN solo vive aquí: se envía una vez y se borra (CA-11.06)
@@ -162,19 +263,12 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
       >
         <div className="flex flex-wrap items-stretch gap-6">
           {/* La tarjeta crece hasta el ancho de la cifra: un monto no se parte en dos líneas */}
-          {c.canal === 'retiro' ? (
-            <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-2">
-              <span className="text-base font-semibold text-tinta-suave">{c.programa.nombre}</span>
-              <Desglose retiro={c.monto} venta={c.venta?.valor ?? null} efectivo={c.efectivo} saldo={c.saldoRestante} grande />
-            </div>
-          ) : (
-            <Caja grande className="min-w-fit flex-[1_1_360px]">
-              <span className="text-base font-semibold text-tinta-suave">El bono cubre</span>
-              <span className="cifra text-[60px] leading-none whitespace-nowrap">{monto}</span>
-              <span className="text-base">{c.programa.nombre}</span>
-              <span className="text-[15px] text-tinta-suave">{textoCompra(c)}</span>
-            </Caja>
-          )}
+          <Caja grande className="min-w-fit flex-[1_1_360px]">
+            <span className="text-base font-semibold text-tinta-suave">El bono cubre</span>
+            <span className="cifra text-[60px] leading-none whitespace-nowrap">{monto}</span>
+            <span className="text-base">{c.programa.nombre}</span>
+            <span className="text-[15px] text-tinta-suave">{textoCompra(c)}</span>
+          </Caja>
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-[18px] rounded-[20px] bg-ambar p-7 text-noche">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="ancho text-[26px] font-extrabold">{titulo}</span>
@@ -207,15 +301,11 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
   return (
     <PantallaCelular className="gap-[11px]">
       <Cabecera alVolver={() => void cancelar()} etiquetaVolver="Cancelar el cobro y volver" titulo="Confirmar con PIN" subtitulo={personaConCedula(c)} />
-      {c.canal === 'retiro' ? (
-        <Desglose retiro={c.monto} venta={c.venta?.valor ?? null} efectivo={c.efectivo} saldo={c.saldoRestante} />
-      ) : (
-        <div className="flex flex-col gap-0.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3">
-          <span className="text-sm font-semibold text-tinta-suave">{queCubre}</span>
-          <span className="cifra text-[34px] [overflow-wrap:anywhere]">{monto}</span>
-          <span className="text-sm text-tinta-suave">{textoCompra(c)}</span>
-        </div>
-      )}
+      <div className="flex flex-col gap-0.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3">
+        <span className="text-sm font-semibold text-tinta-suave">{queCubre}</span>
+        <span className="cifra text-[34px] [overflow-wrap:anywhere]">{monto}</span>
+        <span className="text-sm text-tinta-suave">{textoCompra(c)}</span>
+      </div>
       <div className="flex flex-col gap-2.5 rounded-[18px] bg-ambar p-3.5 text-noche">
         <div className="flex items-center justify-between gap-2">
           <Titulo className="text-lg font-extrabold sm:text-lg">{titulo}</Titulo>

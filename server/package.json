@@ -9,6 +9,7 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "seed": "tsx scripts/sembrar.ts",
     "db:pull": "drizzle-kit pull && node scripts/ajustar-schema.mjs"
   },
   "dependencies": {

@@ -5,7 +5,7 @@ import { enmascararLlave } from '../puente/enmascarar.ts'
 
 export interface VistaCuenta {
   id: string
-  cedula: string
+  documento: string
   estado: FilaCuenta['estado']
   billetera: string
   billeteraCorta: string
@@ -16,10 +16,10 @@ export interface VistaCuenta {
   verificadaEn: string | null
 }
 
-export function vistaCuenta(c: FilaCuenta, cedula: string): VistaCuenta {
+export function vistaCuenta(c: FilaCuenta, documento: string): VistaCuenta {
   return {
     id: c.id,
-    cedula,
+    documento,
     estado: c.estado,
     billetera: c.billetera,
     billeteraCorta: billeteraCorta(c.billetera),

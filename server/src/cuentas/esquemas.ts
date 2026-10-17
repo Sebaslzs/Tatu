@@ -1,7 +1,7 @@
 // Validación en la frontera de lo que llega a /cuentas. Las descripciones alimentan OpenAPI.
 import { z } from 'zod'
 import { billeteraTexto } from '../comun/billeteras.ts'
-import { cedula, pin } from '../liquidacion/contrato.ts'
+import { documento, pin } from '../liquidacion/contrato.ts'
 import { TipoLlave } from '../puente/contrato.ts'
 
 const pinOpcional = pin.optional().meta({
@@ -10,7 +10,7 @@ const pinOpcional = pin.optional().meta({
 
 /** Una llave Bre-B con el tipo que eligió la persona (RN-14). */
 export const EntradaCuentaConLlave = z.strictObject({
-  cedula,
+  documento,
   tipoLlave: TipoLlave,
   llave: z.string().trim().min(3).max(80).meta({ description: 'La llave tal como la escribe la persona; se limpia según el tipo.', examples: ['3001234567'] }),
   pin: pinOpcional,
@@ -18,7 +18,7 @@ export const EntradaCuentaConLlave = z.strictObject({
 
 /** Opción avanzada: una billetera Open Payments escrita a mano (CA-07.05). */
 export const EntradaCuentaConBilletera = z.strictObject({
-  cedula,
+  documento,
   billetera: billeteraTexto.meta({ description: 'Billetera Open Payments de la persona; `$dominio/ruta` o `https://…`.' }),
   pin: pinOpcional,
 })

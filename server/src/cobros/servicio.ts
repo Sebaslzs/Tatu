@@ -1,6 +1,7 @@
 // Fachada del módulo de cobros: las rutas hablan con esta clase; cada paso lo hace su colaborador
 // (solicitud, confirmación, pagador). Aquí solo está la consulta, que une reconciliación y vencimiento.
 import type { ServicioFacturacion } from '../facturacion/servicio.ts'
+import type { Confirmacion } from './esquemas.ts'
 import type { ConfirmacionCobro } from './confirmacion.ts'
 import type { MovimientosCobro } from './movimientos.ts'
 import type { PagadorCobros } from './pagador.ts'
@@ -28,8 +29,8 @@ export class ServicioCobros {
     return this.deps.solicitud.solicitar(entrada)
   }
 
-  confirmar(id: string, pin: string): Promise<{ status: number; cobro: VistaCobro }> {
-    return this.deps.confirmacion.confirmar(id, pin)
+  confirmar(id: string, confirmacion: Confirmacion): Promise<{ status: number; cobro: VistaCobro }> {
+    return this.deps.confirmacion.confirmar(id, confirmacion)
   }
 
   cancelar(id: string): Promise<VistaCobro> {
