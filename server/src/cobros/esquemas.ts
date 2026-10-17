@@ -1,0 +1,36 @@
+// Validación en la frontera de lo que llega a /cobros. Las descripciones alimentan OpenAPI.
+import { z } from 'zod'
+import { documento, pin } from '../liquidacion/contrato.ts'
+
+export const EntradaCobro = z.strictObject({
+  programaId: z.uuid().optional().meta({ description: 'Programa a cobrar. Opcional: el punto no elige; se toma el programa activo con un pago disponible para la cédula (CA-10.04).' }),
+  documento,
+  canal: z.enum(['cuenta', 'retiro', 'compra']).meta({
+    description: '`cuenta` paga a la cuenta de la persona sin PIN; `retiro` en un punto de retiro, con PIN; `compra` es un bono en un comercio autorizado (extra HU-21).',
+  }),
+  puntoId: z.uuid().optional().meta({ description: 'Punto o sede. Obligatorio en `retiro` y `compra`; prohibido en `cuenta`.' }),
+  llaveIdempotencia: z.string().min(8).max(100).meta({
+    description: 'La web genera un UUID por intento. Repetir la misma llave devuelve el mismo cobro: un doble clic no duplica el pago (CA-10.07).',
+    examples: ['2f4e9a3c-6f7e-4c43-9d70-7d9ee1b0c0a1'],
+  }),
+  // RN-11: el monto nunca viene del navegador; solo el total de una compra (bono)
+  totalCompra: z.string().regex(/^\d+$/).optional().meta({
+    description: 'Solo en `compra`: el total de la compra en unidades mínimas. El monto del cobro **nunca** viene del cliente: lo calcula el backend (RN-05, RN-11).',
+  }),
+})
+export type EntradaCobro = z.output<typeof EntradaCobro>
+
+export const METODOS_BIOMETRICOS = ['rostro', 'huella'] as const
+export type MetodoBiometrico = (typeof METODOS_BIOMETRICOS)[number]
+
+/**
+ * Cómo confirma la persona: con su PIN (compra con bono) o con una verificación biométrica en el
+ * punto de retiro. La biometría de la demo es simulada: el navegador verifica y la API registra el método.
+ */
+export const Confirmacion = z.union([
+  z.strictObject({ pin }),
+  z.strictObject({
+    metodo: z.enum(METODOS_BIOMETRICOS).meta({ description: 'Verificación biométrica hecha en el punto: `rostro` o `huella`. No se envía foto ni huella.' }),
+  }),
+])
+export type Confirmacion = z.output<typeof Confirmacion>

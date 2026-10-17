@@ -1,18 +1,34 @@
-# Secretos (CA-20.02): nunca al repo
+# Secretos: nunca al repo (RNF-01, CA-20.02)
 .env
 .env.*
 !.env.example
 *.key
 *.pem
+private.key
 
-# Dependencias y builds
+# Dependencias y salidas de build
 node_modules/
 dist/
-build/
+.vercel/
+.output/
+functions/
 
-# Sistema y editores
+# Base local de PGlite (AD-23)
+server/data/
+
+# Logs y herramientas
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
 .DS_Store
-Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.tsbuildinfo
 
-# Registro de prompts (local, no se sube)
-prompts/
+# Prototipo HTML del equipo: material de trabajo local, no se sube
+tatu-prototipo-2.html
+
+# Runtime de MediaPipe: lo copia web/scripts/copiar-mediapipe.mjs desde node_modules
+web/public/mediapipe/wasm/
