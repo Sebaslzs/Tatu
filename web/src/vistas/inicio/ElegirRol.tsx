@@ -68,7 +68,12 @@ export function ElegirRol() {
         <BotonTema />
       </div>
       <div className="flex flex-1 flex-col justify-center gap-8 pb-10 pc:gap-12 pc:pb-16">
-        <Marca tamano="inicio" />
+        <div className="flex flex-col items-center gap-3 pc:gap-4">
+          <Marca tamano="inicio" />
+          <p className="m-0 max-w-[300px] text-center text-[17px] leading-snug font-medium text-balance text-tinta-suave md:max-w-[640px] md:text-xl pc:text-[22px]">
+            Creando túneles seguros hacia el futuro de los pagos
+          </p>
+        </div>
 
         <nav aria-labelledby="como-entrar" className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4 pc:gap-6">
           <h1 id="como-entrar" className="m-0 text-base font-semibold text-tinta-suave md:col-span-3 md:text-center md:text-lg">
