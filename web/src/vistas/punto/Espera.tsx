@@ -30,15 +30,15 @@ export function EsperaPagando({ cobroId, desde, children }: { cobroId: string; d
 
   return (
     <>
-      <div className="mt-1.5 flex flex-col gap-4 rounded-[22px] bg-noche px-5 py-[22px] text-arena">
+      <div className="mt-1.5 flex flex-col gap-4 rounded-[22px] border-[1.5px] border-border bg-card px-5 py-[22px] text-card-foreground">
         <span className="inline-flex items-center gap-2 text-base font-semibold">
-          <Check aria-hidden className="size-5 text-ambar" strokeWidth={2.5} />
+          <Check aria-hidden className="size-5 text-pagando" strokeWidth={2.5} />
           Identidad confirmada
         </span>
         <p className="cifra m-0 text-[36px]">Pagando…</p>
         <p className="m-0 text-[17px] leading-[1.4]">{children}</p>
-        <TatuEnrolla estado="pagando" inicio={inicio} sobreColor className="w-44 self-center" />
-        <span className="text-[15px] text-noche-texto-tenue">Suele tardar unos segundos.</span>
+        <TatuEnrolla estado="pagando" inicio={inicio} className="w-44 self-center" />
+        <span className="text-[15px] text-muted-foreground">Suele tardar unos segundos.</span>
       </div>
 
       <div role="status" className="flex items-center gap-3 rounded-[18px] border-[2.5px] border-foreground bg-papel p-4">
@@ -64,9 +64,9 @@ export function EsperaPagando({ cobroId, desde, children }: { cobroId: string; d
  */
 export function PidiendoPago() {
   return (
-    <div role="status" className="flex flex-col gap-2 rounded-[22px] bg-noche px-5 py-[22px] text-arena">
+    <div role="status" className="flex flex-col gap-2 rounded-[22px] border-[1.5px] border-border bg-card px-5 py-[22px] text-card-foreground">
       <p className="cifra m-0 text-[30px]">Pidiendo el pago…</p>
-      <span className="text-[15px] text-noche-texto-tenue">Suele tardar unos segundos.</span>
+      <span className="text-[15px] text-muted-foreground">Suele tardar unos segundos.</span>
     </div>
   )
 }
