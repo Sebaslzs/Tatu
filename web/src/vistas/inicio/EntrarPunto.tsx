@@ -1,24 +1,13 @@
 // Acceso del punto de retiro eligiendo su tienda, en celular o en computador.
-import { useCallback, useEffect, useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { listarPuntos, type PuntoRegistrado } from '@/api/client'
 import { useRol } from '@/contexto/Rol'
+import { useEnComputador } from '@/lib/useEnComputador'
 import { cn } from '@/lib/utils'
 import { BotonEntrar, CabeceraCelular, Icono, PantallaCelular, PantallaPartida, VolverARol } from '@/componentes/piezas'
 
-// Punto elegido al entrar: solo su id, para que la caja sepa desde dónde se atiende.
-const CLAVE_PUNTO = 'tatu.punto'
-
 type Carga = { estado: 'cargando' } | { estado: 'error' } | { estado: 'listo'; puntos: PuntoRegistrado[] }
-
-// Desde 960 px de ancho se usa la versión de computador.
-const COMPUTADOR = '(min-width: 960px)'
-const suscribir = (aviso: () => void) => {
-  const mq = window.matchMedia(COMPUTADOR)
-  mq.addEventListener('change', aviso)
-  return () => mq.removeEventListener('change', aviso)
-}
-const useEnComputador = () => useSyncExternalStore(suscribir, () => window.matchMedia(COMPUTADOR).matches)
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
@@ -27,7 +16,7 @@ export function EntrarPunto() {
   const [busqueda, setBusqueda] = useState('')
   const [elegido, setElegido] = useState<string | null>(null)
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' })
-  const { elegirRol } = useRol()
+  const { entrarComoPunto } = useRol()
   const navegar = useNavigate()
   const nombreGrupo = useId()
 
@@ -50,12 +39,8 @@ export function EntrarPunto() {
   const entrar = (e: FormEvent) => {
     e.preventDefault()
     if (!punto) return
-    try {
-      sessionStorage.setItem(CLAVE_PUNTO, punto.id)
-    } catch {
-      // Sin almacenamiento la caja vuelve a pedir el punto; no bloquea la entrada
-    }
-    elegirRol('punto')
+    // Solo su id: así la caja sabe desde dónde se atiende
+    entrarComoPunto(punto.id)
     navegar('/punto')
   }
 
