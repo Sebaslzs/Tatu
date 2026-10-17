@@ -187,7 +187,8 @@ export class ServicioTablero {
       const guardado = this.cacheGastado.get(p.id)
       if (guardado && guardado.vence > Date.now()) return { valor: guardado.valor, fuente: 'banco' }
       try {
-        const gastado = await this.deps.token.conToken(p.id, (t, actual) =>
+        // Leer no rota: con dos procesos rotando a la vez, el segundo daba el permiso por vencido
+        const gastado = await this.deps.token.conTokenSinRotar(p.id, (t, actual) =>
           this.deps.permisos.gastadoDelPermiso({ billeteraPrograma: actual.billeteraPrograma, token: t }),
         )
         const anteriores = (await this.deps.lector.exigir(p.id)).gastadoPermisosAnteriores

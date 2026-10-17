@@ -6,7 +6,8 @@ import { abrirBase } from './db/conexion.ts'
 
 const base = await abrirBase({ url: config.DATABASE_URL, carpetaPglite: PGLITE_DIR })
 console.log(`Base de datos: ${base.tipo}`)
-const contenedor = crearContenedor({ db: base.db, config })
+// El candado de la base coordina la rotación del token con otros servidores (p. ej. Vercel)
+const contenedor = crearContenedor({ db: base.db, config, candado: base.conCandado })
 
 // HU-06: el token del permiso vence a los 10 minutos; se rota antes, mientras la API esté prendida
 contenedor.renovacion.iniciar(config.TOKEN_RENOVAR_CADA_SEG * 1000)
