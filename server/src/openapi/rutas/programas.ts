@@ -26,7 +26,7 @@ export function rutasProgramas(): Json {
           '',
           '- **CA-01.01** `tipo` por defecto `subsidio`: `destino=libre` y canales cuenta y retiro.',
           '- **CA-01.02** la billetera se normaliza a `https://` (sin `$` ni barra final) y se resuelve contra su servidor; si no existe, `404 BilleteraNoEncontrada` y **no se guarda**.',
-          '- **CA-01.03** `assetCode` y `assetScale` se copian de la billetera resuelta; **no se aceptan en el cuerpo**.',
+          '- **CA-01.03** la moneda (`codigo` y `escala`) se copia de la billetera resuelta; **no se acepta en el cuerpo**.',
           '- **CA-01.04** `vigenciaFin` debe ser posterior a `vigenciaInicio`; un mismo día completo es válido.',
           '- **CA-01.05** `tipo=bono` (extra HU-21, requiere `EXTRA_BONO`) queda `destino=restringido`, canal compra y lleva hasta 10 categorías.',
           '- **CA-01.07** deja un evento `programa → Borrador` con billetera y moneda; nunca tokens, PIN ni llaves.',
@@ -95,7 +95,7 @@ export function rutasProgramas(): Json {
         description:
           'Consulta a la liquidación de la entidad cuántas cédulas tiene y el total, en la moneda del programa. Ese total será el `tope_total` al autorizar (RN-08). **La plataforma no copia la lista** (CA-02.05): solo consulta.',
         responses: {
-          200: ok('Resumen de la liquidación.', ref('ResumenLiquidacion'), { cedulas: 3, total: { valor: '69000000', assetCode: 'COP', assetScale: 2 } }),
+          200: ok('Resumen de la liquidación.', ref('ResumenLiquidacion'), { cedulas: 3, total: '69000000' }),
           404: noEncontradoPrograma,
           503: liquidacionNoResponde,
         },

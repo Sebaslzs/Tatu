@@ -12,6 +12,25 @@ export function rutasSistema(): Json {
         responses: { 200: ok('El servicio responde.', ref('Salud'), { estado: 'ok' }) },
       },
     },
+    '/estado': {
+      get: {
+        tags: ['Sistema'],
+        operationId: 'estado',
+        summary: '¿Pagos reales o simulados?',
+        description: 'Siempre responde 200. `faltan` dice qué variables impiden pagar de verdad; `baseDeDatos.donde` muestra servidor y base, nunca la contraseña.',
+        responses: {
+          200: ok('El estado.', ref('Estado'), {
+            pagosReales: true,
+            faltan: [],
+            openPayments: { billeteraCliente: 'https://ilp.interledger-test.dev/mi-cliente', llave: '954f7fd9-3108-4837-920f-5a068993b23a' },
+            programasConTokenFalso: 0,
+            verificacionCuenta: 'subject',
+            baseDeDatos: { tipo: 'postgres', donde: 'aws-0-us-east-1.pooler.supabase.com/postgres' },
+            puenteBreB: { simulado: true, responde: true },
+          }),
+        },
+      },
+    },
     '/config': {
       get: {
         tags: ['Sistema'],

@@ -136,7 +136,7 @@ describe('el documento OpenAPI', () => {
   })
 
   it('no expone campos secretos en ningún modelo', () => {
-    const secretos = /token|nonce|urlGestion|url_gestion|password|^pin$|^pinHash$|hash/i
+    const secretos = /token(?!falso)|nonce|urlGestion|url_gestion|password|^pin$|^pinHash$|hash/i
     for (const [nombre, modelo] of Object.entries(documento.components.schemas)) {
       for (const campo of Object.keys(modelo.properties ?? {})) expect(campo, `${nombre}.${campo}`).not.toMatch(secretos)
     }
@@ -335,6 +335,6 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
     for (const item of Object.values(documento.paths)) {
       for (const metodo of METODOS.filter((m) => item[m])) for (const s of Object.keys(item[metodo]!.responses)) documentados.add(s)
     }
-    expect([...documentados].sort()).toEqual(['200', '201', '204', '302', '400', '404', '409', '422', '502', '503'])
+    expect([...documentados].sort()).toEqual(['200', '201', '202', '204', '302', '400', '404', '409', '422', '502', '503'])
   })
 })

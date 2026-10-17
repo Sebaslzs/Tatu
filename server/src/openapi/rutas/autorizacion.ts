@@ -2,7 +2,7 @@
 import { falla, ok, ref, type Json } from '../ayudas.ts'
 import { estadoNoPermite, noEncontradoPrograma, parametroPrograma, PROGRAMA_EJEMPLO } from '../compartido.ts'
 
-const ESPERANDO = { ...PROGRAMA_EJEMPLO, estado: 'EsperandoAprobacion', tope: { valor: '69000000', assetCode: 'COP', assetScale: 2 } }
+const ESPERANDO = { ...PROGRAMA_EJEMPLO, estado: 'EsperandoAprobacion', tope: '69000000' }
 const ACTIVO = { ...ESPERANDO, estado: 'Activo', permisoActivo: true }
 
 const sinSecretos = 'Nunca devuelve tokens, URL de gestión, nonces ni la URL de continuación.'

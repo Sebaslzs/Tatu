@@ -2,12 +2,19 @@
 import { EntradaPersona, EntradaPin } from '../../beneficiarios/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json } from '../ayudas.ts'
 
+const PAGO_EJEMPLO = {
+  programa: { id: '22222222-2222-4222-8222-222222222222', nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
+  monto: '23000000',
+  moneda: { codigo: 'COP', escala: 2 },
+  vigenciaFin: '2026-12-31',
+}
+
 const BENEFICIARIO_EJEMPLO = {
   documento: '1000000010',
   nombre: 'Rosa Díaz',
   billetera: 'https://ilp.interledger-test.dev/prueba-rosa',
   billeteraCorta: '…/prueba-rosa',
-  moneda: { assetCode: 'COP', assetScale: 2 },
+  moneda: { codigo: 'COP', escala: 2 },
   estadoCuenta: 'Verificada',
   tienePin: true,
   registrado: '2026-10-16 15:00:00+00',
@@ -15,6 +22,38 @@ const BENEFICIARIO_EJEMPLO = {
 
 export function rutasBeneficiarios(): Json {
   return {
+    '/beneficiarios/demo': {
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'beneficiariosDemo',
+        summary: 'Personas para el selector de la entrada',
+        description: 'Nombre, etiqueta («C.C. de prueba 3») y cédula de cada persona registrada, para elegir con quién entrar. No devuelve billetera, PIN ni estado de la cuenta.',
+        responses: { 200: ok('Las personas registradas.', { type: 'array', items: ref('PersonaDemo') }, [{ nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', documento: '1000000003' }]) },
+      },
+    },
+    '/beneficiarios/{documento}/resumen': {
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula, sin puntos ni espacios.', schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' }, example: '1000000003' }],
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'resumenBeneficiario',
+        summary: 'Lo que ve la persona (HU-08)',
+        description:
+          'Todos sus subsidios y bonos por cobrar, su cuenta, su último cobro y su historial (CA-08.01 a CA-08.04). Si la liquidación no responde, `liquidacionDisponible` es `false`: «sin pagos» no sería la verdad.',
+        responses: {
+          200: ok('El resumen.', ref('ResumenBeneficiario'), {
+            persona: { nombre: 'Jorge Ruiz', documento: '1000000003', tienePin: true },
+            pagos: [PAGO_EJEMPLO],
+            pago: PAGO_EJEMPLO,
+            liquidacionDisponible: true,
+            cuenta: null,
+            ultimoCobro: null,
+            historial: [],
+          }),
+          400: entradaInvalida,
+          404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
+        },
+      },
+    },
     '/beneficiarios': {
       get: {
         tags: ['Beneficiarios'],
@@ -54,7 +93,7 @@ export function rutasBeneficiarios(): Json {
       },
     },
     '/beneficiarios/{documento}/pin': {
-      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^\\d{5,12}$' }, example: '1000000010' }],
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula de la persona.', schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' }, example: '1000000010' }],
       post: {
         tags: ['Beneficiarios'],
         operationId: 'ponerPinBeneficiario',
