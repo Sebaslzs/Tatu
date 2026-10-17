@@ -12,6 +12,7 @@ import { textoMonto } from '@/lib/montos'
 import { rutaDelPrograma } from '@/lib/pantallas'
 import { conEspacios, NOMBRE_ESTADO_PROGRAMA } from '@/lib/textos'
 import { FormularioPersona } from './FormularioPersona'
+import { SubirPersonas } from './SubirPersonas'
 import { cargarPrograma, type DatosPrograma } from './useTablero'
 
 interface Datos extends DatosPrograma {
@@ -73,6 +74,11 @@ export default function BeneficiariosPrograma() {
           <Tarjeta className="gap-3.5">
             <h2 className="m-0 text-xl font-bold">Agregar persona</h2>
             <FormularioPersona alRegistrar={() => void recargar()} />
+          </Tarjeta>
+
+          <Tarjeta className="gap-3.5">
+            <h2 className="m-0 text-xl font-bold">Subir desde Excel o CSV</h2>
+            <SubirPersonas alTerminar={() => void recargar()} />
           </Tarjeta>
 
           <Tarjeta className="gap-3.5">

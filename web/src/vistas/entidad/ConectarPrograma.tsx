@@ -16,6 +16,7 @@ import { rutaDelPrograma } from '@/lib/pantallas'
 import { diaEnBogota, hoyEnBogota } from '@/lib/textos'
 import { cn } from '@/lib/utils'
 import { FormularioPersona } from './FormularioPersona'
+import { SubirPersonas } from './SubirPersonas'
 
 type EstadoBilletera =
   | { estado: 'vacia' }
@@ -318,6 +319,12 @@ export default function ConectarPrograma() {
                 <summary className="min-h-11 cursor-pointer content-center font-bold text-enlace">Registrar personas</summary>
                 <div className="pt-3">
                   <FormularioPersona alRegistrar={() => setLiquidacion(null)} />
+                </div>
+              </details>
+              <details className="rounded-[10px] border border-linea px-4 py-3">
+                <summary className="min-h-11 cursor-pointer content-center font-bold text-enlace">Subir personas desde Excel o CSV</summary>
+                <div className="pt-3">
+                  <SubirPersonas alTerminar={() => setLiquidacion(null)} />
                 </div>
               </details>
             </Tarjeta>
