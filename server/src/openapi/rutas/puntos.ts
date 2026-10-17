@@ -1,4 +1,4 @@
-// Puntos de retiro · HU-03 y consultas de caja · HU-10.
+// Puntos de retiro · HU-03, consultas del punto · HU-10 y su caja.
 import { EntradaPunto } from '../../puntos/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, parametroUuid, ref, type Json } from '../ayudas.ts'
 import { PUNTO_EJEMPLO } from '../compartido.ts'
@@ -85,6 +85,48 @@ export function rutasPuntos(): Json {
         description: 'Del más reciente al más antiguo. Sin línea de tiempo (`eventos`). `hoy` es el día en hora de Bogotá; `7d` cubre 7 días; `todo` no filtra.',
         responses: {
           200: ok('Cobros del periodo.', { type: 'array', items: ref('Cobro') }, []),
+          404: falla('404 · El punto no existe.', 'PuntoNoEncontrado', 'Ese punto no existe'),
+        },
+      },
+    },
+    '/puntos/{id}/resumen': {
+      parameters: [
+        parametroUuid('id', 'Identificador del punto.'),
+        {
+          name: 'desde',
+          in: 'query',
+          required: false,
+          description: 'Periodo de la caja. Por defecto `hoy`. Un valor desconocido se trata como `hoy`.',
+          schema: { type: 'string', enum: ['hoy', '7d', 'todo'] },
+          example: 'hoy',
+        },
+      ],
+      get: {
+        tags: ['Puntos'],
+        operationId: 'cajaDelPunto',
+        summary: 'Caja del punto: entregado, reembolsado y en camino',
+        description: [
+          'Lo que muestran el inicio del punto y «Mi caja», por moneda:',
+          '',
+          '- `entregado` (cobros `Pagado`) es igual a `reembolsado`: el punto solo entrega el efectivo al ver «Pagado» (CA-12.04).',
+          '- `pendiente` son los cobros `Pagando`: ese efectivo todavía no se entrega.',
+          '- `giradoPorAdelantado` siempre es 0 y `reembolsoSegundos` es el promedio del PIN a `Pagado` (CA-15.03).',
+        ].join('\n'),
+        responses: {
+          200: ok('La caja del periodo.', ref('CajaPunto'), {
+            punto: PUNTO_EJEMPLO,
+            periodo: 'hoy',
+            totales: [
+              {
+                entregado: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+                reembolsado: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+                pendiente: { valor: '0', assetCode: 'COP', assetScale: 2 },
+                giradoPorAdelantado: { valor: '0', assetCode: 'COP', assetScale: 2 },
+              },
+            ],
+            cobros: { pagados: 1, enCurso: 0, rechazados: 1 },
+            reembolsoSegundos: 4.2,
+          }),
           404: falla('404 · El punto no existe.', 'PuntoNoEncontrado', 'Ese punto no existe'),
         },
       },

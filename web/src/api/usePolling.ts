@@ -8,6 +8,8 @@ export interface Consulta<T> {
   error: string | null
   cargando: boolean
   recargar: () => Promise<T | undefined>
+  /** Para poner en pantalla la respuesta de un POST sin esperar la siguiente consulta. */
+  setDatos: (d: T) => void
 }
 
 /**
@@ -88,5 +90,7 @@ export function usePolling<T>(
     }
   }, [activoAhora, intervalo, maxMs, recargar, clave])
 
-  return { datos, error, cargando, recargar }
+  const ponerDatos = useCallback((d: T) => setDatos(() => d), [])
+
+  return { datos, error, cargando, recargar, setDatos: ponerDatos }
 }

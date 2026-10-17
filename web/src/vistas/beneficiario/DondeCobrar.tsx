@@ -47,7 +47,7 @@ export function DondeCobrar() {
 
       <section className="flex flex-col">
         <h2 className="m-0 mb-1.5 text-[17px] font-extrabold">Puntos de retiro</h2>
-        {cargando && <TatuCargando texto="Buscando puntos…" tamano={72} className="py-6" />}
+        {cargando && <TatuCargando texto="Buscando puntos…" tamano={72} className="min-h-0 flex-none py-6" />}
         {!r && error !== null && <ErrorCarga error={error} reintentar={recargar} />}
         {r && r.puntos.length === 0 && <Aviso className="border-t border-linea py-3.5">Todavía no hay puntos de retiro registrados.</Aviso>}
         {r && (

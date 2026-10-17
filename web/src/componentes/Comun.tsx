@@ -2,6 +2,8 @@
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
 import { useEffect, useId, useRef, type ComponentProps, type ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router'
+import { TatuAnimado } from '@/componentes/tatu/TatuAnimado'
+import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { claseBoton, type TamanoBoton, type VarianteBoton } from '@/lib/boton'
 import { billeteraCorta } from '@/lib/textos'
 import { cn } from '@/lib/utils'
@@ -95,13 +97,18 @@ export function Volver({ to, children }: { to: string; children: ReactNode }) {
   )
 }
 
-/** Mientras carga: el tatú animado de la marca, después de 200 ms. */
+/** Mientras carga: el tatú del logo rodando (TatuCargando), después de 200 ms. */
 export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {
+  return <TatuCargando texto={texto} />
+}
+
+/** Lo mismo, en chico, para una lista que todavía no llega: el tatú solo rueda. */
+export function CargandoEnLinea({ texto = 'Cargando…' }: { texto?: string }) {
   return (
-    <div role="status" className="aparece-tarde flex min-h-[40dvh] flex-col items-center justify-center gap-4 py-12 text-tinta-suave">
-      <img src="/brand/tatu-animacion.webp" alt="" className="size-24 motion-reduce:hidden" />
-      <span className="text-[17px]">{texto}</span>
-    </div>
+    <span role="status" className="aparece-tarde inline-flex items-center gap-2.5">
+      <TatuAnimado estado="pagando" variante="rodar" className="size-8" />
+      {texto}
+    </span>
   )
 }
 

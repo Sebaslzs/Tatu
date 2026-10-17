@@ -12,6 +12,7 @@ import {
   Autorizacion,
   Beneficiario,
   BilleteraResuelta,
+  CajaPunto,
   Cobro,
   Coincidencia,
   ConfigPublica,
@@ -374,6 +375,7 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
       Cobro.parse(creado.cuerpo)
       Cobro.parse((await e.pedir('GET', `/cobros/${creado.cuerpo.id}`)).cuerpo)
       for (const c of (await e.pedir('GET', `/puntos/${s.puntoId}/cobros`)).cuerpo) Cobro.parse(c)
+      CajaPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/resumen`)).cuerpo)
       Cobro.parse((await e.pedir('POST', `/cobros/${creado.cuerpo.id}/cancelar`)).cuerpo)
       PersonaDemo.parse((await e.pedir('GET', '/beneficiarios/demo')).cuerpo[0])
       ResumenBeneficiario.parse((await e.pedir('GET', `/beneficiarios/${ANA.cedula}/resumen`)).cuerpo)
@@ -387,6 +389,7 @@ describe('contrato: las respuestas reales cumplen lo documentado', () => {
       expect(r.status).toBe(202)
       Cobro.parse(r.cuerpo)
       expect(JSON.stringify(r.cuerpo)).not.toContain(JORGE.pin)
+      expect(CajaPunto.parse((await e.pedir('GET', `/puntos/${s.puntoId}/resumen`)).cuerpo).totales).toHaveLength(1)
     })
   })
 
