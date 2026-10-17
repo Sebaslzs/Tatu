@@ -17,9 +17,9 @@ beforeEach(async () => {
 
 describe('GET /beneficiarios/:cedula/resumen', () => {
   it('muestra a Ana con su pago pendiente, su cuenta verificada y los puntos de retiro', async () => {
-    const { status, cuerpo } = await e.pedir('GET', `/beneficiarios/${ANA.cedula}/resumen`)
+    const { status, cuerpo } = await e.pedir('GET', `/beneficiarios/${ANA.documento}/resumen`)
     expect(status).toBe(200)
-    expect(cuerpo.persona).toEqual({ nombre: 'Ana Pérez', cedula: ANA.cedula, tienePin: true })
+    expect(cuerpo.persona).toEqual({ nombre: 'Ana Pérez', documento: ANA.documento, tienePin: true })
     expect(cuerpo.liquidacionDisponible).toBe(true)
     expect(cuerpo.pagos).toEqual([
       {
@@ -29,7 +29,7 @@ describe('GET /beneficiarios/:cedula/resumen', () => {
       },
     ])
     expect(cuerpo.pago).toEqual(cuerpo.pagos[0])
-    expect(cuerpo.cuenta).toMatchObject({ estado: 'Verificada', cedula: ANA.cedula })
+    expect(cuerpo.cuenta).toMatchObject({ estado: 'Verificada', documento: ANA.documento })
     expect(cuerpo.puntos.map((p: { id: string }) => p.id).sort()).toEqual([s.puntoId, s.punto2Id].sort())
     expect(cuerpo.ultimoCobro).toBeNull()
     expect(cuerpo.historial).toEqual([])
@@ -37,17 +37,17 @@ describe('GET /beneficiarios/:cedula/resumen', () => {
   })
 
   it('Jorge, sin cuenta, cobra en un punto: el resumen no ofrece cuenta y sí los puntos', async () => {
-    const { cuerpo } = await e.pedir('GET', `/beneficiarios/${JORGE.cedula}/resumen`)
-    expect(cuerpo.persona).toMatchObject({ nombre: 'Jorge Ruiz', cedula: JORGE.cedula, tienePin: true })
+    const { cuerpo } = await e.pedir('GET', `/beneficiarios/${JORGE.documento}/resumen`)
+    expect(cuerpo.persona).toMatchObject({ nombre: 'Jorge Ruiz', documento: JORGE.documento, tienePin: true })
     expect(cuerpo.cuenta).toBeNull()
     expect(cuerpo.puntos).toHaveLength(2)
     expect(cuerpo.pagos[0].programa.id).toBe(s.programaId)
   })
 
   it('después de cobrar a la cuenta, el historial y ultimoCobro muestran el pago', async () => {
-    const cobro = (await e.pedir('POST', '/cobros', { cedula: ANA.cedula, canal: 'cuenta', llaveIdempotencia: llaveNueva() })).cuerpo
+    const cobro = (await e.pedir('POST', '/cobros', { documento: ANA.documento, canal: 'cuenta', llaveIdempotencia: llaveNueva() })).cuerpo
     await e.esperarPagos()
-    const { cuerpo } = await e.pedir('GET', `/beneficiarios/${ANA.cedula}/resumen`)
+    const { cuerpo } = await e.pedir('GET', `/beneficiarios/${ANA.documento}/resumen`)
     expect(cuerpo.pagos).toEqual([])
     expect(cuerpo.pago).toBeNull()
     expect(cuerpo.ultimoCobro).toMatchObject({ id: cobro.id, estado: 'Pagado', canal: 'cuenta' })
