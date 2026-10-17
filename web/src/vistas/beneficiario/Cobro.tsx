@@ -8,7 +8,7 @@ import { cobrarACuenta, consultarCobro, ESTADOS_FINALES, type Cobro as DatosCobr
 import { codigoDeError, mensajeDeError } from '@/api/client'
 import { Icono, PantallaCelular } from '@/componentes/piezas'
 import { TatuCargando } from '@/componentes/tatu/TatuCargando'
-import { TatuPago, type EstadoTatuPago } from '@/componentes/tatu/TatuPago'
+import { TatuEnrolla, type EstadoPago } from '@/componentes/tatu/TatuEnrolla'
 import { useRol } from '@/contexto/Rol'
 import { formatearHora, formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
@@ -57,12 +57,16 @@ export function Cobro({ visita }: { visita: string }) {
   })
   const cobro = consulta.datos ?? pedido
 
-  const estadoTatu: EstadoTatuPago =
-    errorPedido !== null ? 'fallido' : cobro?.estado === 'Pagado' ? 'pagado' : cobro && esFinal(cobro.estado) ? 'fallido' : 'esperando'
-  const enCurso = estadoTatu === 'esperando'
+  const estadoTatu: EstadoPago =
+    errorPedido !== null ? 'fallido' : cobro?.estado === 'Pagado' ? 'pagado' : cobro && esFinal(cobro.estado) ? 'fallido' : 'pagando'
+  const enCurso = estadoTatu === 'pagando'
   const enPunto = cobro?.canal === 'retiro'
   // Abierto por id: hasta conocer el cobro no se sabe si el tatú debe rodar o aparecer en su resultado
   const sinCobro = !cobro && errorPedido === null && !programaId
+  const fallo = estadoTatu === 'fallido'
+  // Si se lo vio rodar, el tatú del rechazo llega rodando y frena; si no, aparece quieto en su final
+  const [vioRodar, setVioRodar] = useState(desdeElInicio)
+  if (!vioRodar && !sinCobro && enCurso) setVioRodar(true)
 
   return (
     <PantallaCelular className="gap-4">
@@ -77,11 +81,15 @@ export function Cobro({ visita }: { visita: string }) {
       {sinCobro && consulta.error === null && <TatuCargando texto="Buscando tu cobro…" />}
       {!sinCobro && (
         <>
-          <div className="flex justify-center pt-3">
-            <TatuPago estado={estadoTatu} desdeElInicio={desdeElInicio} />
-          </div>
+          {!fallo && (
+            <div className="flex justify-center pt-3">
+              <TatuDelCobro estado={estadoTatu} desdeElInicio={desdeElInicio} />
+            </div>
+          )}
 
-          {errorPedido !== null && <NoSePago mensaje={mensajeDeError(errorPedido)} codigo={codigoDeError(errorPedido)} programaId={programaId ?? null} />}
+          {errorPedido !== null && (
+            <NoSePago mensaje={mensajeDeError(errorPedido)} codigo={codigoDeError(errorPedido)} programaId={programaId ?? null} vioRodar={vioRodar} />
+          )}
           {errorPedido === null && enCurso && <EnCurso cobro={cobro} />}
           {cobro?.estado === 'Pagado' && <Pagado cobro={cobro} />}
           {cobro && esFinal(cobro.estado) && cobro.estado !== 'Pagado' && (
@@ -89,12 +97,24 @@ export function Cobro({ visita }: { visita: string }) {
               mensaje={cobro.motivo?.mensaje ?? 'El pago no se pudo hacer.'}
               codigo={cobro.motivo?.codigo ?? null}
               programaId={cobro.programa.id}
+              vioRodar={vioRodar}
             />
           )}
         </>
       )}
     </PantallaCelular>
   )
+}
+
+/**
+ * El tatú del pago: de pie se enrolla y rueda mientras se paga; con el resultado frena y termina en el
+ * logo con la cerradura verde (pagado) o roja (no se pagó). Si el cobro ya tenía resultado al abrirlo,
+ * queda quieto en ese final.
+ */
+function TatuDelCobro({ estado, desdeElInicio }: { estado: EstadoPago; desdeElInicio: boolean }) {
+  // TatuEnrolla toma el inicio al montarse: se fija aquí para que no cambie con las consultas
+  const [inicio] = useState<'de-pie' | 'final'>(() => (desdeElInicio || estado === 'pagando' ? 'de-pie' : 'final'))
+  return <TatuEnrolla estado={estado} inicio={inicio} finalError="logo" className="w-56" />
 }
 
 type Paso = 'hecho' | 'actual' | 'pendiente'
@@ -173,14 +193,19 @@ function Pagado({ cobro }: { cobro: DatosCobro }) {
   )
 }
 
-function NoSePago({ mensaje, codigo, programaId }: { mensaje: string; codigo: string | null; programaId: string | null }) {
+function NoSePago({ mensaje, codigo, programaId, vioRodar }: { mensaje: string; codigo: string | null; programaId: string | null; vioRodar: boolean }) {
   const deCuenta = codigo !== null && MOTIVOS_DE_CUENTA.includes(codigo)
+  // TatuEnrolla toma el inicio al montarse
+  const [inicio] = useState<'rodando' | 'final'>(() => (vioRodar ? 'rodando' : 'final'))
   return (
     <>
-      <div role="alert" className="flex flex-col gap-1.5 rounded-[22px] bg-error px-5 py-[22px] text-white">
-        <span className="ancho text-[32px] leading-[1.1] font-extrabold">No se hizo el pago</span>
-        <span className="text-lg leading-[1.35] font-semibold">{mensaje}</span>
-        <span className="mt-0.5 text-base">No se movió dinero.</span>
+      <div role="alert" className="mt-3 flex items-center gap-3.5 rounded-[22px] bg-error px-5 py-[22px] text-white">
+        <TatuEnrolla estado="fallido" inicio={inicio} finalError="logo" sobreColor className="w-28 flex-none" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-2xl leading-[1.15] font-extrabold">No se hizo el pago</span>
+          <span className="text-lg leading-[1.35] font-semibold">{mensaje}</span>
+          <span className="mt-0.5 text-base">No se movió dinero.</span>
+        </div>
       </div>
       <div className="mt-auto flex flex-col gap-2.5">
         {deCuenta && programaId && <BotonEnlace a={`/beneficiario/cuenta?programa=${programaId}`}>Enlazar mi cuenta</BotonEnlace>}

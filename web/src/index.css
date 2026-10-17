@@ -197,62 +197,32 @@ h1:focus {
   outline: none;
 }
 
-/* Tatú: rueda en las cerdas, rayitas del suelo y salto al mostrar el resultado de un pago */
-@keyframes tatu-rueda {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes tatu-suelo {
-  to {
-    background-position: -24px 0;
-  }
-}
-@keyframes tatu-salto {
-  0% {
-    transform: scale(0.92);
-  }
-  55% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-@keyframes tatu-aparece {
-  0% {
-    transform: scale(0);
-  }
-  70% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.tatu-rueda {
-  animation: tatu-rueda 1.1s linear infinite;
-}
+/* El tatú animado (componentes/tatu): el suelo por el que rueda y el halo verde al quedar pagado.
+   Lo que se mueve lo anima cada componente con `transform`; con «reducir movimiento» quedan quietos. */
 .tatu-suelo {
-  border-radius: 999px;
-  background-image: repeating-linear-gradient(90deg, rgb(19 32 58 / 0.35) 0 12px, transparent 12px 24px);
-  animation: tatu-suelo 0.35s linear infinite;
+  background-image: repeating-linear-gradient(90deg, var(--color-control) 0 14px, transparent 14px 24px);
 }
-.tatu-resultado {
-  animation: tatu-salto 0.45s ease-out;
+.tatu-suelo-claro {
+  background-image: repeating-linear-gradient(90deg, var(--color-noche-texto-tenue) 0 14px, transparent 14px 24px);
 }
-.tatu-insignia {
-  animation: tatu-aparece 0.4s 0.15s ease-out both;
+.tatu-halo {
+  translate: -50% -50%;
+  background: var(--color-pagado-relleno);
+  animation: tatu-halo 900ms ease-out 250ms both;
+}
+@keyframes tatu-halo {
+  from {
+    opacity: 0.35;
+    scale: 0.6;
+  }
+  to {
+    opacity: 0;
+    scale: 2.2;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
-  }
-  .tatu-rueda,
-  .tatu-suelo,
-  .tatu-resultado,
-  .tatu-insignia {
-    animation: none;
   }
 }
