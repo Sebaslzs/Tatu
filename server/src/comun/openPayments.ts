@@ -3,7 +3,11 @@
 import { ErrorApi } from './errores.ts'
 import type { Moneda } from './montos.ts'
 
-export type TipoErrorOP = 'TopeSuperado' | 'TokenVencido' | 'SinRespuesta' | 'ErrorOpenPayments' | 'NoConfigurado'
+/**
+ * `LlavesDistintas`: el banco no reconoce al cliente que firma para ese token (otro servidor de Tatú,
+ * con otras llaves, pidió el permiso). No es un token vencido: rotarlo no sirve y no se marca el permiso.
+ */
+export type TipoErrorOP = 'TopeSuperado' | 'TokenVencido' | 'LlavesDistintas' | 'SinRespuesta' | 'ErrorOpenPayments' | 'NoConfigurado'
 
 export class ErrorOpenPayments extends Error {
   readonly tipo: TipoErrorOP

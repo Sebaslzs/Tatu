@@ -88,8 +88,9 @@ export class ServicioPermisoToken {
       return nuevo.token
     } catch (e) {
       log.warn('No se pudo rotar el token', { error: e, programa: programaId })
-      // Sin respuesta (red, 5xx): no se sabe si el permiso murió; se reintenta en la próxima vuelta
-      if (e instanceof ErrorOpenPayments && e.tipo === 'SinRespuesta') throw e
+      // Sin respuesta (red, 5xx): no se sabe si el permiso murió; se reintenta en la próxima vuelta.
+      // Llaves distintas: el permiso es de otro servidor de Tatú y sigue vivo allá; no se marca.
+      if (e instanceof ErrorOpenPayments && (e.tipo === 'SinRespuesta' || e.tipo === 'LlavesDistintas')) throw e
       await this.marcarPermisoVencido(programaId)
       throw new PermisoVencido()
     }
