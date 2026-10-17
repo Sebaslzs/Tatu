@@ -3,7 +3,7 @@
 // cualquier rostro es válido (no se compara contra la cédula), pero sin nadie frente a la cámara no avanza.
 import type { FaceDetector } from '@mediapipe/tasks-vision'
 import { CircleCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { cargarDetector } from './detectorRostro'
 import { MENSAJES_GUIA } from './guia'
@@ -17,20 +17,25 @@ export function CamaraRostro({ alVerificar, alNoDisponible }: { alVerificar: () 
   const { video, estado } = useCamara()
   const [detector, setDetector] = useState<FaceDetector | null>(null)
   const [fase, setFase] = useState<Fase>('guiando')
+  // Referencias: los temporizadores dependen solo de la fase, no de funciones que cambian al repintar
+  const avisar = useRef(alVerificar)
+  avisar.current = alVerificar
+  const noDisponible = useRef(alNoDisponible)
+  noDisponible.current = alNoDisponible
 
   useEffect(() => {
     let vivo = true
     cargarDetector()
       .then((d) => vivo && setDetector(d))
-      .catch(() => vivo && alNoDisponible('No pudimos iniciar el reconocimiento facial. Usa la huella.'))
+      .catch(() => vivo && noDisponible.current('No pudimos iniciar el reconocimiento facial. Usa la huella.'))
     return () => {
       vivo = false
     }
-  }, [alNoDisponible])
+  }, [])
 
   useEffect(() => {
-    if (estado === 'sinCamara') alNoDisponible('No hay cámara disponible en este equipo. Usa la huella.')
-  }, [estado, alNoDisponible])
+    if (estado === 'sinCamara') noDisponible.current('No hay cámara disponible en este equipo. Usa la huella.')
+  }, [estado])
 
   const guia = useGuiaRostro(video, detector, estado === 'lista' && fase === 'guiando', () => setFase('procesando'))
 
@@ -40,10 +45,10 @@ export function CamaraRostro({ alVerificar, alNoDisponible }: { alVerificar: () 
       return () => window.clearTimeout(t)
     }
     if (fase === 'verificado') {
-      const t = window.setTimeout(alVerificar, CONFIRMADO_MS)
+      const t = window.setTimeout(() => avisar.current(), CONFIRMADO_MS)
       return () => window.clearTimeout(t)
     }
-  }, [fase, alVerificar])
+  }, [fase])
 
   const alineado = fase === 'guiando' && guia === 'alineado'
   const mensaje =

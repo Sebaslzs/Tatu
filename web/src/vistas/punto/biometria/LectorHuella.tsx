@@ -1,7 +1,7 @@
 // Huella simulada: no hay lector real. La lectura cuenta con un clic (o toque) en el ícono, o con una
 // tecla mientras este paso está activo. La huella se llena y aparece «Proceso biométrico exitoso».
 import { CircleCheck, Fingerprint } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CONFIRMADO_MS, LEER_HUELLA_MS } from './pasos'
 
@@ -9,6 +9,10 @@ type Fase = 'esperando' | 'leyendo' | 'listo'
 
 export function LectorHuella({ alVerificar }: { alVerificar: () => void }) {
   const [fase, setFase] = useState<Fase>('esperando')
+  // La pantalla se vuelve a pintar cada segundo (cuenta regresiva): si el temporizador dependiera de
+  // `alVerificar`, se reiniciaría antes de cumplirse y nunca confirmaría
+  const avisar = useRef(alVerificar)
+  avisar.current = alVerificar
   const leer = useCallback(() => setFase((f) => (f === 'esperando' ? 'leyendo' : f)), [])
 
   // Una tecla cuenta como poner el dedo; se ignora la repetición de una tecla mantenida y lo que se
@@ -30,10 +34,10 @@ export function LectorHuella({ alVerificar }: { alVerificar: () => void }) {
       return () => window.clearTimeout(t)
     }
     if (fase === 'listo') {
-      const t = window.setTimeout(alVerificar, CONFIRMADO_MS)
+      const t = window.setTimeout(() => avisar.current(), CONFIRMADO_MS)
       return () => window.clearTimeout(t)
     }
-  }, [fase, alVerificar])
+  }, [fase])
 
   return (
     <div className="flex flex-col items-center gap-3">
