@@ -62,8 +62,9 @@ export function ElegirRol() {
   // Celular: la lista de siempre. Tablet y computador: las tres opciones lado a lado, como tarjetas.
   return (
     <PantallaAdaptable className="md:max-w-[760px] pc:max-w-[1040px]">
-      {/* Arriba, como en las demás pantallas; la marca y los roles quedan centrados en el resto */}
-      <div className="flex justify-end">
+      {/* Arriba, como en las demás pantallas; la marca y los roles quedan centrados en el resto. En el
+          computador va en la esquina de la ventana, donde está en la barra de las otras pantallas */}
+      <div className="flex justify-end pc:absolute pc:top-8 pc:right-8">
         <BotonTema />
       </div>
       <div className="flex flex-1 flex-col justify-center gap-8 pb-10 pc:gap-12 pc:pb-16">

@@ -66,14 +66,17 @@ export function PantallaAdaptable({
   )
 }
 
-/** Pantalla de computador: panel azul noche con la marca + columna del formulario. */
+/**
+ * Pantalla de computador: panel azul noche con la marca + columna del formulario. El modo oscuro va
+ * en la esquina de la ventana en el computador; si el panel queda encima (pantallas angostas), en él.
+ */
 export function PantallaPartida({ titulo, texto, children }: { titulo: string; texto: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-wrap bg-background text-foreground">
+    <div className="relative flex min-h-dvh flex-wrap bg-background text-foreground">
       <aside className="flex flex-[1_1_420px] flex-col justify-between gap-10 bg-noche px-12 py-14 text-arena max-sm:px-6 max-sm:py-10">
         <div className="flex items-start justify-between gap-3">
           <Marca tono="oscuro" tamano="panel" />
-          <BotonTema sobreBloque />
+          <BotonTema sobreBloque className="pc:hidden" />
         </div>
         <div className="flex max-w-[460px] flex-col gap-4">
           <h2 className="ancho m-0 text-[38px] leading-[1.1] font-extrabold max-sm:text-[30px]">{titulo}</h2>
@@ -83,6 +86,7 @@ export function PantallaPartida({ titulo, texto, children }: { titulo: string; t
       <div className="flex flex-[1.3_1_480px] items-center justify-center px-8 py-12 max-sm:px-5">
         <div className="flex w-full max-w-[480px] flex-col gap-5">{children}</div>
       </div>
+      <BotonTema className="absolute top-8 right-8 hidden pc:inline-flex" />
     </div>
   )
 }
