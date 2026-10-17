@@ -5,12 +5,12 @@ import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { consultarLlave, enlazarCuenta, type Cuenta, type DatosCuenta, type LlaveConsultada, type Resumen, type TipoLlave } from '@/api/beneficiario'
 import { mensajeDeError } from '@/api/client'
-import { IconoCandado, MensajeError, PantallaCelular } from '@/componentes/piezas'
+import { IconoCandado, MensajeError } from '@/componentes/piezas'
 import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { useRol } from '@/contexto/Rol'
 import { formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
-import { Aviso, Boton, BotonEnlace, Cabecera, ErrorCarga, FilasDatos, IconoEnlace } from './comunes'
+import { Aviso, Boton, BotonEnlace, Cabecera, ErrorCarga, FilasDatos, IconoEnlace, PantallaBeneficiario } from './comunes'
 import { pagoDe, useResumen } from './datos'
 
 type Tipo = TipoLlave | 'billetera'
@@ -55,7 +55,7 @@ export function EnlazarCuenta() {
   const lista = cuenta && !cambiar
 
   return (
-    <PantallaCelular className="gap-4">
+    <PantallaBeneficiario ancho="formulario" nombre={r?.persona.nombre} className="gap-4">
       <Cabecera
         volver={volver}
         etiquetaVolver={programaId ? 'Volver al subsidio' : 'Volver a mis subsidios'}
@@ -76,7 +76,7 @@ export function EnlazarCuenta() {
           }}
         />
       )}
-    </PantallaCelular>
+    </PantallaBeneficiario>
   )
 }
 

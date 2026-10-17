@@ -116,13 +116,21 @@ export function irAlCobro(navegar: NavigateFunction, c: Cobro) {
 
 const CEDULA = /^\d{5,12}$/
 
+/** Dónde se digitó la cédula: al pasar del computador al celular, el celular retoma el nuevo cobro. */
+export type DondeSeDigito = 'celular' | 'computador' | null
+
 /**
  * Consultar la cédula (P1) y pedir el cobro del subsidio elegido (P1b). Si la persona tiene pagos se
  * muestran siempre, aunque sea uno; si no, se pide igual y la API deja el rechazo en pantalla
  * (HU-13). Una llave por cédula digitada y por subsidio (CA-10.07): la misma en el doble clic y en
  * el reintento.
+ *
+ * El estado vive en las rutas del punto (RutasPunto, `ContextoConsultaCedula`), no en cada pantalla:
+ * la vista del celular y la del computador comparten la misma consulta, así girar el celular o
+ * redimensionar la ventana no borra la cédula digitada ni los pagos que ya se ven. Se reinicia al
+ * pedir el cobro y al salir del nuevo cobro con «volver».
  */
-export function useConsultaCedula(puntoId: string) {
+export function useEstadoConsultaCedula(puntoId: string) {
   const navegar = useNavigate()
   const [cedula, setCedula] = useState('')
   const [llave, setLlave] = useState(() => crypto.randomUUID())
@@ -131,6 +139,17 @@ export function useConsultaCedula(puntoId: string) {
   const [pidiendo, setPidiendo] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [opciones, setOpciones] = useState<PagosEnPunto | null>(null)
+  const [donde, setDonde] = useState<DondeSeDigito>(null)
+
+  const reiniciar = () => {
+    setCedula('')
+    setLlave(crypto.randomUUID())
+    setEnviando(false)
+    setPidiendo(false)
+    setError(null)
+    setOpciones(null)
+    setDonde(null)
+  }
 
   const pedir = async (programaId?: string) => {
     setEnviando(true)
@@ -146,6 +165,8 @@ export function useConsultaCedula(puntoId: string) {
         llaveIdempotencia: programaId ? `${llave}-${programaId}` : llave,
       })
       irAlCobro(navegar, c)
+      // El cobro ya tiene su pantalla: el próximo «Nuevo cobro» empieza de cero
+      reiniciar()
     } catch (e) {
       setError(mensajeDeError(e))
       setEnviando(false)
@@ -173,11 +194,12 @@ export function useConsultaCedula(puntoId: string) {
 
   return {
     cedula,
-    cambiarCedula: (v: string) => {
+    cambiarCedula: (v: string, desde: Exclude<DondeSeDigito, null> = 'celular') => {
       setCedula(v.replace(/\D/g, ''))
       setLlave(crypto.randomUUID())
       setError(null)
       setOpciones(null)
+      setDonde(desde)
     },
     consultar,
     pedir,
@@ -186,10 +208,24 @@ export function useConsultaCedula(puntoId: string) {
       setOpciones(null)
       setError(null)
     },
+    /** Deja todo como al entrar: sin cédula, sin pagos y sin errores. */
+    reiniciar,
+    donde,
+    /** El celular ya retomó lo digitado en el computador. */
+    retomadoEnCelular: () => setDonde('celular'),
     enviando,
     pidiendo,
     error,
   }
 }
 
-export type ConsultaCedula = ReturnType<typeof useConsultaCedula>
+export type ConsultaCedula = ReturnType<typeof useEstadoConsultaCedula>
+
+export const ContextoConsultaCedula = createContext<ConsultaCedula | null>(null)
+
+/** La consulta de la cédula que comparten el inicio del computador y el nuevo cobro del celular. */
+export function useConsultaCedula(): ConsultaCedula {
+  const valor = useContext(ContextoConsultaCedula)
+  if (!valor) throw new Error('useConsultaCedula debe usarse dentro de <RutasPunto>')
+  return valor
+}

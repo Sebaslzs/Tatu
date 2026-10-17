@@ -18,6 +18,7 @@ import { textoMonto } from '@/lib/montos'
 import { esEstadoFinal, inicioPagando, pantallaDelCobro } from '@/lib/pantallas'
 import { explicacionMotivo, formatCuentaRegresiva, formatSegundos, MOTIVO_CORTO } from '@/lib/textos'
 import { useEnComputador } from '@/lib/useEnComputador'
+import { usePunteroTactil } from '@/lib/usePunteroTactil'
 import { cn } from '@/lib/utils'
 import { personaConCedula, primerNombre, textoCompra } from './datos'
 import { EsperaPagando } from './Espera'
@@ -92,6 +93,9 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
   const [pin, setPin] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Una tablet en horizontal o una pantalla táctil usa la vista del computador pero no tiene teclado
+  // físico: ahí también se dibuja el teclado del PIN
+  const tactil = usePunteroTactil()
   // Al llegar a cero se vuelve a consultar: la API lo pasa a Rechazado por tiempo agotado (CA-11.04)
   const restante = useCuentaRegresiva(c.confirmarAntesDe, () => void consulta.recargar())
   const vencido = restante === 0
@@ -170,7 +174,13 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
             <PuntosPin largo={pin.length} grande error={Boolean(error)} />
             <span className="text-base leading-[1.45]">Pásale el teclado o gira la pantalla hacia {primerNombre(nombre)}. Mientras digita, no mires el PIN.</span>
             {alerta}
-            <TecladoPin onChange={setPin} deshabilitado={enviando || vencido} oculto />
+            {tactil ? (
+              <div className="w-full max-w-[380px]">
+                <TecladoPin onChange={setPin} deshabilitado={enviando || vencido} />
+              </div>
+            ) : (
+              <TecladoPin onChange={setPin} deshabilitado={enviando || vencido} oculto />
+            )}
             <div className="mt-1 flex flex-wrap gap-3">
               <BotonMedio className="min-w-[200px]" onClick={() => void confirmar()} disabled={pin.length !== 4 || enviando || vencido}>
                 {enviando ? 'Confirmando…' : 'Confirmar'}

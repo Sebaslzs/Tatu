@@ -2,7 +2,8 @@
 // la persona confirma después con su PIN. En el computador la cédula va dentro del inicio (PD0) y
 // los pagos en su propia pantalla (PD1).
 import { ChevronRight, Lock, ShieldCheck } from 'lucide-react'
-import { Navigate } from 'react-router'
+import { useEffect } from 'react'
+import { Navigate, useNavigate } from 'react-router'
 import { Boton as BotonMedio } from '@/componentes/Comun'
 import { MensajeError, PantallaCelular } from '@/componentes/piezas'
 import { textoMonto } from '@/lib/montos'
@@ -24,7 +25,7 @@ function CampoCedula({ consulta, computador = false }: { consulta: ConsultaCedul
       value={consulta.cedula}
       aria-describedby={consulta.error ? 'cedula-error' : 'cedula-ayuda'}
       aria-invalid={consulta.error ? true : undefined}
-      onChange={(e) => consulta.cambiarCedula(e.target.value)}
+      onChange={(e) => consulta.cambiarCedula(e.target.value, computador ? 'computador' : 'celular')}
       className={cn(
         'box-border w-full rounded-[14px] border-2 border-foreground px-4 font-sans text-[28px] font-bold tracking-[0.04em] text-foreground placeholder:font-normal placeholder:tracking-normal placeholder:text-tinta-suave',
         computador ? 'h-16 bg-papel' : 'h-[68px] bg-papel',
@@ -144,9 +145,20 @@ export function PagosEscritorio({ consulta }: { consulta: ConsultaCedula }) {
 /** P1 y P1b: «Nuevo cobro» en el celular. En el computador va dentro del inicio (PD0). */
 export function NuevoCobro() {
   const punto = usePunto()
+  const navegar = useNavigate()
   const computador = useEnComputador()
-  const consulta = useConsultaCedula(punto.id)
+  const consulta = useConsultaCedula()
   const o = consulta.opciones
+  const { donde, retomadoEnCelular } = consulta
+  // Lo digitado en el computador ya está aquí: «volver» desde el celular vuelve al inicio sin rebotar
+  useEffect(() => {
+    if (!computador && donde === 'computador') retomadoEnCelular()
+  }, [computador, donde, retomadoEnCelular])
+  /** Salir del nuevo cobro lo deja limpio para el próximo. */
+  const salir = () => {
+    consulta.reiniciar()
+    navegar('/punto')
+  }
 
   // La sede de un comercio no hace retiros: su venta con bono está en el inicio
   if (punto.datos?.tipo === 'compra') return <Navigate to="/punto" replace />
@@ -172,7 +184,7 @@ export function NuevoCobro() {
 
   return (
     <PantallaCelular className="gap-4">
-      <Cabecera volver="/punto" etiquetaVolver="Volver al inicio del punto" titulo="Nuevo cobro" subtitulo={punto.nombre} />
+      <Cabecera alVolver={salir} etiquetaVolver="Volver al inicio del punto" titulo="Nuevo cobro" subtitulo={punto.nombre} />
       <PasosCobro paso="Cédula" />
       <form
         noValidate

@@ -2,7 +2,7 @@
 // computador, con el nuevo cobro al lado de los cobros de hoy). La sede de un comercio cobra compras
 // con bono (VentaConBono).
 import { Plus, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
 import { Cargando, ErrorCarga } from '@/componentes/Comun'
 import { Marca, PantallaCelular } from '@/componentes/piezas'
 import { plural } from '@/lib/textos'
@@ -18,9 +18,12 @@ import { BotonTema } from '@/componentes/BotonTema'
 function InicioCelular() {
   const punto = usePunto()
   const { caja, cobros } = useHoy(punto.id)
+  const consulta = useConsultaCedula()
   const c = cifrasCaja(caja.datos)
+  // Venía de digitar una cédula en el computador (se giró o se achicó la pantalla): sigue ese cobro
+  if (consulta.donde === 'computador' && (consulta.cedula || consulta.opciones)) return <Navigate to="/punto/nuevo" replace />
   return (
-    <PantallaCelular className="gap-3.5">
+    <PantallaCelular amplia className="gap-3.5">
       <div className="flex items-center gap-2.5">
         <CuadroVolver a="/" etiqueta="Volver a elegir rol" />
         <Marca />
@@ -64,7 +67,7 @@ function InicioCelular() {
 function InicioEscritorio() {
   const punto = usePunto()
   const { caja, cobros } = useHoy(punto.id)
-  const consulta = useConsultaCedula(punto.id)
+  const consulta = useConsultaCedula()
   const c = cifrasCaja(caja.datos)
   if (consulta.opciones) return <PagosEscritorio consulta={consulta} />
   return (

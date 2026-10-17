@@ -2,12 +2,12 @@
 // en el computador): cabeceras, el marco de computador, tarjetas, avisos, chips y los pasos del cobro.
 import { ChevronLeft, Clock, type LucideIcon } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
-import { Link, NavLink, useNavigate, type LinkProps } from 'react-router'
+import { Link, type LinkProps } from 'react-router'
+import { BarraSuperior, type Seccion } from '@/componentes/BarraSuperior'
 import { Titulo } from '@/componentes/Comun'
 import { claseBoton, type VarianteBoton } from '@/lib/boton'
 import { cn } from '@/lib/utils'
 import { usePunto } from './datos'
-import { BotonTema } from '@/componentes/BotonTema'
 
 // ── Botones ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +67,8 @@ export function Cabecera({
       <CuadroVolver a={volver} alVolver={alVolver} etiqueta={etiquetaVolver} />
       <div className="flex min-w-0 flex-col">
         <span className="text-lg leading-[1.2] font-extrabold">{titulo}</span>
-        {subtitulo && <span className="truncate text-sm text-tinta-suave">{subtitulo}</span>}
+        {/* Hasta dos líneas: en 320 px el nombre largo no se come la cédula que el punto debe leer */}
+        {subtitulo && <span className="line-clamp-2 text-sm text-tinta-suave">{subtitulo}</span>}
       </div>
     </div>
   )
@@ -96,9 +97,9 @@ export function VolverEscritorio({ a, onClick, children }: { a?: string; onClick
   )
 }
 
-const PESTANAS = [
+const PESTANAS: Seccion[] = [
   { a: '/punto', texto: 'Inicio', fin: true },
-  { a: '/punto/caja', texto: 'Mi caja', fin: false },
+  { a: '/punto/caja', texto: 'Mi caja' },
 ]
 
 /**
@@ -120,46 +121,17 @@ export function PantallaPuntoEscritorio({
   children: ReactNode
 }) {
   const { nombre } = usePunto()
-  const navegar = useNavigate()
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="bloque">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-6 px-8 py-3 max-sm:px-4">
-          <Link to="/" aria-label="Volver a elegir rol" className="flex items-center gap-2.5 text-bloque-texto no-underline hover:text-bloque-texto">
-            <img src="/brand/tatu-logo-oscuro.svg" alt="" className="size-[38px] rounded-lg" />
-            <span className="ancho text-2xl font-extrabold">Tatú</span>
-          </Link>
-          <nav aria-label="Secciones del punto" className="flex flex-wrap gap-[22px]">
-            {PESTANAS.map((p) => (
-              <NavLink
-                key={p.a}
-                to={p.a}
-                end={p.fin}
-                className={({ isActive }) =>
-                  cn(
-                    'border-b-[3px] px-0.5 py-2.5 text-base text-bloque-texto no-underline hover:text-bloque-texto',
-                    isActive ? 'border-ambar font-bold' : 'border-transparent font-medium',
-                  )
-                }
-              >
-                {p.texto}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-3.5">
-            <span className="text-[15px]">{nombre}</span>
-            {/* El rol se borra al llegar a "/" (ElegirRol) */}
-            <BotonTema sobreBloque />
-            <button
-              type="button"
-              onClick={() => navegar('/')}
-              className="inline-flex min-h-11 cursor-pointer items-center border-0 bg-transparent font-sans text-[15px] text-bloque-texto underline hover:text-ambar"
-            >
-              Cambiar rol
-            </button>
-          </div>
-        </div>
-      </header>
+      <BarraSuperior
+        inicio="/"
+        etiquetaInicio="Volver a elegir rol"
+        contexto={nombre}
+        secciones={PESTANAS}
+        etiquetaSecciones="Secciones del punto"
+        rol="Punto"
+        ancho="max-w-[1240px]"
+      />
       <main className="mx-auto box-border flex w-full max-w-[1240px] flex-col gap-[22px] px-8 pt-6 pb-14 max-sm:px-4">
         {volver}
         {(titulo || subtitulo) && (

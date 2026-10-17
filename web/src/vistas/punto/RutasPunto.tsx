@@ -8,7 +8,7 @@ import { listarPuntos } from '@/api/punto'
 import { usePolling } from '@/api/usePolling'
 import { useRol } from '@/contexto/Rol'
 import { CobroEnPunto } from './CobroEnPunto'
-import { ContextoPunto } from './datos'
+import { ContextoConsultaCedula, ContextoPunto, useEstadoConsultaCedula } from './datos'
 import { InicioPunto } from './InicioPunto'
 import { MiCaja } from './MiCaja'
 import { NuevoCobro } from './NuevoCobro'
@@ -22,6 +22,8 @@ export function RutasPunto() {
 /** El punto que atiende, para todas sus pantallas: la lista de puntos se pide una vez al entrar. */
 function ConPunto({ id }: { id: string }) {
   const puntos = usePolling(listarPuntos, null, true, { clave: id })
+  // La cédula del nuevo cobro vive aquí: la comparten la vista del celular y la del computador
+  const consulta = useEstadoConsultaCedula(id)
   const datos = puntos.datos?.find((p) => p.id === id) ?? null
   // El punto ya no existe (por ejemplo, la base se rehízo): se vuelve a elegir
   if (puntos.datos && !datos) return <Navigate to="/entrar/punto" replace />
@@ -36,13 +38,15 @@ function ConPunto({ id }: { id: string }) {
   }
   return (
     <ContextoPunto value={valor}>
-      <Routes>
-        <Route index element={<InicioPunto />} />
-        <Route path="nuevo" element={<NuevoCobro />} />
-        <Route path="caja" element={<MiCaja />} />
-        <Route path="cobros/:id" element={<CobroPorId />} />
-        <Route path="*" element={<Navigate to="/punto" replace />} />
-      </Routes>
+      <ContextoConsultaCedula value={consulta}>
+        <Routes>
+          <Route index element={<InicioPunto />} />
+          <Route path="nuevo" element={<NuevoCobro />} />
+          <Route path="caja" element={<MiCaja />} />
+          <Route path="cobros/:id" element={<CobroPorId />} />
+          <Route path="*" element={<Navigate to="/punto" replace />} />
+        </Routes>
+      </ContextoConsultaCedula>
     </ContextoPunto>
   )
 }

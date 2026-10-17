@@ -92,9 +92,9 @@ export default function ListaProgramas() {
               <Link
                 key={p.id}
                 to={rutaDelPrograma(p.id, p.estado)}
-                className="grid grid-cols-1 items-center gap-4 rounded-[18px] border border-linea bg-papel px-5 py-[18px] text-foreground no-underline hover:border-control hover:text-foreground md:grid-cols-[minmax(220px,2fr)_repeat(3,minmax(120px,1fr))_auto]"
+                className="grid grid-cols-1 items-center gap-4 rounded-[18px] border border-linea bg-papel px-5 py-[18px] text-foreground no-underline hover:border-control hover:text-foreground md:grid-cols-3 pc:grid-cols-[minmax(220px,2fr)_repeat(3,minmax(120px,1fr))_auto]"
               >
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 md:col-span-2 md:row-start-1 pc:col-span-1 pc:row-start-auto">
                   <span className="text-[19px] font-bold">{p.nombre}</span>
                   <span className="text-[15px] text-tenue">
                     {formatFecha(p.vigenciaInicio)} al {formatFecha(p.vigenciaFin)}
@@ -114,7 +114,8 @@ export default function ListaProgramas() {
                     <div className="text-[22px] font-bold">{textoMonto(valor)}</div>
                   </div>
                 ))}
-                <span className="inline-flex items-center gap-1.5 font-bold text-enlace">
+                {/* En tablet el enlace sube al lado del nombre y las tres cifras quedan en una fila */}
+                <span className="inline-flex items-center gap-1.5 font-bold text-enlace md:col-start-3 md:row-start-1 md:self-start md:justify-self-end pc:col-start-auto pc:row-start-auto pc:self-auto pc:justify-self-auto">
                   {p.estado === 'Cerrado' ? 'Ver cierre' : tienePermiso(p.estado) ? 'Ver tablero' : 'Continuar'}
                   <ChevronRight aria-hidden className="size-[18px]" strokeWidth={2.4} />
                 </span>

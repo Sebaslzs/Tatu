@@ -6,14 +6,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { cobrarACuenta, consultarCobro, ESTADOS_FINALES, type Cobro as DatosCobro, type EstadoCobro } from '@/api/beneficiario'
 import { codigoDeError, mensajeDeError } from '@/api/client'
-import { Icono, PantallaCelular } from '@/componentes/piezas'
+import { Icono } from '@/componentes/piezas'
 import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { TatuEnrolla, type EstadoPago } from '@/componentes/tatu/TatuEnrolla'
 import { useRol } from '@/contexto/Rol'
 import { formatearHora, formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
 import { useConsulta } from '@/lib/useConsulta'
-import { Aviso, BotonEnlace, Cabecera, ErrorCarga, FilasDatos } from './comunes'
+import { Aviso, BotonEnlace, Cabecera, ErrorCarga, FilasDatos, PantallaBeneficiario } from './comunes'
 
 const CONSULTA_MS = 1000
 /** Motivos que se resuelven enlazando (otra) cuenta. */
@@ -69,7 +69,7 @@ export function Cobro({ visita }: { visita: string }) {
   if (!vioRodar && !sinCobro && enCurso) setVioRodar(true)
 
   return (
-    <PantallaCelular className="gap-4">
+    <PantallaBeneficiario ancho="formulario" className="gap-4">
       <Cabecera
         volver="/beneficiario"
         etiquetaVolver={enCurso ? 'Volver a mis subsidios; el pago sigue en curso' : 'Volver a mis subsidios'}
@@ -102,7 +102,7 @@ export function Cobro({ visita }: { visita: string }) {
           )}
         </>
       )}
-    </PantallaCelular>
+    </PantallaBeneficiario>
   )
 }
 

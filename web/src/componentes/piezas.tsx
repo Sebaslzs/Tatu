@@ -7,17 +7,61 @@ import { BotonTema } from '@/componentes/BotonTema'
 const LOGO_CLARO = '/brand/tatu-logo-claro.svg'
 const LOGO_OSCURO = '/brand/tatu-logo-oscuro.svg'
 
-/** Columna de celular: 480 px centrada, con bordes laterales desde 560 px. */
-export function PantallaCelular({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Columna de celular: 480 px centrada, con bordes laterales desde 560 px. `amplia`: en la tablet
+ * (768 px o más) se abre a 720 px, para pantallas de contenido (inicio, caja) que no son un formulario.
+ */
+export function PantallaCelular({ children, className, amplia = false }: { children: ReactNode; className?: string; amplia?: boolean }) {
   return (
     <div
       className={cn(
         'mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-background pt-[18px] pb-6 text-foreground',
         'px-[max(20px,env(safe-area-inset-left))] min-[560px]:border-x min-[560px]:border-linea',
+        amplia && 'md:max-w-[720px] md:px-8',
         className,
       )}
     >
       {children}
+    </div>
+  )
+}
+
+/**
+ * Pantalla que se siente app en el celular y plataforma en el computador, con el mismo árbol de
+ * componentes en todos los tamaños (solo cambian las clases): girar el celular o redimensionar la
+ * ventana no desmonta nada, así un formulario no pierde lo digitado.
+ *   · Celular: la columna de 480 px de PantallaCelular.
+ *   · Tablet (768 px): `amplio` se abre a 720 px; `formulario` sigue en 480.
+ *   · Computador (960 px, `pc:`): aparece `barra` arriba y el contenido llega a 1200 px (`amplio`) o
+ *     queda en una columna centrada de 600 px (`formulario`: PIN, enlazar cuenta, confirmar).
+ * Lo que solo va en el celular (su cabecera con la marca) se marca `pc:hidden` en cada pantalla.
+ */
+export function PantallaAdaptable({
+  barra,
+  ancho = 'amplio',
+  className,
+  children,
+}: {
+  barra?: ReactNode
+  ancho?: 'amplio' | 'formulario'
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      {barra && <div className="hidden pc:block">{barra}</div>}
+      <div
+        className={cn(
+          'mx-auto flex w-full max-w-[480px] flex-1 flex-col pt-[18px] pb-6',
+          'px-[max(20px,env(safe-area-inset-left))] min-[560px]:border-x min-[560px]:border-linea',
+          ancho === 'amplio' && 'md:max-w-[720px] md:px-8',
+          'pc:border-x-0 pc:px-8 pc:pt-8 pc:pb-14',
+          ancho === 'amplio' ? 'pc:max-w-[1200px]' : 'pc:max-w-[600px]',
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 }

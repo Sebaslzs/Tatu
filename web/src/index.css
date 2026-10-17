@@ -11,6 +11,10 @@
 
 /* Paleta de Tatú */
 @theme {
+    /* Punto de corte del computador (960 px), el mismo de lib/useEnComputador.ts: `pc:` en las clases.
+       Celular < 768 (md) ≤ tablet < 960 (pc) ≤ computador. */
+    --breakpoint-pc: 60rem;
+
     --color-arena: #F5F0E6;
     --color-noche: #13203A;
     --color-azul: #2E5FE0;
@@ -233,6 +237,60 @@
 
 @utility mono {
   font-family: var(--font-mono);
+}
+
+/* Tabla apilada (componentes/Tabla.tsx, `apilada`): por debajo de 768 px cada fila es una tarjeta y
+   cada celda muestra su encabezado (`data-etiqueta`) a la izquierda. Desde 768 px es una tabla normal. */
+@media (width < 48rem) {
+  .tabla-apilada thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .tabla-apilada,
+  .tabla-apilada tbody,
+  .tabla-apilada tr,
+  .tabla-apilada td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .tabla-apilada tr {
+    padding: 10px 0;
+  }
+  .tabla-apilada td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 5px 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .tabla-apilada td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    flex: none;
+    max-width: 45%;
+    text-align: left;
+    font-weight: 400;
+    color: var(--color-tinta-suave);
+  }
+  /* La primera celda hace de título de la tarjeta; una fila de una sola celda («Todavía no hay…») va sin etiqueta */
+  .tabla-apilada td.titulo-fila {
+    font-size: 17px;
+    font-weight: 700;
+    text-align: left;
+  }
+  .tabla-apilada td.titulo-fila::before,
+  .tabla-apilada td[colspan]::before {
+    display: none;
+  }
+  .tabla-apilada td[colspan] {
+    text-align: left;
+  }
 }
 
 /* Cargando: aparece después de 200 ms, para que una respuesta rápida no muestre un destello */

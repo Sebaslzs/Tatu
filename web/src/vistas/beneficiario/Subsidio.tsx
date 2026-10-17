@@ -1,10 +1,10 @@
 // Un subsidio por cobrar y cómo cobrarlo: a la cuenta verificada, con la cédula como llave Bre-B o
 // en un punto de retiro.
 import { useParams } from 'react-router'
-import { Icono, PantallaCelular } from '@/componentes/piezas'
+import { Icono } from '@/componentes/piezas'
 import { TatuCargando } from '@/componentes/tatu/TatuCargando'
 import { formatearMonto } from '@/lib/formato'
-import { Aviso, BloqueMonto, BotonEnlace, Cabecera, ErrorCarga, IconoEnlace } from './comunes'
+import { Aviso, BloqueMonto, BotonEnlace, Cabecera, ErrorCarga, IconoEnlace, PantallaBeneficiario } from './comunes'
 import { pagoDe, useResumen } from './datos'
 
 export function Subsidio() {
@@ -15,7 +15,7 @@ export function Subsidio() {
   const recibeCobros = pago?.programa.estado === 'Activo'
 
   return (
-    <PantallaCelular className="gap-4">
+    <PantallaBeneficiario nombre={r?.persona.nombre} className="gap-4 pc:max-w-[1040px] pc:gap-6">
       <Cabecera
         volver="/beneficiario"
         etiquetaVolver="Volver a mis subsidios"
@@ -33,8 +33,14 @@ export function Subsidio() {
       )}
 
       {pago && (
-        <>
-          <BloqueMonto pago={pago} />
+        // Celular: una columna (las dos son `contents`). Computador: el monto a la izquierda y cómo
+        // cobrarlo a la derecha.
+        <div className="flex flex-1 flex-col gap-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-8">
+          <div className="flex flex-col gap-4 max-pc:contents">
+            <BloqueMonto pago={pago} />
+            <Aviso className="hidden pc:block">En un punto te entregan el valor completo en efectivo con tu cédula y tu PIN.</Aviso>
+          </div>
+          <div className="flex flex-col gap-4 max-pc:contents">
 
           {cuenta ? (
             <>
@@ -75,10 +81,11 @@ export function Subsidio() {
           <BotonEnlace a={`/beneficiario/puntos?programa=${programaId}`} variante="contorno">
             Prefiero cobrar en un punto
           </BotonEnlace>
-          <Aviso className="mt-auto">En un punto te entregan el valor completo en efectivo con tu cédula y tu PIN.</Aviso>
-        </>
+          <Aviso className="mt-auto pc:hidden">En un punto te entregan el valor completo en efectivo con tu cédula y tu PIN.</Aviso>
+          </div>
+        </div>
       )}
-    </PantallaCelular>
+    </PantallaBeneficiario>
   )
 }
 

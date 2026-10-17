@@ -424,8 +424,8 @@ function SeccionPuntos({
   return (
     <Tarjeta className="gap-3.5">
       <h2 className="m-0 text-xl font-bold">4. Puntos de retiro</h2>
-      <div className="rounded-lg border border-linea">
-        <Tabla className="min-w-[620px] text-sm">
+      <div className="rounded-lg border border-linea max-md:px-3">
+        <Tabla apilada className="text-sm md:min-w-[620px]">
           <thead className="bg-nota">
             <Fila>
               <Encabezado className="px-3">Nombre</Encabezado>
@@ -444,12 +444,16 @@ function SeccionPuntos({
             )}
             {puntos.map((p) => (
               <Fila key={p.id}>
-                <Celda className="px-3 font-bold">{p.nombre}</Celda>
-                <Celda className="px-3 text-tinta-suave">{p.direccion || '—'}</Celda>
-                <Celda className="px-3">
+                <Celda titulo className="px-3 font-bold">
+                  {p.nombre}
+                </Celda>
+                <Celda etiqueta="Dirección" className="px-3 text-tinta-suave">
+                  {p.direccion || '—'}
+                </Celda>
+                <Celda etiqueta="Wallet" className="px-3">
                   <BilleteraCorta url={p.billetera} completa className="text-[13px]" />
                 </Celda>
-                <Celda className="px-3">
+                <Celda etiqueta="Moneda" className="px-3">
                   {!p.moneda || !moneda ? (p.moneda?.assetCode ?? '—') : p.moneda.assetCode === moneda.codigo ? 'Igual al programa' : (
                     <span className="inline-flex items-center gap-1 font-bold text-rechazo">
                       <TriangleAlert aria-hidden className="size-4" /> {p.moneda.assetCode}: distinta

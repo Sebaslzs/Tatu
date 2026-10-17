@@ -77,7 +77,7 @@ export default function BeneficiariosPrograma() {
 
           <Tarjeta className="gap-3.5">
             <h2 className="m-0 text-xl font-bold">Lista</h2>
-            <Tabla className="min-w-[640px]">
+            <Tabla apilada className="md:min-w-[640px]">
               <thead>
                 <FilaEncabezado>
                   <Encabezado>Cédula</Encabezado>
@@ -100,14 +100,18 @@ export default function BeneficiariosPrograma() {
                   const f = !c ? fuera(x.nombre) : undefined
                   return (
                     <Fila key={x.cedula}>
-                      <Celda className="font-bold">{conEspacios(x.cedula)}</Celda>
-                      <Celda>{x.nombre}</Celda>
-                      <Celda>
-                        <span className="mono text-[13px]">{x.billeteraCorta ?? '—'}</span>
-                        {x.estadoCuenta && x.estadoCuenta !== 'Verificada' && <div className="text-sm text-tenue">Cuenta sin verificar</div>}
+                      <Celda etiqueta="Cédula" className="font-bold">
+                        {conEspacios(x.cedula)}
                       </Celda>
-                      <Celda className="text-right font-bold">{textoMonto(f?.monto ?? p.montoPorPersona)}</Celda>
-                      <Celda>
+                      <Celda etiqueta="Nombre">{x.nombre}</Celda>
+                      <Celda etiqueta="Cuenta" className="max-md:flex-wrap">
+                        <span className="mono text-[13px]">{x.billeteraCorta ?? '—'}</span>
+                        {x.estadoCuenta && x.estadoCuenta !== 'Verificada' && <div className="text-sm text-tenue max-md:basis-full">Cuenta sin verificar</div>}
+                      </Celda>
+                      <Celda etiqueta="Valor" className="text-right font-bold">
+                        {textoMonto(f?.monto ?? p.montoPorPersona)}
+                      </Celda>
+                      <Celda etiqueta="Estado" className="max-md:flex-wrap">
                         {c ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-nota px-2.5 py-1 text-[13px] font-bold text-tinta-suave">
                             <Check aria-hidden className="size-3.5" strokeWidth={2.5} />

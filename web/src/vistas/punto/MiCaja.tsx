@@ -133,7 +133,7 @@ export function MiCaja() {
         <p className="m-0 text-sm text-tenue">Cada pago aparece en tu billetera con su referencia (SUB-…).</p>
         {lista.error && !lista.datos && <ErrorCarga mensaje={lista.error} reintentar={() => void lista.recargar()} />}
         {cobros.length ? (
-          <ul className={cn('m-0 grid list-none gap-2 p-0', computador && 'grid-cols-2')}>
+          <ul className={cn('m-0 grid list-none gap-2 p-0 md:grid-cols-2', computador && 'grid-cols-2')}>
             {cobros.map((x) => (
               <li key={x.id}>
                 <Link
@@ -176,7 +176,7 @@ export function MiCaja() {
     )
   }
   return (
-    <PantallaCelular className="gap-[18px]">
+    <PantallaCelular amplia className="gap-[18px]">
       <Cabecera volver="/punto" etiquetaVolver="Volver al inicio del punto" titulo="Mi caja" subtitulo={punto.nombre} />
       <h1 className="sr-only">Mi caja</h1>
       {contenido}

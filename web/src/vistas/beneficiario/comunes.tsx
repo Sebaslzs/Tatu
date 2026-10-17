@@ -4,10 +4,50 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { PagoPendiente } from '@/api/beneficiario'
 import { mensajeDeError } from '@/api/client'
-import { Icono } from '@/componentes/piezas'
+import { BarraSuperior, type Seccion } from '@/componentes/BarraSuperior'
+import { Icono, PantallaAdaptable } from '@/componentes/piezas'
 import { formatearDiaMes, formatearMonto } from '@/lib/formato'
 import { cn } from '@/lib/utils'
 import { nombreTipo } from './datos'
+
+const SECCIONES: Seccion[] = [
+  { a: '/beneficiario', texto: 'Mis subsidios', fin: true },
+  { a: '/beneficiario/cuenta', texto: 'Mi cuenta' },
+  { a: '/beneficiario/puntos', texto: 'Dónde cobrar' },
+]
+
+/**
+ * Marco de las pantallas de la beneficiaria (PantallaAdaptable): app en el celular; en el computador,
+ * la barra con sus secciones y el contenido a lo ancho (`amplio`) o en columna (`formulario`).
+ */
+export function PantallaBeneficiario({
+  ancho = 'amplio',
+  nombre,
+  className,
+  children,
+}: {
+  ancho?: 'amplio' | 'formulario'
+  /** El nombre de la persona, si la pantalla ya lo tiene (va junto a la marca). */
+  nombre?: string
+  className?: string
+  children: ReactNode
+}) {
+  const barra = (
+    <BarraSuperior
+      inicio="/beneficiario"
+      etiquetaInicio="Tatú, mis subsidios"
+      contexto={nombre}
+      secciones={SECCIONES}
+      etiquetaSecciones="Secciones de la beneficiaria"
+      rol="Beneficiaria"
+    />
+  )
+  return (
+    <PantallaAdaptable barra={barra} ancho={ancho} className={className}>
+      {children}
+    </PantallaAdaptable>
+  )
+}
 
 export function BotonVolver({ a, etiqueta }: { a: string; etiqueta: string }) {
   return (
@@ -29,8 +69,8 @@ export function Cabecera({ volver, etiquetaVolver, titulo, subtitulo }: { volver
     <div className="flex items-center gap-2.5">
       <BotonVolver a={volver} etiqueta={etiquetaVolver} />
       <div className="flex min-w-0 flex-col">
-        <span className="text-lg leading-[1.2] font-extrabold">{titulo}</span>
-        {subtitulo && <span className="truncate text-sm text-tinta-suave">{subtitulo}</span>}
+        <span className="text-lg leading-[1.2] font-extrabold pc:text-[26px]">{titulo}</span>
+        {subtitulo && <span className="line-clamp-2 text-sm text-tinta-suave pc:text-base">{subtitulo}</span>}
       </div>
     </div>
   )
