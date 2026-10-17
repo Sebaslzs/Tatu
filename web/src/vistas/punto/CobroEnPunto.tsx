@@ -1,14 +1,15 @@
 // Un cobro en el punto, de principio a fin (P2 a P7 en el celular, PD2 a PD4 en el computador), en una
 // sola ruta: la pantalla sale del estado del cobro que manda la API y se consulta hasta que termina.
 // PorConfirmar → el PIN · Pagando → «No entregues efectivo todavía» · Pagado → entrega ·
-// Rechazado o Fallido → «No entregues efectivo».
-import { Clock, TriangleAlert, Wallet } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+// Rechazado o Fallido → «No entregues efectivo». En un retiro con compra (HU-27) se entrega solo el
+// efectivo (retiro − compra), y la compra queda para facturar aparte.
+import { Clock, ReceiptText, TriangleAlert, Wallet } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useConfig } from '@/api/config'
 import { ErrorHttp, mensajeDeError } from '@/api/http'
-import { cancelarCobro, confirmarConPin, consultarCobro } from '@/api/punto'
-import type { Cobro } from '@/api/tipos'
+import { cancelarCobro, confirmarConPin, consultarCobro, reenviarVenta } from '@/api/punto'
+import type { Cobro, Venta } from '@/api/tipos'
 import { usePolling, type Consulta } from '@/api/usePolling'
 import { BotonEnlace as BotonEnlaceMedio, Boton as BotonMedio, Cargando, ErrorCarga, Titulo } from '@/componentes/Comun'
 import { EstadoCobro } from '@/componentes/EstadoCobro'
@@ -22,6 +23,7 @@ import { usePunteroTactil } from '@/lib/usePunteroTactil'
 import { cn } from '@/lib/utils'
 import { personaConCedula, primerNombre, textoCompra } from './datos'
 import { EsperaPagando } from './Espera'
+import { Desglose } from './Retiro'
 import { Boton, BotonEnlace, Cabecera, Caja, claseEnlaceSuave, Datos, PantallaPuntoEscritorio, VolverEscritorio } from './piezas'
 import { PuntosPin, TecladoPin } from './TecladoPin'
 import { useCuentaRegresiva } from './tiempo'
@@ -149,7 +151,7 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
     </div>
   )
   const titulo = `${primerNombre(nombre)}, digita tu PIN`
-  const queCubre = c.canal === 'compra' ? `${c.programa.nombre} · el bono cubre` : `${c.programa.nombre} · valor completo`
+  const queCubre = `${c.programa.nombre} · el bono cubre`
 
   if (computador) {
     return (
@@ -160,12 +162,19 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
       >
         <div className="flex flex-wrap items-stretch gap-6">
           {/* La tarjeta crece hasta el ancho de la cifra: un monto no se parte en dos líneas */}
-          <Caja grande className="min-w-fit flex-[1_1_360px]">
-            <span className="text-base font-semibold text-tinta-suave">{c.canal === 'compra' ? 'El bono cubre' : 'Pago disponible'}</span>
-            <span className="cifra text-[60px] leading-none whitespace-nowrap">{monto}</span>
-            <span className="text-base">{c.programa.nombre}</span>
-            <span className="text-[15px] text-tinta-suave">{c.canal === 'compra' ? textoCompra(c) : 'Se entrega el valor completo.'}</span>
-          </Caja>
+          {c.canal === 'retiro' ? (
+            <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-2">
+              <span className="text-base font-semibold text-tinta-suave">{c.programa.nombre}</span>
+              <Desglose retiro={c.monto} venta={c.venta?.valor ?? null} efectivo={c.efectivo} saldo={c.saldoRestante} grande />
+            </div>
+          ) : (
+            <Caja grande className="min-w-fit flex-[1_1_360px]">
+              <span className="text-base font-semibold text-tinta-suave">El bono cubre</span>
+              <span className="cifra text-[60px] leading-none whitespace-nowrap">{monto}</span>
+              <span className="text-base">{c.programa.nombre}</span>
+              <span className="text-[15px] text-tinta-suave">{textoCompra(c)}</span>
+            </Caja>
+          )}
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-[18px] rounded-[20px] bg-ambar p-7 text-noche">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="ancho text-[26px] font-extrabold">{titulo}</span>
@@ -198,11 +207,15 @@ function ConfirmarPin({ cobro: c, consulta, computador }: { cobro: Cobro; consul
   return (
     <PantallaCelular className="gap-[11px]">
       <Cabecera alVolver={() => void cancelar()} etiquetaVolver="Cancelar el cobro y volver" titulo="Confirmar con PIN" subtitulo={personaConCedula(c)} />
-      <div className="flex flex-col gap-0.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3">
-        <span className="text-sm font-semibold text-tinta-suave">{queCubre}</span>
-        <span className="cifra text-[34px] [overflow-wrap:anywhere]">{monto}</span>
-        {c.canal === 'compra' && <span className="text-sm text-tinta-suave">{textoCompra(c)}</span>}
-      </div>
+      {c.canal === 'retiro' ? (
+        <Desglose retiro={c.monto} venta={c.venta?.valor ?? null} efectivo={c.efectivo} saldo={c.saldoRestante} />
+      ) : (
+        <div className="flex flex-col gap-0.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3">
+          <span className="text-sm font-semibold text-tinta-suave">{queCubre}</span>
+          <span className="cifra text-[34px] [overflow-wrap:anywhere]">{monto}</span>
+          <span className="text-sm text-tinta-suave">{textoCompra(c)}</span>
+        </div>
+      )}
       <div className="flex flex-col gap-2.5 rounded-[18px] bg-ambar p-3.5 text-noche">
         <div className="flex items-center justify-between gap-2">
           <Titulo className="text-lg font-extrabold sm:text-lg">{titulo}</Titulo>
@@ -266,9 +279,71 @@ function Reembolso({ cobro: c, grande = false }: { cobro: Cobro; grande?: boolea
   )
 }
 
+/**
+ * HU-27: la compra del retiro y su factura. Va aparte del pago: si facturación falla, el retiro sigue
+ * Pagado y la compra queda guardada para reenviar (sin duplicar la factura).
+ */
+function FacturaDeLaVenta({ cobro: c }: { cobro: Cobro }) {
+  const [venta, setVenta] = useState<Venta | null>(c.venta)
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  // El envío a facturación sale justo después del pago: se mira una vez más un momento después
+  const pendiente = venta?.estado === 'PorEnviar'
+  useEffect(() => {
+    if (!pendiente) return
+    const t = setTimeout(() => {
+      consultarCobro(c.id)
+        .then((x) => x.venta && setVenta(x.venta))
+        .catch(() => undefined)
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [pendiente, c.id])
+  if (!venta) return null
+  const reenviar = async () => {
+    setEnviando(true)
+    setError(null)
+    try {
+      setVenta(await reenviarVenta(venta.id))
+    } catch (e) {
+      setError(mensajeDeError(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+  const estado: Record<Venta['estado'], string> = {
+    Registrada: 'Se envía a facturar al quedar pagado el retiro.',
+    PorEnviar: 'Pendiente de enviar a facturación. Puedes reenviarla.',
+    Enviada: `Enviada a facturación${venta.referenciaFactura ? ` (${venta.referenciaFactura})` : ''}.`,
+    Rechazada: 'Facturación la rechazó. Revisa y reenvíala.',
+    Anulada: 'Anulada: el retiro no se pagó.',
+  }
+  return (
+    <div className="flex items-start gap-3 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5">
+      <ReceiptText aria-hidden className="mt-0.5 size-[22px] flex-none" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="text-[17px] font-extrabold">
+          Compra de {textoMonto(venta.valor)}
+          {venta.descripcion ? ` · ${venta.descripcion}` : ''}
+        </span>
+        <span role="status" className="text-[15px] text-tinta-suave">
+          {estado[venta.estado]}
+        </span>
+        {error && <span className="text-[15px] font-bold text-rechazo">{error}</span>}
+        {(venta.estado === 'PorEnviar' || venta.estado === 'Rechazada') && (
+          <BotonMedio variante="contorno" className="mt-1 self-start" onClick={() => void reenviar()} disabled={enviando}>
+            {enviando ? 'Enviando…' : 'Reenviar a facturación'}
+          </BotonMedio>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Pagado({ cobro: c, computador }: { cobro: Cobro; computador: boolean }) {
-  const monto = textoMonto(c.monto)
-  const aQuien = c.canal === 'compra' ? `El bono cubrió ${monto}` : `Entrega a ${primerNombre(c.persona.nombre)}`
+  // En un retiro se entrega solo el efectivo: la compra registrada ya salió en mercancía
+  const monto = textoMonto(c.canal === 'retiro' ? (c.efectivo ?? c.monto) : c.monto)
+  const aQuien = c.canal === 'compra' ? `El bono cubrió ${monto}` : `Entrega en efectivo a ${primerNombre(c.persona.nombre)}`
+  const queda = c.canal === 'retiro' && c.saldoRestante ? `Le quedan ${textoMonto(c.saldoRestante)} para después.` : null
   if (computador) {
     return (
       <PantallaPuntoEscritorio volver={<VolverEscritorio a="/punto">Inicio</VolverEscritorio>} subtitulo={personaConCedula(c)} titulo="Resultado del cobro">
@@ -281,11 +356,13 @@ function Pagado({ cobro: c, computador }: { cobro: Cobro; computador: boolean })
           <div className="flex flex-col items-start gap-1.5">
             <span className="cifra text-[72px] leading-none [overflow-wrap:anywhere] max-sm:text-5xl">{monto}</span>
             <span className="text-[17px]">Referencia {c.referencia}</span>
+            {queda && <span className="text-[17px] font-semibold">{queda}</span>}
           </div>
         </div>
         <div className="flex flex-wrap items-start gap-6">
           <Caja grande className="flex-[999_1_520px]">
             <Reembolso cobro={c} grande />
+            <FacturaDeLaVenta cobro={c} />
           </Caja>
           <AccionesEscritorio cobro={c} nota={c.canal === 'compra' ? 'La venta ya aparece en Mi caja.' : 'El cobro ya aparece en Cobros de hoy.'} />
         </div>
@@ -301,8 +378,10 @@ function Pagado({ cobro: c, computador }: { cobro: Cobro; computador: boolean })
         <span className="text-lg font-semibold">{aQuien}</span>
         {c.canal === 'compra' ? <span className="text-base">{textoCompra(c)}</span> : <span className="cifra text-[44px] leading-none [overflow-wrap:anywhere]">{monto}</span>}
         <span className="mt-1 text-base">Referencia {c.referencia}</span>
+        {queda && <span className="text-base font-semibold">{queda}</span>}
       </div>
       <Reembolso cobro={c} />
+      <FacturaDeLaVenta cobro={c} />
       <AccionesFinales cobro={c} />
     </PantallaCelular>
   )

@@ -141,6 +141,19 @@ export interface EventoCobro {
 }
 
 /** GET /cobros/:id (server/src/cobros/vista.ts). */
+/** HU-27: la compra que la persona hizo en el punto durante un retiro y su envío a facturación. */
+export interface Venta {
+  id: string
+  valor: Monto
+  descripcion: string | null
+  /** Registrada (retiro sin pagar) · PorEnviar (falta que facturación la reciba) · Enviada · Rechazada · Anulada. */
+  estado: 'Registrada' | 'PorEnviar' | 'Enviada' | 'Rechazada' | 'Anulada'
+  intentosEnvio: number
+  ultimoError: string | null
+  referenciaFactura: string | null
+  enviadaEn: string | null
+}
+
 export interface Cobro {
   id: string
   referencia: string
@@ -158,6 +171,12 @@ export interface Cobro {
   intentosRestantes: number | null
   confirmarAntesDe: string | null
   segundosHastaPagado: number | null
+  /** HU-27: la compra registrada con el retiro; null si no hubo. */
+  venta: Venta | null
+  /** Retiro: lo que el punto entrega en efectivo (el retiro menos la compra). null en otros canales. */
+  efectivo: Monto | null
+  /** HU-26: lo que le queda a la persona; solo al consultar un cobro (null en listas). */
+  saldoRestante: Monto | null
   creado: string
   actualizado: string
   eventos?: EventoCobro[]

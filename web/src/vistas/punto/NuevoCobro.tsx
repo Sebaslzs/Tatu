@@ -1,5 +1,6 @@
-// Nuevo cobro (HU-10): el punto digita la cédula (P1), ve sus pagos disponibles (P1b) y elige uno;
-// la persona confirma después con su PIN. En el computador la cédula va dentro del inicio (PD0) y
+// Nuevo cobro (HU-10): el punto digita la cédula (P1), ve sus pagos disponibles (P1b), elige uno y
+// dice cuánto retira y si hubo compra (P1c, Retiro.tsx · HU-26, HU-27); la persona confirma después
+// con su PIN. En el computador la cédula va dentro del inicio (PD0) y
 // los pagos en su propia pantalla (PD1).
 import { ChevronRight, Lock, ShieldCheck } from 'lucide-react'
 import { useEffect } from 'react'
@@ -12,6 +13,7 @@ import { useEnComputador } from '@/lib/useEnComputador'
 import { cn } from '@/lib/utils'
 import { cedulaCorta, textoPagos, useConsultaCedula, usePunto, type ConsultaCedula } from './datos'
 import { PidiendoPago } from './Espera'
+import { PantallaRetiro } from './Retiro'
 import { AvisoArena, Boton, Cabecera, ChipPago, NotaGris, PantallaPuntoEscritorio, PasosCobro, VolverEscritorio } from './piezas'
 
 /** El campo grande de la cédula: 68 px y letra de 28 px en el celular, 64 px en el computador. */
@@ -84,9 +86,9 @@ function TarjetaPago({ consulta, i, computador }: { consulta: ConsultaCedula; i:
       <div className="flex flex-[1_1_360px] flex-col gap-2.5 rounded-[20px] border-2 border-foreground bg-papel p-[22px]">
         {encabezado}
         {monto}
-        <span className="text-[15px] text-tinta-suave">Se entrega el valor completo</span>
-        <BotonMedio onClick={() => void consulta.pedir(p.programa.id)} disabled={consulta.enviando || pausado}>
-          Pagar este subsidio
+        <span className="text-[15px] text-tinta-suave">{p.retiroParcial ? 'Puede retirar todo o una parte' : 'Se entrega el valor completo'}</span>
+        <BotonMedio onClick={() => consulta.elegir(p.programa.id)} disabled={consulta.enviando || pausado}>
+          Retirar de este subsidio
         </BotonMedio>
       </div>
     )
@@ -94,16 +96,16 @@ function TarjetaPago({ consulta, i, computador }: { consulta: ConsultaCedula; i:
   return (
     <button
       type="button"
-      onClick={() => void consulta.pedir(p.programa.id)}
+      onClick={() => consulta.elegir(p.programa.id)}
       disabled={consulta.enviando || pausado}
       className="flex w-full cursor-pointer flex-col gap-2 rounded-[18px] border-2 border-foreground bg-papel p-4 text-left font-sans text-foreground disabled:cursor-not-allowed disabled:opacity-60"
     >
       {encabezado}
       {monto}
       <span className="flex items-center justify-between gap-2.5">
-        <span className="text-[15px] text-tinta-suave">Se entrega el valor completo</span>
+        <span className="text-[15px] text-tinta-suave">{p.retiroParcial ? 'Todo o una parte' : 'Se entrega el valor completo'}</span>
         <span className="inline-flex items-center gap-1 text-base font-bold text-enlace">
-          Pagar <ChevronRight aria-hidden className="size-[18px]" strokeWidth={2.4} />
+          Retirar <ChevronRight aria-hidden className="size-[18px]" strokeWidth={2.4} />
         </span>
       </span>
     </button>
@@ -112,6 +114,7 @@ function TarjetaPago({ consulta, i, computador }: { consulta: ConsultaCedula; i:
 
 /** PD1: los pagos de la cédula en el computador. */
 export function PagosEscritorio({ consulta }: { consulta: ConsultaCedula }) {
+  if (consulta.elegido) return <PantallaRetiro consulta={consulta} />
   const o = consulta.opciones!
   return (
     <PantallaPuntoEscritorio
@@ -120,7 +123,7 @@ export function PagosEscritorio({ consulta }: { consulta: ConsultaCedula }) {
       titulo={`Pagos de ${o.persona.nombre}`}
     >
       <p className="m-0 text-lg">
-        Tiene <b>{textoPagos(o.pagos.length)}</b>. Cada retiro paga un subsidio completo; antes del PIN no se mueve dinero.
+        Tiene <b>{textoPagos(o.pagos.length)}</b>. Elige uno y di cuánto retira: puede dejar saldo para después. Antes del PIN no se mueve dinero.
       </p>
       <MensajeError id="pagos-error">{consulta.error}</MensajeError>
       {consulta.pidiendo ? (
@@ -160,6 +163,7 @@ export function NuevoCobro() {
   if (punto.datos?.tipo === 'compra') return <Navigate to="/punto" replace />
   if (computador) return o ? <PagosEscritorio consulta={consulta} /> : <Navigate to="/punto" replace />
 
+  if (o && consulta.elegido) return <PantallaRetiro consulta={consulta} />
   if (o) {
     return (
       <PantallaCelular className="gap-4">
@@ -167,7 +171,7 @@ export function NuevoCobro() {
         <PasosCobro paso="Pago" />
         <h1 className="sr-only">Pagos de esta cédula</h1>
         <p className="m-0 mt-1 text-[17px] leading-[1.4]">
-          Tiene <b>{textoPagos(o.pagos.length)}</b>. Cada retiro paga un subsidio completo.
+          Tiene <b>{textoPagos(o.pagos.length)}</b>. Puede retirar todo o una parte.
         </p>
         <MensajeError id="pagos-error">{consulta.error}</MensajeError>
         {consulta.pidiendo ? <PidiendoPago /> : o.pagos.map((p, i) => <TarjetaPago key={p.programa.id} consulta={consulta} i={i} computador={false} />)}

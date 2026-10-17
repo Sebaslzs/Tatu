@@ -585,3 +585,62 @@ presentación.
   `localhost`).
 - **CA-25.03:** La cámara (HU-22/HU-23) solo funciona con HTTPS: sin este extra, esos dos necesitan un
   túnel.
+
+---
+
+## Ampliación del 17 de octubre · Retiro parcial y venta con el retiro
+
+Estas dos historias se agregan sin cambiar las anteriores. Donde amplían un criterio existente, lo
+dicen. Reglas en la Especificación (§ 17) y en `db/README.md` (§ 12).
+
+## HU-26 · Retirar solo una parte del subsidio en un punto
+
+**Como** beneficiario, **quiero** decidir en el punto cuánto retiro de mi subsidio, **para** dejar el
+resto disponible y retirarlo después.
+
+`E3` · **Should** · Punto · Amplía HU-10 (CA-10.03) y HU-14
+
+- **CA-26.01 (todo o una parte):** Dado un subsidio con $150.000 disponibles, cuando el punto elige
+  «Una parte» y digita $90.000, entonces el cobro es de $90.000 y a la persona le quedan $60.000. Sin
+  elegir, se retira todo (como antes).
+- **CA-26.02 (solo en el punto):** Dado el canal `cuenta`, cuando la persona cobra, entonces se paga
+  todo lo que queda, sin elegir monto (RN-22). Un `monto` en otro canal responde `400`.
+- **CA-26.03 (validación en el backend, amplía CA-10.03):** Dado un monto mayor que el saldo, con
+  centavos o en cero, cuando el punto lo envía, entonces responde `422` (`SaldoInsuficiente` o
+  `MontoInvalido`) y no se crea cobro. El punto puede pedir menos que el saldo, nunca más; el backend
+  sigue decidiendo (RN-19 a RN-21).
+- **CA-26.04 (varios retiros):** Dado que ya retiró $90.000, cuando vuelve por $30.000, entonces el
+  sistema sabe que le quedan $30.000. Al agotar el saldo deja de aparecer como pago disponible y un
+  nuevo intento se rechaza con «Este subsidio ya fue cobrado».
+- **CA-26.05 (un pago que falla no descuenta):** Dado un retiro que termina `Fallido` o se cancela,
+  entonces el saldo vuelve a estar disponible completo.
+- **CA-26.06 (sin doble retiro, amplía HU-14):** Dado un retiro esperando el PIN o pagándose, cuando
+  llega otro de la misma persona, entonces se rechaza. Dos solicitudes simultáneas no reservan más que
+  el saldo, y la misma llave de idempotencia devuelve el mismo cobro.
+- **CA-26.07 (bonos sin cambios):** Dado un bono, entonces sigue siendo de un solo uso y solo en
+  comercios autorizados: nunca se retira en efectivo.
+
+## HU-27 · Registrar la compra hecha durante el retiro y enviarla a facturar
+
+**Como** encargado del punto, **quiero** registrar que la persona compró algo en la tienda con parte de
+su retiro, **para** entregar solo el efectivo que corresponde y no tener que digitar la venta otra vez
+en mi sistema de facturación.
+
+`E3` · **Should** · Punto
+
+- **CA-27.01 (opcional):** Dado un retiro, cuando el punto no registra compra, entonces todo el retiro
+  se entrega en efectivo.
+- **CA-27.02 (parte del retiro):** Dado un retiro de $90.000 con una compra de $50.000, entonces antes
+  del PIN el punto ve el desglose: retiro $90.000, compra $50.000, **efectivo $40.000** y le quedan
+  $60.000. El mismo desglose aparece en la pantalla del PIN, y al quedar `Pagado` la pantalla dice
+  «Entrega en efectivo $40.000».
+- **CA-27.03 (menor que el retiro):** Dada una compra igual o mayor que el retiro, en cero o con
+  centavos, entonces responde `422 VentaInvalida` y no se crea cobro (RN-23).
+- **CA-27.04 (sigue al retiro):** Dado que el retiro termina `Rechazado` o `Fallido`, entonces la venta
+  queda `Anulada` y no se factura.
+- **CA-27.05 (facturación aparte):** Dado que el retiro queda `Pagado`, entonces la venta se envía al
+  sistema de facturación con su id como `Idempotency-Key`. Si el sistema no responde, el retiro sigue
+  `Pagado`, el saldo no se toca y la venta queda pendiente para reenviar; reenviar nunca crea una
+  segunda factura.
+- **CA-27.06 (caja):** Dado un día con retiros con compra, entonces «Mi caja» separa el efectivo
+  entregado de lo vendido con retiros.

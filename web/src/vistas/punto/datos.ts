@@ -3,8 +3,8 @@
 import { createContext, useContext, useState } from 'react'
 import { useNavigate, type NavigateFunction } from 'react-router'
 import { mensajeDeError } from '@/api/http'
-import { cajaDelPunto, cobrosDelPunto, pagosDeCedula, pedirCobro, type CajaPunto, type PagosEnPunto } from '@/api/punto'
-import type { Cobro, CobroResumen, Punto } from '@/api/tipos'
+import { cajaDelPunto, cobrosDelPunto, pagosDeCedula, pedirCobro, type CajaPunto, type PagoPendiente, type PagosEnPunto, type PedidoCobro } from '@/api/punto'
+import type { Cobro, CobroResumen, Monto, Punto } from '@/api/tipos'
 import { usePolling } from '@/api/usePolling'
 import { marcarPagando } from '@/componentes/tatu/TatuEnrolla'
 import { textoMonto } from '@/lib/montos'
@@ -47,6 +47,8 @@ export function cifrasCaja(c: CajaPunto | undefined) {
   return {
     entregado: t ? textoMonto(t.entregado) : '$0',
     reembolsado: t ? textoMonto(t.reembolsado) : '$0',
+    vendido: t ? textoMonto(t.vendido) : '$0',
+    hayVentas: t !== undefined && t.vendido.valor !== '0',
     pendiente: t ? textoMonto(t.pendiente) : '$0',
     adelantado: t ? textoMonto(t.giradoPorAdelantado) : '$0',
     enCamino,
@@ -119,6 +121,90 @@ const CEDULA = /^\d{5,12}$/
 /** Dónde se digitó la cédula: al pasar del computador al celular, el celular retoma el nuevo cobro. */
 export type DondeSeDigito = 'celular' | 'computador' | null
 
+// ── El retiro: cuánto y si hubo compra (HU-26, HU-27) ────────────────────────
+
+/** Lo que el punto llena antes de pedir el PIN. Los valores van en pesos, como los digita. */
+export interface FormRetiro {
+  /** Todo el saldo o solo una parte. */
+  modo: 'todo' | 'parte'
+  monto: string
+  /** Si la persona compró algo en la tienda con parte del retiro. */
+  conVenta: boolean
+  venta: string
+  descripcion: string
+}
+
+export const FORM_RETIRO_INICIAL: FormRetiro = { modo: 'todo', monto: '', conVenta: false, venta: '', descripcion: '' }
+
+/** El desglose que ve el punto antes de pedir el PIN, y lo que se le pide a la API. */
+export interface CalculoRetiro {
+  retiro: Monto | null
+  venta: Monto | null
+  efectivo: Monto | null
+  saldo: Monto | null
+  errorMonto: string | null
+  errorVenta: string | null
+  /** Lo que va en el pedido del cobro; null mientras haya un error. */
+  pedido: Pick<PedidoCobro, 'monto' | 'venta'> | null
+}
+
+/** «90.000» o «90000» en pesos → unidades mínimas; null si no es un número entero de pesos. */
+export function pesosAUnidades(texto: string, escala: number): bigint | null {
+  const limpio = texto.replace(/[\s.$]/g, '')
+  if (!/^\d+$/.test(limpio)) return null
+  return BigInt(limpio) * 10n ** BigInt(escala)
+}
+
+/**
+ * La misma cuenta que hará la API (RN-19 a RN-23), para mostrar el desglose y los errores mientras
+ * se digita. La API vuelve a validar todo: esto no decide nada.
+ *   efectivo = retiro − compra · le queda = saldo − retiro
+ */
+export function calcularRetiro(p: PagoPendiente, f: FormRetiro): CalculoRetiro {
+  const { assetCode, assetScale } = p.monto
+  const m = (v: bigint): Monto => ({ valor: v.toString(), assetCode, assetScale })
+  const disponible = BigInt(p.monto.valor)
+  let errorMonto: string | null = null
+  let errorVenta: string | null = null
+
+  let retiro: bigint | null = disponible
+  if (f.modo === 'parte') {
+    retiro = f.monto.trim() ? pesosAUnidades(f.monto, assetScale) : null
+    if (!f.monto.trim()) errorMonto = 'Escribe cuánto va a retirar.'
+    else if (retiro === null) errorMonto = 'Escribe el valor en pesos, sin centavos.'
+    else if (retiro <= 0n) errorMonto = 'El retiro debe ser mayor que cero.'
+    else if (retiro > disponible) errorMonto = `Supera el saldo disponible (${textoMonto(p.monto)}).`
+    else if (p.montoMinimo && retiro < BigInt(p.montoMinimo.valor) && retiro !== disponible) errorMonto = `El retiro mínimo es ${textoMonto(p.montoMinimo)}.`
+  }
+  const retiroValido = errorMonto === null && retiro !== null ? retiro : null
+
+  let venta: bigint | null = null
+  if (f.conVenta) {
+    venta = f.venta.trim() ? pesosAUnidades(f.venta, assetScale) : null
+    if (!f.venta.trim()) errorVenta = 'Escribe el valor de la compra.'
+    else if (venta === null) errorVenta = 'Escribe el valor en pesos, sin centavos.'
+    else if (venta <= 0n) errorVenta = 'La compra debe ser mayor que cero.'
+    else if (retiroValido !== null && venta >= retiroValido) errorVenta = `La compra debe ser menor que el retiro (${textoMonto(m(retiroValido))}).`
+  }
+  const ventaValida = f.conVenta && errorVenta === null && venta !== null ? venta : null
+
+  const listo = retiroValido !== null && (!f.conVenta || ventaValida !== null)
+  return {
+    retiro: retiroValido === null ? null : m(retiroValido),
+    venta: ventaValida === null ? null : m(ventaValida),
+    efectivo: retiroValido === null ? null : m(retiroValido - (ventaValida ?? 0n)),
+    saldo: retiroValido === null ? null : m(disponible - retiroValido),
+    errorMonto,
+    errorVenta,
+    pedido: listo
+      ? {
+          ...(f.modo === 'parte' ? { monto: retiroValido!.toString() } : {}),
+          ...(ventaValida !== null ? { venta: { valor: ventaValida.toString(), ...(f.descripcion.trim().length >= 2 ? { descripcion: f.descripcion.trim() } : {}) } } : {}),
+        }
+      : null,
+  }
+}
+
 /**
  * Consultar la cédula (P1) y pedir el cobro del subsidio elegido (P1b). Si la persona tiene pagos se
  * muestran siempre, aunque sea uno; si no, se pide igual y la API deja el rechazo en pantalla
@@ -140,6 +226,9 @@ export function useEstadoConsultaCedula(puntoId: string) {
   const [error, setError] = useState<string | null>(null)
   const [opciones, setOpciones] = useState<PagosEnPunto | null>(null)
   const [donde, setDonde] = useState<DondeSeDigito>(null)
+  // HU-26 y HU-27: el subsidio elegido y lo que el punto llena antes de pedir el PIN
+  const [elegido, setElegido] = useState<string | null>(null)
+  const [retiro, setRetiro] = useState<FormRetiro>(FORM_RETIRO_INICIAL)
 
   const reiniciar = () => {
     setCedula('')
@@ -149,9 +238,11 @@ export function useEstadoConsultaCedula(puntoId: string) {
     setError(null)
     setOpciones(null)
     setDonde(null)
+    setElegido(null)
+    setRetiro(FORM_RETIRO_INICIAL)
   }
 
-  const pedir = async (programaId?: string) => {
+  const pedir = async (programaId?: string, extra: Pick<PedidoCobro, 'monto' | 'venta'> = {}) => {
     setEnviando(true)
     setPidiendo(true)
     setError(null)
@@ -161,8 +252,9 @@ export function useEstadoConsultaCedula(puntoId: string) {
         canal: 'retiro',
         puntoId,
         programaId,
-        // El doble clic en la misma opción no crea dos cobros
-        llaveIdempotencia: programaId ? `${llave}-${programaId}` : llave,
+        ...extra,
+        // El doble clic en la misma opción no crea dos cobros; otro monto u otra compra es otro intento
+        llaveIdempotencia: programaId ? [llave, programaId, extra.monto ?? 'todo', extra.venta?.valor ?? 'sin-venta'].join('-') : llave,
       })
       irAlCobro(navegar, c)
       // El cobro ya tiene su pantalla: el próximo «Nuevo cobro» empieza de cero
@@ -206,6 +298,24 @@ export function useEstadoConsultaCedula(puntoId: string) {
     opciones,
     volver: () => {
       setOpciones(null)
+      setElegido(null)
+      setError(null)
+    },
+    /** El subsidio que se va a retirar; null mientras se ven los pagos. */
+    elegido: opciones?.pagos.find((p) => p.programa.id === elegido) ?? null,
+    elegir: (programaId: string) => {
+      setElegido(programaId)
+      setRetiro(FORM_RETIRO_INICIAL)
+      setError(null)
+    },
+    /** Del retiro, de vuelta a los pagos de la cédula. */
+    volverAPagos: () => {
+      setElegido(null)
+      setError(null)
+    },
+    retiro,
+    cambiarRetiro: (cambio: Partial<FormRetiro>) => {
+      setRetiro((actual) => ({ ...actual, ...cambio }))
       setError(null)
     },
     /** Deja todo como al entrar: sin cédula, sin pagos y sin errores. */

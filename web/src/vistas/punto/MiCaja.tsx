@@ -94,6 +94,11 @@ export function MiCaja() {
             >
               {c.reembolsado}
             </CifraGrande>
+            {!comercio && c.hayVentas && (
+              <CifraGrande etiqueta="Vendiste con retiros" apoyo="Compras pagadas con el subsidio: listas para facturar">
+                {c.vendido}
+              </CifraGrande>
+            )}
             {!comercio && (
               <CifraGrande etiqueta="Pusiste por adelantado" apoyo="Nunca giras plata antes de que te paguen" noche ambar>
                 {c.adelantado}
