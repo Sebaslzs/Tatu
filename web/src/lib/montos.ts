@@ -37,6 +37,13 @@ export function aPesos(valor: string, escala: number): string {
   return `${minimo / divisor}${/[1-9]/.test(fraccion) ? `.${fraccion}` : ''}`
 }
 
+/** «80000» o «80000.50» en pesos → unidades mínimas con la escala («8000000»); null si no es un monto. */
+export function aUnidades(pesos: string, escala: number): string | null {
+  const m = /^(\d+)(?:[.,](\d+))?$/.exec(pesos.trim())
+  if (!m || (m[2] ?? '').length > escala) return null
+  return BigInt(m[1]! + (m[2] ?? '').padEnd(escala, '0')).toString()
+}
+
 export function montoCero(moneda: Moneda): Monto {
   return { valor: '0', ...moneda }
 }

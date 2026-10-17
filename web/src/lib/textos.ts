@@ -39,6 +39,48 @@ export const MOTIVO_CORTO: Record<string, string> = {
   ErrorPago: 'error del banco',
   LlaveNoExiste: 'llave Bre-B borrada',
   PuenteNoResponde: 'Bre-B sin respuesta',
+  ComercioNoAutorizado: 'comercio no autorizado',
+  SoloEnComercios: 'solo en comercios',
+}
+
+/** Explicación debajo del mensaje de la API en el resultado de un cobro (wireframes 17 a 19). */
+export function explicacionMotivo(codigo: string | undefined, estado: EstadoCobro): string {
+  switch (codigo) {
+    case 'YaCobrado':
+      return 'Esta cédula ya cobró en este programa. No se creó ningún pago.'
+    case 'EnProceso':
+      return 'Hay otro cobro de esta cédula en curso. No se creó un pago nuevo.'
+    case 'TopeSuperado':
+      return 'La cuenta del programa no autorizó más pagos. La plata no se movió.'
+    case 'ProgramaCerrado':
+      return 'La entidad cerró este subsidio y revocó el permiso. No se creó ningún pago.'
+    case 'ProgramaNoRecibe':
+      return 'La entidad pausó los cobros por ahora. No se creó ningún pago.'
+    case 'PinBloqueado':
+      return 'Se equivocó 3 veces con el PIN. Puede intentarlo de nuevo en 15 minutos. No se movió dinero.'
+    case 'TiempoAgotado':
+      return 'El PIN no se confirmó a tiempo. Empieza un cobro nuevo. No se movió dinero.'
+    case 'SinFondos':
+      return 'La cuenta del programa no tiene saldo en este momento. La plata no se movió.'
+    case 'PermisoVencido':
+      return 'La entidad debe aprobar de nuevo el permiso en su banco. La plata no se movió.'
+    case 'LiquidacionNoResponde':
+      return 'Intenta de nuevo en un momento. No se creó ningún pago.'
+    case 'Cancelado':
+      return 'Puedes empezar un cobro nuevo cuando quieras.'
+    case 'CuentaNoVerificada':
+      return 'La cuenta todavía no está verificada. No se movió dinero.'
+    case 'ErrorPago':
+      return 'Intenta de nuevo en unos minutos. Si se repite, avisa a la entidad.'
+    case 'ComercioNoAutorizado':
+      return 'El bono solo se acepta en comercios verificados de sus categorías. Cobra la compra completa por otro medio.'
+    case 'SoloEnComercios':
+      return 'Es un bono con destino: no se entrega en efectivo ni va a la cuenta. Se usa al pagar en un comercio autorizado.'
+    case 'SinPagoDisponible':
+      return 'Revisa el número de la cédula. No se creó ningún pago.'
+    default:
+      return estado === 'Fallido' ? 'El pago no se completó. La plata no se movió.' : 'No se creó ningún pago.'
+  }
 }
 
 /** «16 de octubre de 2026» a partir de un instante ISO o de «2026-10-16», en Bogotá. */
@@ -87,6 +129,20 @@ export function plural(n: number, singular: string, pluralTexto = `${singular}s`
 /** «2,4 s» */
 export function formatSegundos(s: number): string {
   return `${s.toLocaleString('es-CO', { maximumFractionDigits: 1 })} s`
+}
+
+/** 114 → «01:54» (lo que falta para confirmar con el PIN) */
+export function formatCuentaRegresiva(segundos: number): string {
+  const s = Math.max(0, Math.ceil(segundos))
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+/** «2026-10-31» → «31 oct», para «Hasta el 31 oct». */
+export function formatDiaMesCorto(fecha: string): string {
+  const [, m, d] = fecha.slice(0, 10).split('-').map(Number)
+  return `${d} ${MESES_CORTOS[m - 1]}`
 }
 
 /** «52418300» → «52 418 300» */
