@@ -30,6 +30,7 @@ import { ServicioPermisoToken } from './programas/permisoToken.ts'
 import type { PuertoPermisos } from './programas/puertos.ts'
 import type { ServiciosProgramas } from './programas/rutas.ts'
 import { ServicioProgramas } from './programas/servicio.ts'
+import type { Candado } from './programas/candados.ts'
 import { RenovacionPermisos } from './programas/renovacion.ts'
 import { ServicioTablero } from './programas/tablero.ts'
 import { Transiciones } from './programas/transiciones.ts'
@@ -71,6 +72,8 @@ export interface PiezasContenedor {
   simuladorPuente?: DatosPuente
   reloj?: Reloj
   nuevoNonce?: () => string
+  /** Candado de la base (pg_try_advisory_lock) para rotar tokens sin choques entre servidores. */
+  candado?: Candado
 }
 
 export function crearContenedor(piezas: PiezasContenedor): Contenedor {
@@ -93,7 +96,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
   // Programas
   const lector = new LectorProgramas(uow)
   const transiciones = new Transiciones({ uow, lector, permisos, reloj, aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000 })
-  const token = new ServicioPermisoToken({ uow, lector, permisos, reloj })
+  const token = new ServicioPermisoToken({ uow, lector, permisos, reloj, ...(piezas.candado ? { candado: piezas.candado } : {}) })
 
   // Cuentas
   const cuentas = new ServicioCuentas({
@@ -132,7 +135,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     configCompleta: config,
     uow,
     token,
-    renovacion: new RenovacionPermisos({ uow, token }),
+    renovacion: new RenovacionPermisos({ uow, token, ...(piezas.candado ? { candado: piezas.candado } : {}) }),
     billeteras,
     simuladorLiquidacion: simuladorLiquidacion,
     simuladorPuente: piezas.simuladorPuente ?? new PuenteEnBase(piezas.db),

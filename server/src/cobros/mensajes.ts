@@ -14,6 +14,8 @@ export const MOTIVOS = {
   SinFondos: { mensaje: 'El programa no tiene fondos en este momento', estado: 'Fallido' },
   LiquidacionNoResponde: { mensaje: 'No pudimos consultar tu pago; intenta en un momento', estado: 'Rechazado' },
   PermisoVencido: { mensaje: 'El permiso venció: apruébalo de nuevo', estado: 'Fallido' },
+  // El permiso lo pidió otro servidor de Tatú con otras llaves de Open Payments (configuración)
+  LlavesDistintas: { mensaje: 'Este servidor usa otras llaves que las que aprobaron el permiso. No se movió dinero', estado: 'Fallido' },
   Cancelado: { mensaje: 'El cobro se canceló. No se movió dinero', estado: 'Rechazado' },
   // Bono con destino (HU-21)
   ComercioNoAutorizado: { mensaje: 'Este comercio no acepta este bono', estado: 'Rechazado' },

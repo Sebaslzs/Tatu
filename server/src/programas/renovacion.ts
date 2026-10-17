@@ -3,6 +3,7 @@
 // cobro después de esos 10 minutos falla con PermisoVencido. Mientras la API recibe pedidos, cada
 // TOKEN_RENOVAR_CADA_SEG (4 min) se rota el token de cada programa Activo o Pausado.
 import { log } from '../comun/log.ts'
+import { CANDADO_RENOVACION, sinCandado, type Candado } from './candados.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import { PermisoVencido, type ServicioPermisoToken } from './permisoToken.ts'
 
@@ -15,6 +16,8 @@ export interface ResultadoRenovacion {
 export interface DependenciasRenovacion {
   uow: UnidadDeTrabajo
   token: ServicioPermisoToken
+  /** Candado de la base: una sola vuelta de renovación a la vez entre todos los servidores. */
+  candado?: Candado
 }
 
 export class RenovacionPermisos {
@@ -24,8 +27,16 @@ export class RenovacionPermisos {
     this.deps = deps
   }
 
-  /** Una vuelta: rota el token de cada programa con permiso vigente. Un fallo no detiene a los demás. */
+  /**
+   * Una vuelta: rota el token de cada programa con permiso vigente. Un fallo no detiene a los demás.
+   * Si otro servidor ya está renovando (tiene el candado), esta vuelta no hace nada.
+   */
   async renovarTodos(): Promise<ResultadoRenovacion> {
+    const candado = this.deps.candado ?? sinCandado
+    return (await candado(CANDADO_RENOVACION, () => this.vuelta())) ?? { renovados: 0, vencidos: 0, fallidos: 0 }
+  }
+
+  private async vuelta(): Promise<ResultadoRenovacion> {
     const vigentes = await this.deps.uow.repos.programas.conPermisoVigente()
     const r: ResultadoRenovacion = { renovados: 0, vencidos: 0, fallidos: 0 }
     for (const { id } of vigentes) {

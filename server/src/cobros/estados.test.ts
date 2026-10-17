@@ -86,6 +86,6 @@ describe('catálogo de mensajes (HU-13)', () => {
 
   it('un Rechazado nunca mueve dinero: solo los fallos del banco son Fallido (CA-13.03)', () => {
     const fallidos = Object.entries(MOTIVOS).filter(([, m]) => m.estado === 'Fallido').map(([c]) => c)
-    expect(fallidos.sort()).toEqual(['ErrorPago', 'PermisoVencido', 'SinFondos', 'TopeSuperado'])
+    expect(fallidos.sort()).toEqual(['ErrorPago', 'LlavesDistintas', 'PermisoVencido', 'SinFondos', 'TopeSuperado'])
   })
 })

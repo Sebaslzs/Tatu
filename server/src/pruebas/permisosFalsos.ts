@@ -43,7 +43,7 @@ export class PermisosFalsos implements PuertoPermisos, PuertoVerificacionCuenta 
     this.cancelaciones += 1
   }
 
-  async rotarToken(): Promise<TokenPermiso> {
+  async rotarToken(_args?: { urlGestion: string; token: string }): Promise<TokenPermiso> {
     if (this.errorAlRotar) throw this.errorAlRotar
     this.rotaciones += 1
     return { token: `token-rotado-${this.rotaciones}`, urlGestion: `${URL_AUTORIZACION}/token/r${this.rotaciones}`, expiraEnSeg: 600 }

@@ -35,6 +35,7 @@ export const MOTIVO_CORTO: Record<string, string> = {
   SinFondos: 'sin fondos',
   LiquidacionNoResponde: 'liquidación sin respuesta',
   PermisoVencido: 'permiso vencido',
+  LlavesDistintas: 'llaves distintas',
   Cancelado: 'cancelado',
   ErrorPago: 'error del banco',
   LlaveNoExiste: 'llave Bre-B borrada',
@@ -64,6 +65,8 @@ export function explicacionMotivo(codigo: string | undefined, estado: EstadoCobr
       return 'La cuenta del programa no tiene saldo en este momento. La plata no se movió.'
     case 'PermisoVencido':
       return 'La entidad debe aprobar de nuevo el permiso en su banco. La plata no se movió.'
+    case 'LlavesDistintas':
+      return 'Este servidor de Tatú usa otras llaves que las que aprobaron el permiso. Revisa la configuración. La plata no se movió.'
     case 'LiquidacionNoResponde':
       return 'Intenta de nuevo en un momento. No se creó ningún pago.'
     case 'Cancelado':

@@ -10,9 +10,6 @@ import { crearContenedor, type Contenedor } from './contenedor.ts'
 import { log } from './comun/log.ts'
 import { abrirBase, type Base } from './db/conexion.ts'
 
-/** Clave del candado de PostgreSQL: una sola instancia rota los tokens a la vez. */
-const CANDADO_RENOVACION = 720_035
-
 interface Lista {
   app: ReturnType<typeof crearApp>
   base: Base
@@ -39,7 +36,7 @@ function preparar(): Promise<Lista> {
     }
     const base = await abrirBase({ url: config.DATABASE_URL })
     log.info(`Base de datos: ${base.tipo}`)
-    const contenedor = crearContenedor({ db: base.db, config })
+    const contenedor = crearContenedor({ db: base.db, config, candado: base.conCandado })
     // RNF-05: una sola pasada para retomar los cobros en Pagando; corre en segundo plano porque
     // puede esperar pagos en curso (no worker, pero tampoco se colgará el primer pedido).
     waitUntil(
@@ -58,16 +55,16 @@ function preparar(): Promise<Lista> {
 
 /**
  * HU-06: el token del permiso vence a los 10 minutos. Si pasaron TOKEN_RENOVAR_CADA_SEG desde la
- * última vuelta de esta instancia, se rota en segundo plano; el candado evita que dos instancias
- * roten el mismo token a la vez (el segundo rotaría uno ya cambiado y lo daría por vencido).
+ * última vuelta de esta instancia, se rota en segundo plano. Los candados de la base (dentro de la
+ * renovación y de la rotación) evitan que dos instancias roten el mismo token a la vez.
  */
-function renovarSiToca({ base, contenedor }: Lista): void {
+function renovarSiToca({ contenedor }: Lista): void {
   const ahora = Date.now()
   if (renovando || ahora - ultimaRenovacion < config.TOKEN_RENOVAR_CADA_SEG * 1000) return
   ultimaRenovacion = ahora
   renovando = true
   waitUntil(
-    conLimite(base.conCandado(CANDADO_RENOVACION, () => contenedor.renovacion.renovarTodos()))
+    conLimite(contenedor.renovacion.renovarTodos())
       .then((r) => r && r.renovados + r.vencidos + r.fallidos && log.info('Renovación de tokens', { ...r }))
       .catch((e) => log.warn('Falló la renovación de tokens', { error: e }))
       .finally(() => {

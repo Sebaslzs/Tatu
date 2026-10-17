@@ -156,6 +156,9 @@ export class PagadorCobros {
         case 'TopeSuperado': // RN-09: lo rechazó el banco, sin mover dinero
           await movimientos.mover(c, 'Fallido', { motivoRechazo: 'TopeSuperado' }, { error: e.code ?? 'InsufficientGrant', status: e.status ?? null }, 'banco')
           return
+        case 'LlavesDistintas': // configuración: el permiso es de otro servidor; no se rota ni se marca
+          await movimientos.mover(c, 'Fallido', { motivoRechazo: 'LlavesDistintas' }, detalle, 'banco')
+          return
         case 'SinRespuesta': // nunca Fallido por un timeout: queda Pagando y se reconcilia al consultar
           await movimientos.nota(id, 'El banco no respondió a tiempo. Se reconcilia al consultar.', detalle)
           return

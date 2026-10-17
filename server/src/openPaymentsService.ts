@@ -44,6 +44,12 @@ export function traducir(e: unknown, operacion: Operacion): ErrorOpenPayments {
   if (e instanceof OpenPaymentsClientError) {
     const { status, code, description } = e
     log.warn('Error de Open Payments', { status, code, description, operacion })
+    // El token es de otro cliente (otro servidor con otras llaves): «Signature validation error: could
+    // not find key in list of client keys» al pagar, «could not determine client» al rotar. Tratarlo
+    // como vencido rotaba, fallaba y dejaba el permiso inservible también para quien sí podía usarlo.
+    if ((status === 401 || status === 400) && esErrorDeCliente(description)) {
+      return new ErrorOpenPayments('LlavesDistintas', status, code, description)
+    }
     // La Test Wallet responde 403 «Inactive Token» (no 401) cuando el token del permiso venció: es
     // TokenVencido y se rota; confundirlo con el tope dejaría el programa sin pagar.
     if (status === 401 || (status === 403 && /inactive token/i.test(description ?? ''))) {
@@ -58,6 +64,10 @@ export function traducir(e: unknown, operacion: Operacion): ErrorOpenPayments {
   log.warn('Error sin respuesta de Open Payments', { error: e, operacion })
   return new ErrorOpenPayments('SinRespuesta', undefined, undefined, (e as Error)?.message)
 }
+
+/** El banco no encuentra la llave del cliente que firma, o no sabe qué cliente es. */
+export const esErrorDeCliente = (descripcion: string | undefined) =>
+  /signature validation|list of client keys|could not determine client|invalid client|unknown client/i.test(descripcion ?? '')
 
 /** 4xx del servidor de la billetera = no existe; lo demás (red, 5xx, timeout) = no respondió. */
 const esNoEncontrada = (e: unknown) => e instanceof OpenPaymentsClientError && e.status !== undefined && e.status >= 400 && e.status < 500
