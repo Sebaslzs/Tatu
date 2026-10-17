@@ -5,20 +5,29 @@ export interface Moneda {
   assetScale: number
 }
 
-/** Moneda tal como la muestra la API (Endpoints.md): `{ codigo, escala }`. */
-export interface MonedaApi {
+/** Cómo lee la moneda la web ya conectada: { assetCode, assetScale }. */
+export type MonedaApi = Moneda
+export const monedaApi = (m: Moneda): MonedaApi => ({ assetCode: m.assetCode, assetScale: m.assetScale })
+
+/** Cómo la nombra Endpoints.md en los campos que la web aún no consume: { codigo, escala }. */
+export interface MonedaCodigo {
   codigo: string
   escala: number
 }
+export const monedaCodigo = (m: Moneda): MonedaCodigo => ({ codigo: m.assetCode, escala: m.assetScale })
 
-export const monedaApi = (m: Moneda): MonedaApi => ({ codigo: m.assetCode, escala: m.assetScale })
+/** Lo que viaja en JSON: el valor va como texto para no perder precisión en el cliente. */
+export interface Monto extends Moneda {
+  valor: string
+}
 
-/** Lo que viaja en JSON: unidades mínimas como texto (no pierde precisión); la moneda va aparte. */
-export type Monto = string
+export function monto(valor: number, moneda: Moneda): Monto {
+  return { valor: String(valor), assetCode: moneda.assetCode, assetScale: moneda.assetScale }
+}
 
-export const monto = (valor: number): Monto => String(valor)
-
-export const montoOpcional = (valor: number | null): Monto | null => (valor === null ? null : monto(valor))
+export function montoOpcional(valor: number | null, moneda: Moneda): Monto | null {
+  return valor === null ? null : monto(valor, moneda)
+}
 
 export const mismaMoneda = (a: Moneda, b: Moneda) => a.assetCode === b.assetCode && a.assetScale === b.assetScale
 

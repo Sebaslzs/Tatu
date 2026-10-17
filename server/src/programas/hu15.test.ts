@@ -42,15 +42,15 @@ describe('CA-15.01 · autorizado, cobrado y noHaSalido', () => {
     const { status, cuerpo } = await tablero()
     expect(status).toBe(200)
     expect(cuerpo).toMatchObject({
-      autorizado: '69000000',
-      cobrado: '0',
+      autorizado: { valor: '69000000' },
+      cobrado: { valor: '0' },
       fuente: 'banco',
-      noHaSalido: '69000000',
+      noHaSalido: { valor: '69000000' },
       cobrosPagados: 0,
-      porCanal: { cuenta: { cobros: 0, monto: '0' }, retiro: { cobros: 0, monto: '0' }, compra: { cobros: 0, monto: '0' } },
+      porCanal: { cuenta: { cobros: 0, monto: { valor: '0' } }, retiro: { cobros: 0, monto: { valor: '0' } }, compra: { cobros: 0, monto: { valor: '0' } } },
       cobrosPagando: 0,
       rechazadosYFallidos: 0,
-      giradoPorAdelantado: 0,
+      giradoPorAdelantado: { valor: '0' },
       cierre: null,
     })
   })
@@ -60,25 +60,25 @@ describe('CA-15.01 · autorizado, cobrado y noHaSalido', () => {
     await cobroPagado()
     const { cuerpo } = await tablero()
     expect(cuerpo).toMatchObject({
-      cobrado: '23000000',
+      cobrado: { valor: '23000000' },
       fuente: 'plataforma',
-      noHaSalido: '46000000',
+      noHaSalido: { valor: '46000000' },
       cobrosPagados: 1,
-      porCanal: { retiro: { cobros: 1, monto: '23000000' } },
-      sinCobrar: { cedulas: 2, monto: '46000000' },
+      porCanal: { retiro: { cobros: 1, monto: { valor: '23000000' } } },
+      sinCobrar: { cedulas: 2, monto: { valor: '46000000' } },
     })
   })
 
   it('lo que dice el banco (getGrantSpentAmounts) manda: fuente banco con el gastado del permiso', async () => {
     e.permisos.gastado = 23_000_000
     const { cuerpo } = await tablero()
-    expect(cuerpo).toMatchObject({ cobrado: '23000000', fuente: 'banco', noHaSalido: '46000000' })
+    expect(cuerpo).toMatchObject({ cobrado: { valor: '23000000' }, fuente: 'banco', noHaSalido: { valor: '46000000' } })
   })
 
   it('si el banco no responde, cae a la suma de la base (fuente plataforma)', async () => {
     e.permisos.gastadoDelPermiso = () => Promise.reject(new ErrorOpenPayments('SinRespuesta'))
     const { cuerpo } = await tablero()
-    expect(cuerpo).toMatchObject({ cobrado: '0', fuente: 'plataforma' })
+    expect(cuerpo).toMatchObject({ cobrado: { valor: '0' }, fuente: 'plataforma' })
   })
 
   it('un programa en cualquier estado tiene tablero; uno inexistente es 404', async () => {
@@ -98,7 +98,7 @@ describe('CA-15.02 · el tablero se puede consultar seguido', () => {
       return Promise.resolve(1_000_000)
     }
     expect((await tablero()).cuerpo.fuente).toBe('banco')
-    expect((await tablero()).cuerpo).toMatchObject({ cobrado: '1000000', fuente: 'banco' })
+    expect((await tablero()).cuerpo).toMatchObject({ cobrado: { valor: '1000000' }, fuente: 'banco' })
     expect(consultasAlBanco).toBe(1)
   })
 })
@@ -110,7 +110,7 @@ describe('CA-15.03 · reembolso al punto y plata girada por adelantado', () => {
     await cobroPagado()
     const { cuerpo } = await tablero()
     expect(cuerpo.reembolsoSegundos).toBeGreaterThan(0)
-    expect(cuerpo.giradoPorAdelantado).toBe(0)
+    expect(cuerpo.giradoPorAdelantado).toEqual({ valor: '0', assetCode: 'COP', assetScale: 2 })
   })
 
   it('sin retiros pagados no hay promedio', async () => {
@@ -132,7 +132,7 @@ describe('CA-17.01 · cerrar con la palabra CERRAR', () => {
     expect(cuerpo).toMatchObject({
       programa: { estado: 'Cerrado', permisoActivo: false },
       fuente: 'banco',
-      cierre: { autorizado: '69000000', cobrado: '0', nuncaSalio: '69000000', cerradoEn: expect.any(String) },
+      cierre: { autorizado: { valor: '69000000' }, cobrado: { valor: '0' }, nuncaSalio: { valor: '69000000' }, cerradoEn: expect.any(String) },
     })
     expect(e.permisos.revocaciones).toBe(1)
     expect((await programa()).estado).toBe('Cerrado')
@@ -198,8 +198,8 @@ describe('CA-17.03 · las cifras del cierre quedan guardadas', () => {
     expect(cuerpo).toMatchObject({
       programa: { estado: 'Cerrado' },
       fuente: 'banco',
-      cierre: { autorizado: '69000000', cobrado: '23000000', nuncaSalio: '46000000' },
-      giradoPorAdelantado: 0,
+      cierre: { autorizado: { valor: '69000000' }, cobrado: { valor: '23000000' }, nuncaSalio: { valor: '46000000' } },
+      giradoPorAdelantado: { valor: '0' },
     })
     expect(detalleDe(await ultimoEventoDeCierre())).toMatchObject({ autorizado: 69_000_000, cobrado: 23_000_000, nuncaSalio: 46_000_000, fuente: 'banco' })
   })

@@ -3,7 +3,7 @@
 // las cifras se guardan en el evento de cierre antes de revocar el permiso: después ya no se pueden leer.
 import { ErrorApi, conflicto } from '../comun/errores.ts'
 import { log } from '../comun/log.ts'
-import { monedaApi, monto, type MonedaApi, type Monto } from '../comun/montos.ts'
+import { monedaCodigo, monto, type MonedaCodigo, type Monto } from '../comun/montos.ts'
 import { errorOpApi } from '../comun/openPayments.ts'
 import { detalleDe, ultimoHaciaEn } from '../db/repositorios/eventos.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
@@ -33,7 +33,7 @@ export interface PorCanal {
 
 export interface VistaTablero {
   programa: VistaPrograma
-  moneda: MonedaApi
+  moneda: MonedaCodigo
   autorizado: Monto
   cobrado: Monto
   fuente: Fuente
@@ -43,7 +43,7 @@ export interface VistaTablero {
   /** Promedio de segundos del PIN a Pagado en los retiros; null sin retiros pagados. */
   reembolsoSegundos: number | null
   /** El modelo no gira nada antes del cobro: cada pago sale cuando la persona cobra. */
-  giradoPorAdelantado: 0
+  giradoPorAdelantado: Monto
   /** Cédulas de la liquidación que no han cobrado; null si la liquidación no responde. */
   sinCobrar: { cedulas: number; monto: Monto } | null
   cobrosPagando: number
@@ -97,7 +97,7 @@ export class ServicioTablero {
       lector.vista(p),
     ])
     const moneda = monedaDe(p)
-    const m = (valor: number) => monto(valor)
+    const m = (valor: number) => monto(valor, moneda)
     const autorizado = p.topeTotal ?? 0
 
     // Reembolso al punto: de PorConfirmar → Pagando (el PIN) a Pagado, en los retiros
@@ -119,7 +119,7 @@ export class ServicioTablero {
 
     return {
       programa,
-      moneda: monedaApi(moneda),
+      moneda: monedaCodigo(moneda),
       autorizado: m(autorizado),
       cobrado: m(cobrado.valor),
       fuente: cobrado.fuente,
@@ -127,7 +127,7 @@ export class ServicioTablero {
       cobrosPagados: pagados.length,
       porCanal: { cuenta: porCanal('cuenta'), retiro: porCanal('retiro'), compra: porCanal('compra') },
       reembolsoSegundos,
-      giradoPorAdelantado: 0,
+      giradoPorAdelantado: m(0),
       sinCobrar: resumen
         ? { cedulas: Math.max(0, resumen.cedulas - pagados.length), monto: m(Math.max(0, resumen.total - sumar(pagados))) }
         : null,

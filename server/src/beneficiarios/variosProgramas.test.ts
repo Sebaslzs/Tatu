@@ -43,7 +43,7 @@ const pagosEnPunto = (documento: string) => e.pedir('GET', `/puntos/${puntoId}/p
 describe('una persona con subsidios en varios programas', () => {
   it('ve todos sus pagos pendientes, con el monto de cada programa', async () => {
     const r = await resumen()
-    const montos = r.pagos.map((p: { programa: { id: string }; monto: string }) => [p.programa.id, p.monto]).sort()
+    const montos = r.pagos.map((p: { programa: { id: string }; monto: { valor: string } }) => [p.programa.id, p.monto.valor]).sort()
     expect(montos).toEqual(
       [
         [grande, '23000000'],
@@ -61,7 +61,7 @@ describe('una persona con subsidios en varios programas', () => {
     const cuenta = await e.pedir('POST', '/cobros', { programaId: pequeno, documento: ANA.documento, canal: 'cuenta', llaveIdempotencia: llaveNueva() })
     expect(cuenta.status).toBe(201)
     await e.esperarPagos()
-    expect((await e.pedir('GET', `/cobros/${cuenta.cuerpo.id}`)).cuerpo).toMatchObject({ estado: 'Pagado', monto: '1000000' })
+    expect((await e.pedir('GET', `/cobros/${cuenta.cuerpo.id}`)).cuerpo).toMatchObject({ estado: 'Pagado', monto: { valor: '1000000' } })
     expect((await resumen()).pagos.map((p: { programa: { id: string } }) => p.programa.id)).toEqual([grande])
   })
 

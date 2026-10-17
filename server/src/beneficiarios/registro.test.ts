@@ -25,7 +25,7 @@ describe('POST /beneficiarios', () => {
   it('registra la cédula con su cuenta Verificada y la inscribe en la liquidación', async () => {
     const { status, cuerpo } = await registrar()
     expect(status).toBe(201)
-    expect(cuerpo).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', billetera: WALLET, moneda: { codigo: 'COP', escala: 2 }, estadoCuenta: 'Verificada', tienePin: true })
+    expect(cuerpo).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', billetera: WALLET, moneda: { assetCode: 'COP', assetScale: 2 }, estadoCuenta: 'Verificada', tienePin: true })
     expect(e.simulador.buscar([CEDULA])).toEqual([{ documento: CEDULA, nombre: 'Rosa Díaz', tienePin: true }])
     expect(e.simulador.validarPin(CEDULA, '4444')).toBe(true)
   })
@@ -100,7 +100,7 @@ describe('GET /beneficiarios y PIN', () => {
     await registrar()
     const { cuerpo } = await e.pedir('GET', '/beneficiarios')
     expect(cuerpo).toHaveLength(1)
-    expect(cuerpo[0]).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', estadoCuenta: 'Verificada', moneda: { codigo: 'COP', escala: 2 }, billeteraCorta: '…/prueba-rosa' })
+    expect(cuerpo[0]).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', estadoCuenta: 'Verificada', moneda: { assetCode: 'COP', assetScale: 2 }, billeteraCorta: '…/prueba-rosa' })
     const demo = (await e.pedir('GET', '/beneficiarios/demo')).cuerpo
     expect(demo).toEqual([{ nombre: 'Rosa Díaz', etiqueta: 'C.C. de prueba 10', documento: CEDULA }])
   })

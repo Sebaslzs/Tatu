@@ -1,6 +1,7 @@
 // /cuentas · O3 y HU-07. Las rutas reciben y validan; el servicio decide.
 import { Router } from 'express'
 import { z } from 'zod'
+import { conAliasCedula } from '../comun/alias.ts'
 import { validar } from '../comun/errores.ts'
 import { documento } from '../liquidacion/contrato.ts'
 import { TipoLlave } from '../puente/contrato.ts'
@@ -17,7 +18,7 @@ export function rutasCuentas(servicio: ServicioCuentas): Router {
   const r = Router()
 
   r.post('/', async (req, res) => {
-    res.status(201).json(await servicio.enlazar(validar(EntradaCuenta, req.body)))
+    res.status(201).json(await servicio.enlazar(validar(EntradaCuenta, conAliasCedula(req.body))))
   })
 
   // «¿Eres Ana M*** R***?» antes de enlazar una llave (CA-07.01)

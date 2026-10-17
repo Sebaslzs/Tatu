@@ -1,6 +1,7 @@
 // /beneficiarios · el equipo de prueba (quién está registrado, con qué billetera y si tiene PIN) y
 // el resumen «tengo $230.000» (HU-08).
 import { Router } from 'express'
+import { conAliasCedula } from '../comun/alias.ts'
 import { validar } from '../comun/errores.ts'
 import { documento } from '../liquidacion/contrato.ts'
 import { EntradaPersona, EntradaPin } from './esquemas.ts'
@@ -25,7 +26,7 @@ export function rutasBeneficiarios(servicio: ServicioBeneficiarios, resumen: Con
   })
 
   r.post('/', async (req, res) => {
-    res.status(201).json(await servicio.registrar(validar(EntradaPersona, req.body)))
+    res.status(201).json(await servicio.registrar(validar(EntradaPersona, conAliasCedula(req.body))))
   })
 
   r.post('/:documento/pin', async (req, res) => {

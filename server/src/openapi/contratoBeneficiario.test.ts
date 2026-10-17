@@ -44,8 +44,8 @@ describe('contrato del beneficiario', () => {
     const pedido = await e.pedir('POST', '/cobros', { documento: JORGE.documento, canal: 'retiro', puntoId: s.puntoId, llaveIdempotencia: llaveNueva() })
     expect(pedido.status).toBe(201)
     Cobro.parse(pedido.cuerpo)
-    expect(pedido.cuerpo).toMatchObject({ estado: 'PorConfirmar', monto: '23000000', moneda: { codigo: 'COP', escala: 2 } })
-    expect(pedido.cuerpo.persona).toEqual({ nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', novedad: false })
+    expect(pedido.cuerpo).toMatchObject({ estado: 'PorConfirmar', monto: { valor: '23000000' }, moneda: { assetCode: 'COP', assetScale: 2 } })
+    expect(pedido.cuerpo.persona).toEqual({ nombre: 'Jorge Ruiz', cedula: '******0003', etiqueta: 'C.C. de prueba 3', novedad: false })
 
     Cobro.parse((await e.pedir('GET', `/cobros/${pedido.cuerpo.id}`)).cuerpo)
     const confirmado = await e.pedir('POST', `/cobros/${pedido.cuerpo.id}/confirmar`, { pin: JORGE.pin })

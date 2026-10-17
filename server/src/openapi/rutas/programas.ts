@@ -64,7 +64,7 @@ export function rutasProgramas(): Json {
             billetera: '$ilp.interledger-test.dev/tatu-programa',
             vigenciaInicio: '2026-10-01',
             vigenciaFin: '2026-12-31',
-            montoPorPersona: '230000',
+            montoPorPersona: { valor: '230000', assetCode: 'COP', assetScale: 2 },
           }),
         },
         responses: {

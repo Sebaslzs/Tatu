@@ -11,13 +11,19 @@ import { Coincidencia, Llave, Resolucion, TipoLlave } from '../puente/contrato.t
 const uuid = (descripcion: string) => z.uuid().meta({ description: descripcion })
 
 export const Moneda = z.strictObject({
+  assetCode: z.string().regex(/^[A-Z]{3}$/).meta({ description: 'Código ISO 4217 de la moneda.', examples: ['COP'] }),
+  assetScale: z.number().int().min(0).meta({ description: 'Decimales de la moneda: $1 = 10^assetScale unidades mínimas.', examples: [2] }),
+})
+
+/** La moneda como la nombra Endpoints.md, en los campos que la web aún no consume. */
+export const MonedaCodigo = z.strictObject({
   codigo: z.string().regex(/^[A-Z]{3}$/).meta({ description: 'Código ISO 4217 de la moneda.', examples: ['COP'] }),
   escala: z.number().int().min(0).meta({ description: 'Decimales de la moneda: $1 = 10^escala unidades mínimas.', examples: [2] }),
 })
 
-export const Monto = z.string().regex(/^\d+$/).meta({
-  description: 'Monto en unidades mínimas de la moneda, como texto: «23000000» con escala 2 es $230.000.',
-  examples: ['23000000'],
+export const Monto = z.strictObject({
+  valor: z.string().regex(/^\d+$/).meta({ description: 'Entero en unidades mínimas, como texto. $230.000,00 COP = `"23000000"`.', examples: ['23000000'] }),
+  ...Moneda.shape,
 })
 
 export const ErrorApi = z.strictObject({
@@ -43,8 +49,8 @@ export const Programa = z.strictObject({
   categorias: z.array(z.string()).meta({ description: 'Categorías de comercio del bono; vacío en un subsidio.' }),
   billetera: z.url().meta({ description: 'Billetera normalizada (`https://`, sin barra final).', examples: ['https://ilp.interledger-test.dev/tatu-programa'] }),
   moneda: Moneda.meta({ description: 'Moneda copiada de la billetera resuelta; nunca viene del formulario.' }),
-  vigenciaInicio: z.iso.date().meta({ description: 'Primer día de vigencia (YYYY-MM-DD, hora de Bogotá).', examples: ['2026-10-16'] }),
-  vigenciaFin: z.iso.date().meta({ description: 'Último día de vigencia (YYYY-MM-DD, hora de Bogotá).', examples: ['2026-12-31'] }),
+  vigenciaInicio: z.iso.datetime().meta({ description: 'Instante UTC de inicio (00:00 del día en Bogotá).' }),
+  vigenciaFin: z.iso.datetime().meta({ description: 'Instante UTC de fin (23:59:59.999 del día en Bogotá).' }),
   estado: z.enum(['Borrador', 'EsperandoAprobacion', 'Activo', 'Pausado', 'Cerrado']),
   montoPorPersona: Monto.nullable().meta({ description: 'Monto por persona; `null` si no se definió.' }),
   tope: Monto.nullable().meta({ description: 'Tope del permiso (RN-08); `null` hasta que se aprueba.' }),
@@ -55,7 +61,7 @@ export const Programa = z.strictObject({
 export const ResumenLiquidacion = z.strictObject({
   cedulas: Resumen.shape.cedulas,
   total: Monto.meta({ description: 'Total de la liquidación en la moneda del programa; será el tope al autorizar.' }),
-  moneda: Moneda,
+  moneda: MonedaCodigo,
 })
 
 export const Autorizacion = z.strictObject({
@@ -116,6 +122,7 @@ export const LlaveConsultada = z.strictObject({
 
 export const Beneficiario = z.strictObject({
   documento: z.string(),
+  cedula: z.string().meta({ description: 'Igual a `documento`; la web ya conectada lee este nombre.' }),
   nombre: z.string().meta({ description: 'Lo trae la liquidación; Tatú no lo guarda. Si no responde: «Persona 1234».' }),
   billetera: z.string().nullable(),
   billeteraCorta: z.string().nullable(),
@@ -150,7 +157,7 @@ export const PagoPendiente = z.strictObject({
     tipo: z.enum(['subsidio', 'bono']),
   }),
   monto: Monto,
-  moneda: Moneda,
+  moneda: MonedaCodigo,
   vigenciaFin: z.string().meta({ description: 'Día en que vence, en hora de Bogotá.', examples: ['2026-12-31'] }),
 })
 
@@ -180,6 +187,7 @@ export const Cobro = z.strictObject({
   cuenta: z.strictObject({ billetera: z.string(), billeteraCorta: z.string() }).nullable(),
   persona: z.strictObject({
     nombre: z.string(),
+    cedula: z.string().meta({ description: 'Cédula enmascarada, nunca completa; la web ya conectada la lee.', examples: ['******0003'] }),
     etiqueta: z.string().meta({ description: 'Cómo se muestra la persona sin revelar su cédula.', examples: ['C.C. de prueba 3'] }),
     novedad: z.boolean(),
   }),
@@ -204,7 +212,7 @@ export const PuntoDeRetiro = z.strictObject({
 })
 
 export const ResumenBeneficiario = z.strictObject({
-  persona: z.strictObject({ nombre: z.string(), documento: z.string(), tienePin: z.boolean() }),
+  persona: z.strictObject({ nombre: z.string(), documento: z.string(), cedula: z.string(), tienePin: z.boolean() }),
   pagos: z.array(PagoPendiente).meta({ description: 'CA-08.01: subsidios y bonos pendientes.' }),
   pago: PagoPendiente.nullable(),
   liquidacionDisponible: z.boolean(),
@@ -221,7 +229,7 @@ export const PorCanal = z.strictObject({
 
 export const Tablero = z.strictObject({
   programa: Programa,
-  moneda: Moneda,
+  moneda: MonedaCodigo,
   autorizado: Monto.meta({ description: 'El tope aprobado (lo que la entidad autorizó).' }),
   cobrado: Monto.meta({ description: 'Lo cobrado hasta ahora (CA-15.01).' }),
   fuente: z.enum(['banco', 'plataforma']).meta({
@@ -231,7 +239,7 @@ export const Tablero = z.strictObject({
   cobrosPagados: z.number().int(),
   porCanal: z.strictObject({ cuenta: PorCanal, retiro: PorCanal, compra: PorCanal }).meta({ description: 'Desglose de los cobros Pagados por canal (CA-15.01).' }),
   reembolsoSegundos: z.number().nullable().meta({ description: 'Promedio de segundos del PIN a Pagado en los retiros; null sin retiros pagados (CA-15.03).' }),
-  giradoPorAdelantado: z.literal(0).meta({ description: 'El modelo no gira nada antes del cobro: siempre $0 (CA-15.03).' }),
+  giradoPorAdelantado: Monto.meta({ description: 'El modelo no gira nada antes del cobro: siempre $0 (CA-15.03).' }),
   sinCobrar: z.strictObject({ cedulas: z.number().int(), monto: Monto }).nullable().meta({ description: 'Cédulas de la liquidación que no han cobrado; null si la liquidación no responde.' }),
   cobrosPagando: z.number().int(),
   rechazadosYFallidos: z.number().int(),
@@ -261,6 +269,7 @@ export const Estado = z.strictObject({
 /** Modelos que van a `components.schemas`, por nombre. */
 export const MODELOS = {
   Moneda,
+  MonedaCodigo,
   Monto,
   Error: ErrorApi,
   Entidad,

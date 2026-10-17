@@ -3,6 +3,7 @@
 // primero lo que necesitan (una consulta por tabla, en paralelo) y arman cada vista sin ir a la base.
 import { billeteraCorta } from '../comun/billeteras.ts'
 import { etiquetaDe } from '../comun/etiqueta.ts'
+import { enmascararDocumento } from '../comun/log.ts'
 import { monedaApi, montoOpcional, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaBeneficiario } from '../db/repositorios/beneficiarios.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
@@ -32,7 +33,7 @@ export interface VistaCobro {
   canal: Canal
   punto: { id: string; nombre: string; billeteraCorta: string } | null
   cuenta: { billetera: string; billeteraCorta: string } | null
-  persona: { nombre: string; etiqueta: string; novedad: boolean }
+  persona: { nombre: string; cedula: string; etiqueta: string; novedad: boolean }
   monto: Monto | null
   totalCompra: Monto | null
   moneda: MonedaApi
@@ -137,11 +138,12 @@ export class VistasCobro {
       cuenta: cuenta ? { billetera: cuenta.billetera, billeteraCorta: billeteraCorta(cuenta.billetera) } : null,
       persona: {
         nombre: ctx.personas.get(persona.numeroDocumento)?.nombre ?? `Persona ${persona.numeroDocumento.slice(-4)}`,
+        cedula: enmascararDocumento(persona.numeroDocumento),
         etiqueta: etiquetaDe(persona),
         novedad: esNovedad(eventos),
       },
-      monto: montoOpcional(c.monto),
-      totalCompra: montoOpcional(c.totalCompra),
+      monto: montoOpcional(c.monto, moneda),
+      totalCompra: montoOpcional(c.totalCompra, moneda),
       moneda: monedaApi(moneda),
       estado: c.estado,
       motivo: motivoDesdeBd(c.motivoRechazo),

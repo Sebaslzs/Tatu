@@ -38,7 +38,7 @@ describe('CA-02.01 · resumen del programa en Borrador', () => {
   it('muestra 3 cédulas y $690.000 en la moneda del programa', async () => {
     const { status, cuerpo } = await e.pedir('GET', `/programas/${programaId}/liquidacion`)
     expect(status).toBe(200)
-    expect(cuerpo).toEqual({ cedulas: 3, total: '69000000', moneda: { codigo: 'COP', escala: 2 } })
+    expect(cuerpo).toEqual({ cedulas: 3, total: { valor: '69000000', assetCode: 'COP', assetScale: 2 }, moneda: { codigo: 'COP', escala: 2 } })
   })
 
   it('un programa inexistente es 404', async () => {
@@ -146,7 +146,7 @@ describe('CA-02.07 · novedad retroactiva', () => {
   it('el resumen del programa tampoco cambia con la novedad: el tope fijado sigue siendo $690.000', async () => {
     e.simulador.cargarNovedad({ documento: '1000000004', nombre: 'Retroactivo', monto: 46_000_000 })
     const { cuerpo } = await e.pedir('GET', `/programas/${programaId}/liquidacion`)
-    expect(cuerpo).toEqual({ cedulas: 3, total: '69000000', moneda: { codigo: 'COP', escala: 2 } })
+    expect(cuerpo).toEqual({ cedulas: 3, total: { valor: '69000000', assetCode: 'COP', assetScale: 2 }, moneda: { codigo: 'COP', escala: 2 } })
   })
 
   it.todo('la plataforma no frena por el tope: el banco responde InsufficientGrant y el cobro queda Fallido (HU-12)')

@@ -1,6 +1,7 @@
 // /puntos · HU-03 (registro) y HU-10 (lo que el punto consulta).
 import { Router } from 'express'
 import { z } from 'zod'
+import { conAliasCedula } from '../comun/alias.ts'
 import { validar } from '../comun/errores.ts'
 import { idDe } from '../comun/parametros.ts'
 import { documento } from '../liquidacion/contrato.ts'
@@ -23,7 +24,7 @@ export function rutasPuntos(servicio: ServicioPuntos, consultas: ConsultasPunto)
 
   // CA-10.01: el punto digita la cédula y ve qué subsidios puede pagarle hoy
   r.get('/:id/pagos', async (req, res) => {
-    const { documento: c } = validar(z.object({ documento }), req.query)
+    const { documento: c } = validar(z.object({ documento }), conAliasCedula(req.query))
     res.json(await consultas.pagosDe(idDe(req), c))
   })
 

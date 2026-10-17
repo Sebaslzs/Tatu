@@ -1,5 +1,4 @@
 // Lo que la API muestra de un programa. Tokens, URLs de gestión y nonces nunca salen (RNF-01).
-import { diaEnBogota } from '../comun/fechas.ts'
 import { monedaApi, montoOpcional, type Moneda, type MonedaApi, type Monto } from '../comun/montos.ts'
 import type { FilaPrograma } from '../db/repositorios/programas.ts'
 import type { Destino, EstadoPrograma, TipoPrograma } from './estados.ts'
@@ -40,11 +39,11 @@ export function vistaPrograma(p: FilaPrograma, categorias: string[]): VistaProgr
     categorias,
     billetera: p.billeteraPrograma,
     moneda: monedaApi(moneda),
-    vigenciaInicio: diaEnBogota(p.vigenciaInicio),
-    vigenciaFin: diaEnBogota(p.vigenciaFin),
+    vigenciaInicio: new Date(p.vigenciaInicio).toISOString(),
+    vigenciaFin: new Date(p.vigenciaFin).toISOString(),
     estado: p.estado,
-    montoPorPersona: montoOpcional(p.montoPorPersona),
-    tope: montoOpcional(p.topeTotal),
+    montoPorPersona: montoOpcional(p.montoPorPersona, moneda),
+    tope: montoOpcional(p.topeTotal, moneda),
     permisoActivo: permisoActivo(p),
     permisoVencido: permisoVencido(p),
   }

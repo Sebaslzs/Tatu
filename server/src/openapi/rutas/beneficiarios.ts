@@ -4,10 +4,11 @@ import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json }
 
 const BENEFICIARIO_EJEMPLO = {
   documento: '1000000010',
+  cedula: '1000000010',
   nombre: 'Rosa Díaz',
   billetera: 'https://ilp.interledger-test.dev/prueba-rosa',
   billeteraCorta: '…/prueba-rosa',
-  moneda: { codigo: 'COP', escala: 2 },
+  moneda: { assetCode: 'COP', assetScale: 2 },
   estadoCuenta: 'Verificada',
   tienePin: true,
   registrado: '2026-10-16 15:00:00+00',

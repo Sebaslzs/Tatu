@@ -37,7 +37,7 @@ describe('CA-10.01 · el punto consulta', () => {
       pagos: [
         {
           programa: { id: s.programaId, nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
-          monto: '23000000',
+          monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
           moneda: { codigo: 'COP', escala: 2 },
           vigenciaFin: '2026-12-31',
         },
@@ -75,7 +75,7 @@ describe('CA-10.02 · la solicitud', () => {
     expect(cuerpo).toMatchObject({
       estado: 'PorConfirmar',
       canal: 'retiro',
-      monto: '23000000',
+      monto: { valor: '23000000' },
       programa: { id: s.programaId },
       punto: { id: s.puntoId, nombre: 'Tienda Marta' },
       persona: { nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', novedad: false },
@@ -107,7 +107,7 @@ describe('CA-10.02 · la solicitud', () => {
   })
 
   it('totalCompra solo va en el canal compra', async () => {
-    expect((await retiro(JORGE.documento, { totalCompra: '8000000' })).status).toBe(400)
+    expect((await retiro(JORGE.documento, { totalCompra: 8000000 })).status).toBe(400)
   })
 
   it('una sede de comercio no hace retiros: 400 PuntoNoAtiendeCanal', async () => {
@@ -123,7 +123,7 @@ describe('CA-10.03 · el monto no viene del navegador (RN-11)', () => {
   it('un monto en el cuerpo se rechaza, y el cobro usa el valor de la liquidación', async () => {
     expect((await retiro(JORGE.documento, { monto: '1' })).status).toBe(400)
     const { cuerpo } = await retiro(JORGE.documento)
-    expect(cuerpo.monto).toBe('23000000')
+    expect(cuerpo.monto.valor).toBe('23000000')
     expect((await cobro(cuerpo.id)).monto).toBe(23_000_000)
   })
 })
@@ -452,8 +452,8 @@ describe('canal compra (bono)', () => {
     expect(cuerpo).toMatchObject({
       estado: 'PorConfirmar',
       canal: 'compra',
-      monto: '8000000',
-      totalCompra: '8000000',
+      monto: { valor: '8000000' },
+      totalCompra: { valor: '8000000' },
       programa: { id: bonoId, nombre: 'Bono escolar' },
       punto: { id: sedeId, nombre: 'Sede escolar' },
     })

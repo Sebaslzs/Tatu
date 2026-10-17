@@ -16,7 +16,7 @@ export interface PuntoDeRetiro {
 }
 
 export interface ResumenBeneficiario {
-  persona: { nombre: string; documento: string; tienePin: boolean }
+  persona: { nombre: string; documento: string; cedula: string; tienePin: boolean }
   /** CA-08.01: todos los subsidios y bonos pendientes, cada uno con su monto y su moneda. */
   pagos: PagoPendiente[]
   /** El primero, para quien solo mira un pago. */
@@ -59,6 +59,7 @@ export class ConsultaResumenBeneficiario {
       persona: {
         nombre: personas.get(documento)?.nombre ?? `Persona ${documento.slice(-4)}`,
         documento: persona.numeroDocumento,
+        cedula: persona.numeroDocumento,
         tienePin: personas.get(documento)?.tienePin ?? false,
       },
       pagos,

@@ -32,6 +32,8 @@ export interface DependenciasBeneficiarios {
 
 export interface VistaBeneficiario {
   documento: string
+  /** Lo que la web ya conectada lee; igual a `documento`. */
+  cedula: string
   nombre: string
   billetera: string | null
   billeteraCorta: string | null
@@ -167,6 +169,7 @@ export class ServicioBeneficiarios {
   private vista(persona: FilaBeneficiario, cuenta: FilaCuenta | undefined, personas: Map<string, Persona>, moneda: Moneda | null): VistaBeneficiario {
     return {
       documento: persona.numeroDocumento,
+      cedula: persona.numeroDocumento,
       nombre: nombreDe(persona.numeroDocumento, personas),
       billetera: cuenta?.billetera ?? null,
       billeteraCorta: cuenta ? billeteraCorta(cuenta.billetera) : null,
