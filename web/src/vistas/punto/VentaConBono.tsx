@@ -14,6 +14,7 @@ import { plural } from '@/lib/textos'
 import { useEnComputador } from '@/lib/useEnComputador'
 import { cifrasCaja, irAlCobro, useHoy, usePunto } from './datos'
 import { AvisoArena, Boton, CuadroVolver, PantallaPuntoEscritorio, VolverEscritorio } from './piezas'
+import { BotonTema } from '@/componentes/BotonTema'
 
 /** Lo que cubre el bono y lo que paga el cliente: el bono paga min(bono, total). */
 function reparto(p: PagoPendiente, total: string) {
@@ -106,7 +107,7 @@ export function VentaConBono() {
   }
 
   const unidades = aUnidades(total, 2)
-  const campo = 'box-border h-16 w-full rounded-[14px] border-2 border-noche bg-papel px-4 font-sans text-[28px] font-bold tracking-[0.04em] text-noche placeholder:font-normal placeholder:tracking-normal placeholder:text-tinta-suave'
+  const campo = 'box-border h-16 w-full rounded-[14px] border-2 border-foreground bg-papel px-4 font-sans text-[28px] font-bold tracking-[0.04em] text-foreground placeholder:font-normal placeholder:tracking-normal placeholder:text-tinta-suave'
 
   const formulario = (
     <div className="flex min-w-0 flex-col gap-[18px]">
@@ -163,7 +164,7 @@ export function VentaConBono() {
       </form>
 
       {opciones && unidades && (
-        <section aria-labelledby="titulo-bonos" className="flex flex-col gap-3 rounded-[18px] border-2 border-noche bg-papel p-5">
+        <section aria-labelledby="titulo-bonos" className="flex flex-col gap-3 rounded-[18px] border-2 border-foreground bg-papel p-5">
           <h2 id="titulo-bonos" className="m-0 text-xl font-bold">
             {opciones.persona.nombre} tiene {opciones.pagos.length === 1 ? 'un bono que sirve aquí' : `${opciones.pagos.length} bonos que sirven aquí`}
           </h2>
@@ -176,7 +177,7 @@ export function VentaConBono() {
                     type="button"
                     disabled={enviando}
                     onClick={() => void pedir(unidades, p.programa.id)}
-                    className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-[1.5px] border-linea bg-arena px-4 py-3 text-left font-sans text-noche hover:border-noche disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-[1.5px] border-linea bg-background px-4 py-3 text-left font-sans text-foreground hover:border-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <ShoppingBag aria-hidden className="size-6 shrink-0" />
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -227,6 +228,7 @@ export function VentaConBono() {
       <div className="flex items-center gap-2.5">
         <CuadroVolver a="/" etiqueta="Volver a elegir rol" />
         <Marca />
+        <BotonTema className="ml-auto" />
       </div>
       <div className="-mt-1.5 text-[15px] text-tinta-suave">{punto.nombre} · Comercio</div>
       <h1 className="m-0 text-2xl font-extrabold">Venta con bono</h1>
