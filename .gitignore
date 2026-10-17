@@ -29,3 +29,6 @@ coverage/
 
 # Prototipo HTML del equipo: material de trabajo local, no se sube
 tatu-prototipo-2.html
+
+# Runtime de MediaPipe: lo copia web/scripts/copiar-mediapipe.mjs desde node_modules
+web/public/mediapipe/wasm/

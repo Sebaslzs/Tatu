@@ -148,15 +148,13 @@ describe('CA-10.04 · el punto no elige programa', () => {
   })
 })
 
-describe('CA-10.05 · sin PIN no hay retiro', () => {
-  it('responde 422 SinPin y no deja cobro', async () => {
+describe('CA-10.05 · el retiro se confirma con biometría, sin PIN registrado', () => {
+  it('una persona sin PIN pide el retiro y queda PorConfirmar (se verifica con rostro o huella)', async () => {
     e.simulador.inscribir('1000000009', 'Rosa Díaz')
     await e.repos.beneficiarios.crear('1000000009')
-    const antes = await e.contar('cobro')
     const { status, cuerpo } = await retiro('1000000009')
-    expect(status).toBe(422)
-    expect(cuerpo.error).toEqual({ codigo: 'SinPin', mensaje: 'Esta persona no registró un PIN: solo puede cobrar a su cuenta' })
-    expect(await e.contar('cobro')).toBe(antes)
+    expect(status).toBe(201)
+    expect(cuerpo.estado).toBe('PorConfirmar')
   })
 
   it('quien no tiene PIN sí puede cobrar a su cuenta', async () => {

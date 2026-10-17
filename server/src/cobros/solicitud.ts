@@ -102,10 +102,7 @@ export class SolicitudCobro {
       })
       throw new ErrorApi(404, 'SinPagoDisponible', MOTIVOS.SinPagoDisponible.mensaje)
     }
-    // CA-10.05: sin PIN no hay cómo confirmar en el punto. Se le pregunta a la liquidación si existe, nunca cuál es.
-    if (e.canal === 'retiro' && !(await this.deps.liquidacion.personas([e.documento])).get(e.documento)?.tienePin) {
-      throw new ErrorApi(422, 'SinPin', 'Esta persona no registró un PIN: solo puede cobrar a su cuenta')
-    }
+    // El retiro en un punto se confirma con rostro o huella: ya no exige un PIN registrado
 
     const { motivo, cuenta, pago: pagoFinal } = await this.evaluar(e, programa, persona, punto, pago)
     const monto =

@@ -14,7 +14,7 @@ export function rutasCobros(servicio: ServicioCobros): Router {
   })
 
   r.post('/:id/confirmar', async (req, res) => {
-    const { status, cobro } = await servicio.confirmar(idDe(req), validar(Confirmacion, req.body).pin)
+    const { status, cobro } = await servicio.confirmar(idDe(req), validar(Confirmacion, req.body))
     res.status(status).json(cobro)
   })
 

@@ -20,4 +20,17 @@ export const EntradaCobro = z.strictObject({
 })
 export type EntradaCobro = z.output<typeof EntradaCobro>
 
-export const Confirmacion = z.strictObject({ pin })
+export const METODOS_BIOMETRICOS = ['rostro', 'huella'] as const
+export type MetodoBiometrico = (typeof METODOS_BIOMETRICOS)[number]
+
+/**
+ * Cómo confirma la persona: con su PIN (compra con bono) o con una verificación biométrica en el
+ * punto de retiro. La biometría de la demo es simulada: el navegador verifica y la API registra el método.
+ */
+export const Confirmacion = z.union([
+  z.strictObject({ pin }),
+  z.strictObject({
+    metodo: z.enum(METODOS_BIOMETRICOS).meta({ description: 'Verificación biométrica hecha en el punto: `rostro` o `huella`. No se envía foto ni huella.' }),
+  }),
+])
+export type Confirmacion = z.output<typeof Confirmacion>

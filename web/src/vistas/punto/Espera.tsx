@@ -33,7 +33,7 @@ export function EsperaPagando({ cobroId, desde, children }: { cobroId: string; d
       <div className="mt-1.5 flex flex-col gap-4 rounded-[22px] bg-noche px-5 py-[22px] text-arena">
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <Check aria-hidden className="size-5 text-ambar" strokeWidth={2.5} />
-          PIN confirmado
+          Identidad confirmada
         </span>
         <p className="cifra m-0 text-[36px]">Pagando…</p>
         <p className="m-0 text-[17px] leading-[1.4]">{children}</p>

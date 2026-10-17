@@ -1,4 +1,4 @@
-// Cobros · HU-10 (solicitar) y HU-11 (confirmar con PIN, cancelar, consultar).
+// Cobros · HU-10 (solicitar) y HU-11 (confirmar con biometría o PIN, cancelar, consultar).
 import { EntradaCobro, Confirmacion } from '../../cobros/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, parametroUuid, type Json } from '../ayudas.ts'
 
@@ -37,13 +37,13 @@ export function rutasCobros(): Json {
         operationId: 'solicitarCobro',
         summary: 'Solicitar un cobro (HU-10)',
         description: [
-          'Crea el cobro y decide su destino: `canal=cuenta` se paga de inmediato (sin PIN); `canal=retiro` queda `PorConfirmar` esperando el PIN de la persona en el punto.',
+          'Crea el cobro y decide su destino: `canal=cuenta` se paga de inmediato (sin PIN ni biometría); `canal=retiro` queda `PorConfirmar` esperando que la persona se verifique en el punto con rostro o huella.',
           '',
           '- **CA-10.02** con `canal=retiro`, la cédula, el punto y una llave de idempotencia, el cobro queda `PorConfirmar` y se aplican las reglas RN-01 a RN-06.',
           '- **CA-10.04** si no viene `programaId`, se toma el programa activo que tenga un pago disponible para esa cédula; el punto no elige programa.',
           '- **CA-10.07** repetir la misma `llaveIdempotencia` devuelve el mismo cobro: un doble clic no duplica el pago.',
           '- **RN-11** el monto nunca viene del navegador: lo calcula el backend. `totalCompra` va solo en `canal=compra` (bono).',
-          '- **CA-10.05** una persona sin PIN no puede cobrar en un punto: `422 SinPin`.',
+          '- En el punto la persona se verifica con rostro o huella: el retiro ya no exige un PIN registrado.',
         ].join('\n'),
         requestBody: {
           required: true,
@@ -71,7 +71,6 @@ export function rutasCobros(): Json {
             'SinProgramas',
             'No hay programas recibiendo cobros',
           ),
-          422: falla('422 · La persona no registró un PIN (`SinPin`): solo puede cobrar a su cuenta.', 'SinPin', 'Esta persona no registró un PIN: solo puede cobrar a su cuenta'),
           503: falla('503 · La liquidación no respondió (`LiquidacionNoResponde`) o la billetera de la cuenta no respondió (`SinRespuesta`).', 'LiquidacionNoResponde', 'No pudimos consultar tu pago; intenta en un momento'),
         },
       },
@@ -92,16 +91,16 @@ export function rutasCobros(): Json {
       post: {
         tags: ['Cobros'],
         operationId: 'confirmarCobro',
-        summary: 'Confirmar con PIN (HU-11)',
+        summary: 'Confirmar con biometría o PIN (HU-11)',
         description: [
-          'La persona digita su PIN en el dispositivo del punto. La plataforma no guarda el PIN ni su huella: lo valida el simulador de la liquidación (CA-11.06).',
+          'En un punto de retiro la persona se verifica con **rostro o huella** y se envía `{ "metodo": "rostro" | "huella" }`: no se valida PIN ni se cuentan intentos, y el evento guarda solo el método (nunca una foto ni una huella). En una compra con bono se envía `{ "pin" }`: el PIN lo valida el simulador de la liquidación y la plataforma no lo guarda (CA-11.06). Enviar los dos campos, o ninguno, es `400`.',
           '',
           '- **CA-11.01** con el PIN correcto el cobro pasa a `Pagando` y responde `202`; el pago sigue en segundo plano.',
           '- **CA-11.02** con un PIN incorrecto responde `422 PinIncorrecto` con `intentosRestantes`.',
           '- **CA-11.03** al tercer PIN incorrecto el cobro pasa a `Rechazado` y la cédula queda bloqueada en este programa por `PIN_BLOQUEO_MIN` (15 min).',
           '- Un cobro que ya no espera PIN (`Pagado`, `Pagando`, `Rechazado`, `Fallido`) responde `200` sin cambiar; los estados `Solicitado` u otros responden `409 EstadoNoPermite`.',
         ].join('\n'),
-        requestBody: { required: true, content: contenidoJson(confirmacion, { pin: '3333' }) },
+        requestBody: { required: true, content: contenidoJson(confirmacion, { metodo: 'huella' }) },
         responses: {
           202: cobro('El PIN es correcto: el cobro pasa a `Pagando` y el pago se dispara en segundo plano.', { ...COBRO_EJEMPLO, estado: 'Pagando' }),
           200: cobro('No había nada que hacer: el cobro ya no espera PIN (p. ej. ya está `Pagado` o se rechazó al agotar los intentos).'),
