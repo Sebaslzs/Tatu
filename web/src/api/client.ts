@@ -24,6 +24,23 @@ export async function api<T>(ruta: string, init?: RequestInit): Promise<T> {
   return cuerpo as T
 }
 
+/** Código de error de la API (`{ error: { codigo, mensaje } }`), o null si no vino. */
+export function codigoDeError(e: unknown): string | null {
+  if (!(e instanceof ErrorApi)) return null
+  const error = (e.cuerpo as { error?: { codigo?: unknown } } | null)?.error
+  return typeof error?.codigo === 'string' ? error.codigo : null
+}
+
+/** Mensaje para la persona: el de la API si lo trae; si no, uno genérico de conexión. */
+export function mensajeDeError(e: unknown): string {
+  if (e instanceof ErrorApi) {
+    const error = (e.cuerpo as { error?: { mensaje?: unknown } } | null)?.error
+    if (typeof error?.mensaje === 'string') return error.mensaje
+    if (e.estado >= 500) return 'Algo falló de nuestro lado. Intenta en un momento.'
+  }
+  return 'No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.'
+}
+
 export interface ConfigPublica {
   pollIntervaloMs: number
   extras: Record<'bono' | 'qr' | 'pdf417' | 'contrato' | 'deploy', boolean>
@@ -31,3 +48,14 @@ export interface ConfigPublica {
 
 /** Banderas EXTRA_* y cadencia de consulta del estado (AD-16, RNF-10). */
 export const obtenerConfig = () => api<ConfigPublica>('/config')
+
+export interface PuntoRegistrado {
+  id: string
+  nombre: string
+  direccion: string
+  billetera: string
+  tipo: 'retiro' | 'compra'
+}
+
+/** Puntos registrados por el equipo (HU-03). El punto elige el suyo para entrar. */
+export const listarPuntos = () => api<PuntoRegistrado[]>('/puntos')

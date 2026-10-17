@@ -91,11 +91,18 @@ describe('POST /beneficiarios', () => {
 })
 
 describe('GET /beneficiarios y PIN', () => {
+  it('sin personas el listado y el demo están vacíos', async () => {
+    expect((await e.pedir('GET', '/beneficiarios')).cuerpo).toEqual([])
+    expect((await e.pedir('GET', '/beneficiarios/demo')).cuerpo).toEqual([])
+  })
+
   it('lista a las personas registradas con su cuenta y su moneda', async () => {
     await registrar()
     const { cuerpo } = await e.pedir('GET', '/beneficiarios')
     expect(cuerpo).toHaveLength(1)
     expect(cuerpo[0]).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', estadoCuenta: 'Verificada', moneda: { codigo: 'COP', escala: 2 }, billeteraCorta: '…/prueba-rosa' })
+    const demo = (await e.pedir('GET', '/beneficiarios/demo')).cuerpo
+    expect(demo).toEqual([{ nombre: 'Rosa Díaz', etiqueta: 'C.C. de prueba 10', documento: CEDULA }])
   })
 
   it('si la liquidación no responde, la lista sigue con «Persona 0010»', async () => {

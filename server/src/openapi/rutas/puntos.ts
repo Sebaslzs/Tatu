@@ -1,60 +1,10 @@
-// Puntos de retiro · HU-03.
+// Puntos de retiro · HU-03 y consultas de caja · HU-10.
 import { EntradaPunto } from '../../puntos/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, parametroUuid, ref, type Json } from '../ayudas.ts'
 import { PUNTO_EJEMPLO } from '../compartido.ts'
 
-const PAGO_EN_PUNTO = {
-  programa: { id: '22222222-2222-4222-8222-222222222222', nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
-  monto: '23000000',
-  moneda: { codigo: 'COP', escala: 2 },
-  vigenciaFin: '2026-12-31',
-}
-
 export function rutasPuntos(): Json {
   return {
-    '/puntos/{id}/pagos': {
-      parameters: [parametroUuid('id', 'Identificador del punto.')],
-      get: {
-        tags: ['Puntos'],
-        operationId: 'pagosDelPunto',
-        summary: 'Qué puede pagar este punto hoy a esa cédula (HU-10)',
-        description:
-          'Subsidios en un punto de retiro; bonos aceptados en una sede. Solo los programas que hoy reciben cobros y con permiso vigente. Una cédula sin pagos y una que no existe responden igual (`404 SinPagoDisponible`): no se revela si existe.',
-        parameters: [
-          {
-            name: 'documento',
-            in: 'query',
-            required: true,
-            description: 'Cédula de la persona.',
-            schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' },
-            example: '1000000003',
-          },
-        ],
-        responses: {
-          200: ok('La persona y sus pagos.', ref('PagosPunto'), {
-            persona: { nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', tienePin: true },
-            pagos: [PAGO_EN_PUNTO],
-          }),
-          400: entradaInvalida,
-          404: falla('404 · El punto no existe, o la cédula no tiene pagos (`SinPagoDisponible`).', 'SinPagoDisponible', 'Esta cédula no tiene pagos disponibles'),
-          503: falla('503 · La liquidación no responde.', 'LiquidacionNoResponde', 'No pudimos consultar tu pago; intenta en un momento'),
-        },
-      },
-    },
-    '/puntos/{id}/cobros': {
-      parameters: [parametroUuid('id', 'Identificador del punto.')],
-      get: {
-        tags: ['Puntos'],
-        operationId: 'cobrosDelPunto',
-        summary: 'Historial del punto',
-        description: 'Los cobros del punto, del más reciente al más antiguo, sin línea de tiempo.',
-        parameters: [{ name: 'desde', in: 'query', required: false, description: 'Periodo; por defecto, hoy.', schema: { type: 'string', enum: ['hoy', '7d', 'todo'] } }],
-        responses: {
-          200: ok('Los cobros del periodo.', { type: 'array', items: ref('Cobro') }, []),
-          404: falla('404 · Ese punto no existe.', 'NoEncontrado', 'No encontramos ese punto'),
-        },
-      },
-    },
     '/puntos': {
       get: {
         tags: ['Puntos'],
@@ -88,6 +38,54 @@ export function rutasPuntos(): Json {
           404: falla('404 · La billetera no resuelve (`BilleteraNoEncontrada`) o el programa no existe.', 'BilleteraNoEncontrada', 'No encontramos esa billetera del punto'),
           409: falla('409 · `PuntoExiste` (billetera repetida) o `MonedaDistinta` (distinta a la del programa).', 'PuntoExiste', 'Esa billetera ya es del punto «Droguería El Centro»'),
           503: falla('503 · El servidor de la billetera no respondió.', 'BilleteraSinRespuesta', 'No pudimos consultar esa billetera; intenta en un momento'),
+        },
+      },
+    },
+    '/puntos/{id}/pagos': {
+      parameters: [
+        parametroUuid('id', 'Identificador del punto.'),
+        {
+          name: 'documento',
+          in: 'query',
+          required: true,
+          description: 'Cédula digitada en caja.',
+          schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' },
+          example: '1000000003',
+        },
+      ],
+      get: {
+        tags: ['Puntos'],
+        operationId: 'pagosDelPunto',
+        summary: 'Subsidios que este punto puede pagarle hoy a una cédula (CA-10.01)',
+        description:
+          'El punto digita la cédula y ve «Pago disponible». Una cédula inexistente responde igual que una sin pagos: `404 SinPagoDisponible`. No se filtra si la persona existía.',
+        responses: {
+          200: ok('Persona y pagos que este punto puede entregar.', ref('PagosPunto')),
+          400: entradaInvalida,
+          404: falla('404 · El punto no existe (`PuntoNoEncontrado`) o la cédula no tiene pago (`SinPagoDisponible`).', 'SinPagoDisponible', 'Esta cédula no tiene pagos disponibles'),
+        },
+      },
+    },
+    '/puntos/{id}/cobros': {
+      parameters: [
+        parametroUuid('id', 'Identificador del punto.'),
+        {
+          name: 'desde',
+          in: 'query',
+          required: false,
+          description: 'Periodo de la caja. Por defecto `hoy`. Un valor desconocido se trata como `hoy`.',
+          schema: { type: 'string', enum: ['hoy', '7d', 'todo'] },
+          example: 'hoy',
+        },
+      ],
+      get: {
+        tags: ['Puntos'],
+        operationId: 'cobrosDelPunto',
+        summary: 'Historial de cobros del punto',
+        description: 'Del más reciente al más antiguo. Sin línea de tiempo (`eventos`). `hoy` es el día en hora de Bogotá; `7d` cubre 7 días; `todo` no filtra.',
+        responses: {
+          200: ok('Cobros del periodo.', { type: 'array', items: ref('Cobro') }, []),
+          404: falla('404 · El punto no existe.', 'PuntoNoEncontrado', 'Ese punto no existe'),
         },
       },
     },

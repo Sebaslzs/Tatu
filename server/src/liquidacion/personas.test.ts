@@ -89,4 +89,9 @@ describe('inscribir y cambiar el PIN', () => {
   it('consultar más de 500 cédulas o una inválida es 400', async () => {
     expect((await e.pedir('GET', '/liquidacion/personas?documentos=ab%24')).status).toBe(400)
   })
+
+  it('sin query de cédulas responde lista vacía', async () => {
+    const { status, cuerpo } = await e.pedir('GET', '/liquidacion/personas')
+    expect({ status, cuerpo }).toEqual({ status: 200, cuerpo: [] })
+  })
 })

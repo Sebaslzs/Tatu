@@ -73,7 +73,12 @@ export class PermisosFalsos implements PuertoPermisos, PuertoVerificacionCuenta 
   }
 
   reiniciar(): void {
-    Object.assign(this, new PermisosFalsos())
+    const limpio = new PermisosFalsos()
+    // Borra también los métodos que un test haya sobrescrito (no son props del objeto limpio)
+    for (const clave of Object.keys(this)) {
+      if (!Object.prototype.hasOwnProperty.call(limpio, clave)) delete (this as unknown as Record<string, unknown>)[clave]
+    }
+    Object.assign(this, limpio)
   }
 
   private pendiente(): PermisoPendiente {

@@ -24,6 +24,10 @@ describe('GET /billeteras/resolver', () => {
     e.billeteras.caida = true
     expect((await e.pedir('GET', '/billeteras/resolver?direccion=%24ilp.interledger-test.dev%2Fx')).status).toBe(503)
   })
+
+  it('una dirección de menos de 3 caracteres es 400', async () => {
+    expect((await e.pedir('GET', '/billeteras/resolver?direccion=ab')).status).toBe(400)
+  })
 })
 
 describe('GET /beneficiarios/demo', () => {

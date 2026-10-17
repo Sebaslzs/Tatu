@@ -24,6 +24,8 @@ export interface ResumenBeneficiario {
   liquidacionDisponible: boolean
   /** La cuenta: «A mi cuenta» se ofrece solo si está Verificada. */
   cuenta: VistaCuenta | null
+  /** «En un punto»: dónde puede retirar. */
+  puntos: PuntoDeRetiro[]
   /** CA-08.02: cuándo, dónde y la referencia del último cobro. */
   ultimoCobro: VistaCobro | null
   historial: VistaCobro[]
@@ -44,11 +46,12 @@ export class ConsultaResumenBeneficiario {
     const { repos } = this.uow
     const persona = await repos.beneficiarios.porCedula(documento)
     if (!persona) throw noEncontrado('Esa cédula no está registrada', 'PersonaNoEncontrada')
-    const [propios, pendientes, cuenta, personas] = await Promise.all([
+    const [propios, pendientes, cuenta, personas, puntos] = await Promise.all([
       repos.cobros.deBeneficiario(persona.id),
       this.pagosPendientes.de(persona),
       repos.cuentas.ultimaDe(persona.id),
       this.vistas.personas([documento]),
+      repos.puntos.listar(),
     ])
     const historial = await this.vistas.de(propios, { eventos: false })
     const { pagos, liquidacionDisponible } = pendientes
@@ -62,6 +65,9 @@ export class ConsultaResumenBeneficiario {
       pago: pagos[0] ?? null,
       liquidacionDisponible,
       cuenta: cuenta ? vistaCuenta(cuenta, persona.numeroDocumento) : null,
+      puntos: puntos
+        .filter((p) => p.tipo === 'retiro')
+        .map((p) => ({ id: p.id, nombre: p.nombre, direccion: p.direccion, billeteraCorta: billeteraCorta(p.billetera) })),
       ultimoCobro: historial.find((c) => c.estado === 'Pagado' || c.estado === 'Pagando') ?? null,
       historial,
     }

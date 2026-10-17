@@ -300,6 +300,10 @@ describe('CA-01.08 · listado', () => {
     expect(leido.cuerpo.estado).toBe('Borrador')
   })
 
+  it('un programa inexistente al leerlo es 404', async () => {
+    expect((await e.pedir('GET', '/programas/00000000-0000-4000-8000-000000000000')).status).toBe(404)
+  })
+
   it('refleja el permiso activo y el vencido, sin exponer tokens ni URL de gestión', async () => {
     const { cuerpo } = await crear()
     const activo = { estado: 'Activo' as const, topeTotal: 69_000_000, tokenAcceso: 'token-secreto', urlGestion: 'https://auth.example/manage/1' }

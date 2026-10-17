@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { COP } from '../pruebas/billeterasFalsas.ts'
 import { crearEntorno, type Entorno } from '../pruebas/entorno.ts'
 import { ANA, BILLETERA_ANA, escenarioDeCobro, JORGE, llaveNueva, type Escenario } from '../pruebas/escenario.ts'
-import { Billetera, Cobro, Estado, PagosPunto, PersonaDemo, ResumenBeneficiario } from './modelosCobro.ts'
+import { BilleteraResuelta, Cobro, Estado, PagosPunto, PersonaDemo, ResumenBeneficiario } from './modelos.ts'
 
 let e: Entorno
 let s: Escenario
@@ -74,11 +74,11 @@ describe('contrato del beneficiario', () => {
     expect(cuerpo[0]).not.toHaveProperty('eventos')
   })
 
-  it('GET /billeteras/resolver cumple Billetera', async () => {
+  it('GET /billeteras/resolver cumple BilleteraResuelta', async () => {
     e.billeteras.registrar('https://ilp.interledger-test.dev/prueba-nueva', COP)
     const { status, cuerpo } = await e.pedir('GET', `/billeteras/resolver?direccion=${encodeURIComponent('$ilp.interledger-test.dev/prueba-nueva')}`)
     expect(status).toBe(200)
-    Billetera.parse(cuerpo)
+    BilleteraResuelta.parse(cuerpo)
   })
 
   it('GET /estado cumple Estado y nunca muestra la contraseña ni la llave privada', async () => {

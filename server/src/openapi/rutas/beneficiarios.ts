@@ -2,13 +2,6 @@
 import { EntradaPersona, EntradaPin } from '../../beneficiarios/esquemas.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json } from '../ayudas.ts'
 
-const PAGO_EJEMPLO = {
-  programa: { id: '22222222-2222-4222-8222-222222222222', nombre: 'Subsidio de transporte', estado: 'Activo', tipo: 'subsidio' },
-  monto: '23000000',
-  moneda: { codigo: 'COP', escala: 2 },
-  vigenciaFin: '2026-12-31',
-}
-
 const BENEFICIARIO_EJEMPLO = {
   documento: '1000000010',
   nombre: 'Rosa Díaz',
@@ -22,38 +15,6 @@ const BENEFICIARIO_EJEMPLO = {
 
 export function rutasBeneficiarios(): Json {
   return {
-    '/beneficiarios/demo': {
-      get: {
-        tags: ['Beneficiarios'],
-        operationId: 'beneficiariosDemo',
-        summary: 'Personas para el selector de la entrada',
-        description: 'Nombre, etiqueta («C.C. de prueba 3») y cédula de cada persona registrada, para elegir con quién entrar. No devuelve billetera, PIN ni estado de la cuenta.',
-        responses: { 200: ok('Las personas registradas.', { type: 'array', items: ref('PersonaDemo') }, [{ nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', documento: '1000000003' }]) },
-      },
-    },
-    '/beneficiarios/{documento}/resumen': {
-      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula, sin puntos ni espacios.', schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' }, example: '1000000003' }],
-      get: {
-        tags: ['Beneficiarios'],
-        operationId: 'resumenBeneficiario',
-        summary: 'Lo que ve la persona (HU-08)',
-        description:
-          'Todos sus subsidios y bonos por cobrar, su cuenta, su último cobro y su historial (CA-08.01 a CA-08.04). Si la liquidación no responde, `liquidacionDisponible` es `false`: «sin pagos» no sería la verdad.',
-        responses: {
-          200: ok('El resumen.', ref('ResumenBeneficiario'), {
-            persona: { nombre: 'Jorge Ruiz', documento: '1000000003', tienePin: true },
-            pagos: [PAGO_EJEMPLO],
-            pago: PAGO_EJEMPLO,
-            liquidacionDisponible: true,
-            cuenta: null,
-            ultimoCobro: null,
-            historial: [],
-          }),
-          400: entradaInvalida,
-          404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
-        },
-      },
-    },
     '/beneficiarios': {
       get: {
         tags: ['Beneficiarios'],
@@ -102,6 +63,35 @@ export function rutasBeneficiarios(): Json {
         requestBody: { required: true, content: contenidoJson(jsonSchema(EntradaPin, 'input'), { pin: '5555' }) },
         responses: {
           200: ok('PIN registrado.', ref('PinRegistrado'), { documento: '1000000010', tienePin: true }),
+          400: entradaInvalida,
+          404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
+        },
+      },
+    },
+    '/beneficiarios/demo': {
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'demoBeneficiarios',
+        summary: 'Personas de prueba para el selector de la web',
+        description: 'Nombre, etiqueta y documento de quien ya está registrado. Vacío si nadie se ha inscrito.',
+        responses: { 200: ok('Personas de la demo.', { type: 'array', items: ref('PersonaDemo') }, [{ nombre: 'Jorge Ruiz', etiqueta: 'C.C. de prueba 3', documento: '1000000003' }]) },
+      },
+    },
+    '/beneficiarios/{documento}/resumen': {
+      parameters: [{ name: 'documento', in: 'path', required: true, description: 'Cédula, sin puntos ni espacios.', schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' }, example: '1000000001' }],
+      get: {
+        tags: ['Beneficiarios'],
+        operationId: 'resumenBeneficiario',
+        summary: 'Resumen «tengo $230.000» (HU-08)',
+        description: [
+          'Todo lo que la persona necesita en una pantalla: pagos pendientes, cuenta, puntos de retiro e historial.',
+          '',
+          '- **CA-08.01** `pagos` son todos los subsidios y bonos pendientes; `pago` es el primero.',
+          '- **CA-08.02** `ultimoCobro` e `historial` muestran cuándo y dónde cobró.',
+          '- **CA-08.04** una persona puede tener varios pagos pendientes a la vez.',
+        ].join('\n'),
+        responses: {
+          200: ok('Resumen de la persona.', ref('ResumenBeneficiario')),
           400: entradaInvalida,
           404: falla('404 · La cédula no está registrada.', 'PersonaNoEncontrada', 'Esa cédula no está registrada'),
         },

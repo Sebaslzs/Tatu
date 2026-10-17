@@ -127,7 +127,136 @@ export const Beneficiario = z.strictObject({
 
 export const PinRegistrado = z.strictObject({ documento: z.string(), tienePin: z.literal(true) })
 
+export const BilleteraResuelta = z.strictObject({
+  id: z.url().meta({ description: 'Dirección normalizada de la billetera.', examples: ['https://ilp.interledger-test.dev/prueba-ana'] }),
+  nombre: z.string().nullable(),
+  moneda: z.strictObject({
+    codigo: z.string().regex(/^[A-Z]{3}$/).meta({ examples: ['COP'] }),
+    escala: z.number().int().min(0).meta({ examples: [2] }),
+  }),
+})
+
+export const PersonaDemo = z.strictObject({
+  nombre: z.string(),
+  etiqueta: z.string().meta({ examples: ['C.C. de prueba 3'] }),
+  documento: z.string().meta({ examples: ['1000000003'] }),
+})
+
+export const PagoPendiente = z.strictObject({
+  programa: z.strictObject({
+    id: uuid('Programa del pago.'),
+    nombre: z.string(),
+    estado: z.string(),
+    tipo: z.enum(['subsidio', 'bono']),
+  }),
+  monto: Monto,
+  moneda: Moneda,
+  vigenciaFin: z.string().meta({ description: 'Día en que vence, en hora de Bogotá.', examples: ['2026-12-31'] }),
+})
+
+export const PagosPunto = z.strictObject({
+  persona: z.strictObject({ nombre: z.string(), etiqueta: z.string().meta({ examples: ['C.C. de prueba 3'] }), tienePin: z.boolean() }),
+  pagos: z.array(PagoPendiente),
+})
+
+export const MotivoCobro = z.strictObject({
+  codigo: z.string().meta({ examples: ['Cancelado'] }),
+  mensaje: z.string(),
+})
+
+export const EventoCobro = z.strictObject({
+  desde: z.string().nullable(),
+  hacia: z.string().nullable(),
+  texto: z.string().nullable(),
+  creado: z.string(),
+})
+
+export const Cobro = z.strictObject({
+  id: uuid('Identificador del cobro.'),
+  referencia: z.string().meta({ examples: ['SUB-0001'] }),
+  programa: z.strictObject({ id: uuid('Programa cobrado.'), nombre: z.string() }),
+  canal: z.enum(['cuenta', 'retiro', 'compra']),
+  punto: z.strictObject({ id: uuid('Punto del cobro.'), nombre: z.string(), billeteraCorta: z.string() }).nullable(),
+  cuenta: z.strictObject({ billetera: z.string(), billeteraCorta: z.string() }).nullable(),
+  persona: z.strictObject({
+    nombre: z.string(),
+    etiqueta: z.string().meta({ description: 'Cómo se muestra la persona sin revelar su cédula.', examples: ['C.C. de prueba 3'] }),
+    novedad: z.boolean(),
+  }),
+  monto: Monto.nullable(),
+  totalCompra: Monto.nullable(),
+  moneda: Moneda,
+  estado: z.enum(['Solicitado', 'PorConfirmar', 'Pagando', 'Pagado', 'Fallido', 'Rechazado']),
+  motivo: MotivoCobro.nullable(),
+  intentosRestantes: z.number().int().nullable(),
+  confirmarAntesDe: z.string().nullable(),
+  segundosHastaPagado: z.number().nullable(),
+  creado: z.string(),
+  actualizado: z.string(),
+  eventos: z.array(EventoCobro).optional(),
+})
+
+export const PuntoDeRetiro = z.strictObject({
+  id: uuid('Punto de retiro.'),
+  nombre: z.string(),
+  direccion: z.string(),
+  billeteraCorta: z.string(),
+})
+
+export const ResumenBeneficiario = z.strictObject({
+  persona: z.strictObject({ nombre: z.string(), documento: z.string(), tienePin: z.boolean() }),
+  pagos: z.array(PagoPendiente).meta({ description: 'CA-08.01: subsidios y bonos pendientes.' }),
+  pago: PagoPendiente.nullable(),
+  liquidacionDisponible: z.boolean(),
+  cuenta: Cuenta.nullable(),
+  puntos: z.array(PuntoDeRetiro),
+  ultimoCobro: Cobro.nullable(),
+  historial: z.array(Cobro),
+})
+
+export const PorCanal = z.strictObject({
+  cobros: z.number().int().meta({ description: 'Cobros Pagados de este canal.' }),
+  monto: Monto,
+})
+
+export const Tablero = z.strictObject({
+  programa: Programa,
+  moneda: Moneda,
+  autorizado: Monto.meta({ description: 'El tope aprobado (lo que la entidad autorizó).' }),
+  cobrado: Monto.meta({ description: 'Lo cobrado hasta ahora (CA-15.01).' }),
+  fuente: z.enum(['banco', 'plataforma']).meta({
+    description: '`banco`: leído del permiso con `getGrantSpentAmounts`. `plataforma`: suma de los cobros Pagados en la base, cuando el banco no respondió.',
+  }),
+  noHaSalido: Monto.meta({ description: '`autorizado − cobrado`: lo que nunca saldrá de la cuenta (CA-15.01).' }),
+  cobrosPagados: z.number().int(),
+  porCanal: z.strictObject({ cuenta: PorCanal, retiro: PorCanal, compra: PorCanal }).meta({ description: 'Desglose de los cobros Pagados por canal (CA-15.01).' }),
+  reembolsoSegundos: z.number().nullable().meta({ description: 'Promedio de segundos del PIN a Pagado en los retiros; null sin retiros pagados (CA-15.03).' }),
+  giradoPorAdelantado: z.literal(0).meta({ description: 'El modelo no gira nada antes del cobro: siempre $0 (CA-15.03).' }),
+  sinCobrar: z.strictObject({ cedulas: z.number().int(), monto: Monto }).nullable().meta({ description: 'Cédulas de la liquidación que no han cobrado; null si la liquidación no responde.' }),
+  cobrosPagando: z.number().int(),
+  rechazadosYFallidos: z.number().int(),
+  cobros: z.array(Cobro).meta({ description: 'Todos los cobros del programa, del más reciente al más antiguo.' }),
+  cierre: z
+    .strictObject({ autorizado: Monto, cobrado: Monto, nuncaSalio: Monto, cerradoEn: z.string() })
+    .nullable()
+    .meta({ description: 'Solo en un programa Cerrado: las cifras guardadas al cerrar, antes de revocar el permiso (CA-17.03).' }),
+  actualizado: z.string().meta({ description: 'Cuándo se armó esta vista.' }),
+})
+
 export { Coincidencia, Llave, Pago, Persona, RespuestaPin, Resolucion, Resumen }
+
+export const Estado = z.strictObject({
+  pagosReales: z.boolean().meta({ description: '`true` si están las credenciales de Open Payments y los pagos mueven dinero de prueba de verdad.' }),
+  faltan: z.array(z.string()).meta({ description: 'Qué variables impiden pagar de verdad.' }),
+  openPayments: z.strictObject({ billeteraCliente: z.string().nullable(), llave: z.string().nullable() }),
+  programasConTokenFalso: z.number().int(),
+  verificacionCuenta: z.enum(['subject', 'simulada']),
+  baseDeDatos: z.strictObject({
+    tipo: z.enum(['postgres', 'pglite']),
+    donde: z.string().meta({ description: 'Servidor y base, nunca la contraseña.' }),
+  }),
+  puenteBreB: z.strictObject({ simulado: z.boolean(), responde: z.boolean() }),
+})
 
 /** Modelos que van a `components.schemas`, por nombre. */
 export const MODELOS = {
@@ -154,4 +283,16 @@ export const MODELOS = {
   Llave,
   Resolucion,
   Coincidencia,
+  BilleteraResuelta,
+  PersonaDemo,
+  PagoPendiente,
+  PagosPunto,
+  MotivoCobro,
+  EventoCobro,
+  Cobro,
+  PuntoDeRetiro,
+  ResumenBeneficiario,
+  PorCanal,
+  Tablero,
+  Estado,
 } as const

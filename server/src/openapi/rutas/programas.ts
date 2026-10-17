@@ -1,11 +1,34 @@
-// Programas · HU-01 (conectar un subsidio) y HU-02 (su liquidación).
-import { EdicionPrograma, EntradaPrograma } from '../../programas/esquemas.ts'
+// Programas · HU-01 (conectar un subsidio), HU-02 (su liquidación), HU-15 (tablero) y HU-17 (cierre).
+import { Cierre, EdicionPrograma, EntradaPrograma } from '../../programas/esquemas.ts'
+import { PALABRA_CIERRE } from '../../programas/tablero.ts'
 import { contenidoJson, entradaInvalida, falla, jsonSchema, ok, ref, type Json } from '../ayudas.ts'
 import { liquidacionNoResponde, noEncontradoPrograma, parametroPrograma, PROGRAMA_EJEMPLO } from '../compartido.ts'
+
+const MONEDA = { valor: '0', assetCode: 'COP', assetScale: 2 }
+
+const POR_CANAL_VACIO = { cobros: 0, monto: MONEDA }
+
+const TABLERO_EJEMPLO = {
+  programa: { ...PROGRAMA_EJEMPLO, estado: 'Activo', permisoActivo: true, tope: { valor: '69000000', assetCode: 'COP', assetScale: 2 } },
+  autorizado: { valor: '69000000', assetCode: 'COP', assetScale: 2 },
+  cobrado: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
+  fuente: 'banco',
+  noHaSalido: { valor: '46000000', assetCode: 'COP', assetScale: 2 },
+  cobrosPagados: 1,
+  porCanal: { cuenta: POR_CANAL_VACIO, retiro: { cobros: 1, monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 } }, compra: POR_CANAL_VACIO },
+  reembolsoSegundos: 1.2,
+  giradoPorAdelantado: MONEDA,
+  sinCobrar: { cedulas: 2, monto: { valor: '46000000', assetCode: 'COP', assetScale: 2 } },
+  cobrosPagando: 0,
+  rechazadosYFallidos: 0,
+  cobros: [],
+  cierre: null,
+}
 
 export function rutasProgramas(): Json {
   const entrada = jsonSchema(EntradaPrograma, 'input')
   const edicion = jsonSchema(EdicionPrograma, 'input')
+  const cierre = jsonSchema(Cierre, 'input')
 
   return {
     '/programas': {
@@ -98,6 +121,56 @@ export function rutasProgramas(): Json {
           200: ok('Resumen de la liquidación.', ref('ResumenLiquidacion'), { cedulas: 3, total: '69000000' }),
           404: noEncontradoPrograma,
           503: liquidacionNoResponde,
+        },
+      },
+    },
+    '/programas/{id}/tablero': {
+      parameters: [parametroPrograma],
+      get: {
+        tags: ['Tablero'],
+        operationId: 'tableroDelPrograma',
+        summary: 'Ver autorizado, cobrado y lo que nunca salió (HU-15)',
+        description: [
+          'El tablero de la entidad, en cualquier estado del programa. Nunca expone tokens ni URL de gestión del permiso (CA-15.04).',
+          '',
+          '- **CA-15.01** `autorizado` es el tope; `cobrado` se lee del permiso con `getGrantSpentAmounts` (fuente `banco`) o, si el banco no responde, de la suma de los cobros Pagados en la base (fuente `plataforma`); `noHaSalido = autorizado − cobrado`; `porCanal` desglosa cuenta, retiro y compra.',
+          '- **CA-15.02** el tablero se puede consultar seguido: lo gastado del banco se reutiliza unos segundos en el backend.',
+          '- **CA-15.03** `reembolsoSegundos` promedia los segundos del PIN a Pagado en los retiros; `giradoPorAdelantado` es siempre $0: el modelo no gira nada antes del cobro.',
+          '- **sinCobrar** cruza la liquidación con lo ya cobrado; es `null` si la liquidación no responde.',
+        ].join('\n'),
+        responses: {
+          200: ok('El tablero del programa.', ref('Tablero'), TABLERO_EJEMPLO),
+          404: noEncontradoPrograma,
+        },
+      },
+    },
+    '/programas/{id}/cerrar': {
+      parameters: [parametroPrograma],
+      post: {
+        tags: ['Tablero'],
+        operationId: 'cerrarPrograma',
+        summary: 'Cerrar el programa y revocar el permiso (HU-17)',
+        description: [
+          'Cierra el programa para siempre: guarda las cifras del cierre, revoca el permiso en el banco (`token.revoke`) y deja el programa `Cerrado`. No se puede deshacer.',
+          '',
+          `- **CA-17.01** el cuerpo lleva \`confirmacion\` con la palabra \`${PALABRA_CIERRE}\`; sin ella, \`400 ConfirmacionRequerida\`. Solo un programa \`Activo\` o \`Pausado\` se cierra.`,
+          '- **CA-17.03** la respuesta es el tablero, ahora con `cierre` (autorizado, cobrado, nuncaSalio, cerradoEn).',
+          '- **CA-17.04** es irreversible: la app pide la segunda confirmación y la plataforma valida la palabra antes de revocar.',
+          '- **CA-17.05** si hay cobros en `Pagando`, responde `409 CobrosEnCurso`: espera a que terminen.',
+          '- Si el permiso ya estaba vencido en el banco, se cierra igual (el permiso ya no servía).',
+        ].join('\n'),
+        requestBody: { required: true, content: contenidoJson(cierre, { confirmacion: PALABRA_CIERRE }) },
+        responses: {
+          200: ok('El programa, Cerrado, con sus cifras de cierre.', ref('Tablero'), {
+            ...TABLERO_EJEMPLO,
+            programa: { ...TABLERO_EJEMPLO.programa, estado: 'Cerrado', permisoActivo: false },
+            fuente: 'banco',
+            cierre: { autorizado: { valor: '69000000', assetCode: 'COP', assetScale: 2 }, cobrado: { valor: '23000000', assetCode: 'COP', assetScale: 2 }, nuncaSalio: { valor: '46000000', assetCode: 'COP', assetScale: 2 }, cerradoEn: '2026-10-16T15:05:00.000Z' },
+          }),
+          400: falla(`400 · Falta la palabra \`${PALABRA_CIERRE}\` en \`confirmacion\` (\`ConfirmacionRequerida\`).`, 'ConfirmacionRequerida', `Escribe ${PALABRA_CIERRE} para confirmar`),
+          404: noEncontradoPrograma,
+          409: falla('409 · El programa no está Activo ni Pausado (`EstadoNoPermite`) o hay cobros en Pagando (`CobrosEnCurso`).', 'EstadoNoPermite', 'El programa está en Borrador; esta acción pide Activo o Pausado'),
+          502: falla('502 · El banco no confirmó la revocación del permiso.', 'ErrorOpenPayments', 'No pudimos pedir la revocación al banco'),
         },
       },
     },

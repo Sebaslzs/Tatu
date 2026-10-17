@@ -30,6 +30,7 @@ import { ServicioPermisoToken } from './programas/permisoToken.ts'
 import type { PuertoPermisos } from './programas/puertos.ts'
 import type { ServiciosProgramas } from './programas/rutas.ts'
 import { ServicioProgramas } from './programas/servicio.ts'
+import { ServicioTablero } from './programas/tablero.ts'
 import { Transiciones } from './programas/transiciones.ts'
 import { ClientePuente } from './puente/cliente.ts'
 import type { PuertoPuente } from './puente/contrato.ts'
@@ -149,6 +150,7 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
         ...(piezas.nuevoNonce ? { nuevoNonce: piezas.nuevoNonce } : {}),
       }),
       ciclo: new CicloPrograma({ lector, transiciones }),
+      tablero: new ServicioTablero({ uow, lector, transiciones, permisos, token, liquidacion, vistas }),
     },
     puntos: new ServicioPuntos({ uow, billeteras }),
     consultasPunto: new ConsultasPunto({ uow, pagosPendientes, vistas, reloj }),

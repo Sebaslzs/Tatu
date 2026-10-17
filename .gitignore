@@ -29,3 +29,6 @@ coverage/
 
 # Prompts de IA: fuera del repo por ahora
 prompts/
+
+# Prototipo HTML del equipo: material de trabajo local, no se sube
+tatu-prototipo-2.html

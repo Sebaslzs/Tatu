@@ -1,4 +1,4 @@
-// Billeteras · «Cuenta encontrada»: validar una billetera antes de guardarla.
+// Billeteras · resolver una dirección antes de guardarla (CA-01.02, sin guardar nada).
 import { entradaInvalida, falla, ok, ref, type Json } from '../ayudas.ts'
 
 export function rutasBilleteras(): Json {
@@ -7,23 +7,32 @@ export function rutasBilleteras(): Json {
       get: {
         tags: ['Billeteras'],
         operationId: 'resolverBilletera',
-        summary: 'Validar una billetera («Cuenta encontrada»)',
-        description: 'Resuelve la billetera contra su servidor Open Payments y devuelve su id normalizado, su nombre público y su moneda real. Acepta `$dominio/ruta` o `https://dominio/ruta`.',
+        summary: 'Resolver una dirección de billetera',
+        description:
+          'Consulta el servidor de la billetera y devuelve su nombre y moneda, igual que al crear un programa o punto (CA-01.02). Sirve para validar la dirección antes de guardarla: no escribe nada.',
         parameters: [
           {
             name: 'direccion',
             in: 'query',
             required: true,
-            description: 'Dirección de la billetera.',
+            description: 'Dirección a resolver. Acepta `$dominio/ruta` o `https://dominio/ruta`.',
             schema: { type: 'string', minLength: 3 },
-            example: '$ilp.interledger-test.dev/mi-wallet',
+            example: '$ilp.interledger-test.dev/tatu-programa',
           },
         ],
         responses: {
-          200: ok('La billetera.', ref('Billetera'), { id: 'https://ilp.interledger-test.dev/mi-wallet', nombre: 'Mi Wallet', moneda: { codigo: 'COP', escala: 2 } }),
+          200: ok('La billetera existe: dirección normalizada, nombre y moneda.', ref('BilleteraResuelta'), {
+            id: 'https://ilp.interledger-test.dev/tatu-programa',
+            nombre: 'Programa de prueba',
+            moneda: { codigo: 'COP', escala: 2 },
+          }),
           400: entradaInvalida,
-          404: falla('404 · La billetera no existe.', 'BilleteraNoEncontrada', 'No encontramos esa cuenta'),
-          503: falla('503 · La Test Wallet no responde.', 'BilleteraSinRespuesta', 'No pudimos consultar esa billetera; intenta en un momento'),
+          404: falla('404 · La billetera no resuelve (`BilleteraNoEncontrada`).', 'BilleteraNoEncontrada', 'No encontramos esa cuenta'),
+          503: falla(
+            '503 · El servidor de la billetera no respondió (`BilleteraSinRespuesta`). No es lo mismo que «no existe»: se puede reintentar.',
+            'BilleteraSinRespuesta',
+            'No pudimos consultar esa billetera; intenta en un momento',
+          ),
         },
       },
     },

@@ -202,7 +202,10 @@ Ver [AI_USAGE.md](AI_USAGE.md) y la carpeta [prompts/](prompts/).
 
 ## Entregables del hackathon
 
-- [ ] Todo en `main` antes del sábado 17 de octubre a las 11:00.
-- [ ] `AI_USAGE.md` en la raíz y `/prompts/<rol>.md` con los prompts reales.
-- [ ] Video de la demo: _enlace pendiente_.
-- [ ] Presentación a las 12:00: _enlace pendiente_.
+Todo cierra el **sábado 17 de octubre a las 11:00**; desde ahí no se permiten cambios en el código.
+
+- [ ] Repositorio público con todo en `main`; enlace enviado por el formulario de Slack.
+- [ ] [`AI_USAGE.md`](AI_USAGE.md) en la raíz y [`/prompts`](prompts) con los prompts reales (se
+  completan durante el evento).
+- [ ] Presentación en la carpeta de Drive del equipo: _enlace pendiente_.
+- [ ] Demo (video del flujo de pago): _enlace pendiente_.
