@@ -53,13 +53,9 @@ export function FormCedulaEscritorio({ consulta }: { consulta: ConsultaCedula })
       </span>
       <CampoCedula consulta={consulta} computador />
       <MensajeError id="cedula-error">{consulta.error}</MensajeError>
-      {consulta.pidiendo ? (
-        <PidiendoPago />
-      ) : (
-        <BotonMedio type="submit" tamano="grande" className="w-full" disabled={consulta.enviando}>
-          {consulta.enviando ? 'Consultando…' : 'Consultar'}
-        </BotonMedio>
-      )}
+      <BotonMedio type="submit" tamano="grande" className="w-full" disabled={consulta.enviando}>
+        {consulta.enviando ? 'Consultando…' : 'Consultar'}
+      </BotonMedio>
       <AvisoArena icono={ShieldCheck} className="rounded-[14px] text-[15px]">
         Entrega efectivo solo cuando la pantalla diga Pagado. La cédula sola no autoriza el cobro.
       </AvisoArena>
@@ -192,13 +188,9 @@ export function NuevoCobro() {
           <CampoCedula consulta={consulta} />
         </div>
         <MensajeError id="cedula-error">{consulta.error}</MensajeError>
-        {consulta.pidiendo ? (
-          <PidiendoPago />
-        ) : (
-          <Boton type="submit" disabled={consulta.enviando}>
-            {consulta.enviando ? 'Consultando…' : 'Consultar'}
-          </Boton>
-        )}
+        <Boton type="submit" disabled={consulta.enviando}>
+          {consulta.enviando ? 'Consultando…' : 'Consultar'}
+        </Boton>
       </form>
       <AvisoArena icono={ShieldCheck} className="mt-auto">
         La cédula sola no autoriza el cobro: el beneficiario confirma con su PIN en este celular.

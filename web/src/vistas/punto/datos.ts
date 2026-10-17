@@ -104,8 +104,8 @@ export function textoCompra(c: Pick<Cobro, 'monto' | 'totalCompra'>): string {
 
 /**
  * Lleva a la pantalla del cobro con los datos que ya devolvió la API, sin pasar por la pantalla de
- * carga. Mientras se pedía, el tatú ya venía rodando: si el cobro se rechazó al pedirlo (ya cobrado,
- * en proceso…), el rechazo llega rodando y termina en rojo; si sigue al PIN, el PIN sale de una vez.
+ * carga. Si el cobro se rechazó al pedirlo (ya cobrado, en proceso…), el resultado abre con el tatú
+ * rodando y termina en rojo; si sigue al PIN, el PIN sale de una vez.
  */
 export function irAlCobro(navegar: NavigateFunction, c: Cobro) {
   if (c.estado === 'Rechazado' || c.estado === 'Fallido') marcarPagando(c.id)
@@ -127,7 +127,7 @@ export function useConsultaCedula(puntoId: string) {
   const [cedula, setCedula] = useState('')
   const [llave, setLlave] = useState(() => crypto.randomUUID())
   const [enviando, setEnviando] = useState(false)
-  // Pidiendo el cobro (no consultando la cédula): se ve el tatú de los pagos rodando
+  // Pidiendo el cobro de un pago elegido (no consultando la cédula)
   const [pidiendo, setPidiendo] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [opciones, setOpciones] = useState<PagosEnPunto | null>(null)

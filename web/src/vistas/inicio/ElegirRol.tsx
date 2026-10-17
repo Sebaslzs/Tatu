@@ -60,43 +60,46 @@ export function ElegirRol() {
   useEffect(() => elegirRol(null), [elegirRol])
 
   return (
-    <PantallaCelular className="justify-center gap-8 py-10">
-      <div className="-mb-4 flex justify-end">
+    <PantallaCelular>
+      {/* Arriba, como en las demás pantallas; la marca y los roles quedan centrados en el resto */}
+      <div className="flex justify-end">
         <BotonTema />
       </div>
-      <Marca tamano="inicio" />
+      <div className="flex flex-1 flex-col justify-center gap-8 pb-10">
+        <Marca tamano="inicio" />
 
-      <nav aria-labelledby="como-entrar" className="flex flex-col gap-3">
-        <h1 id="como-entrar" className="m-0 text-base font-semibold text-tinta-suave">
-          ¿Cómo quieres entrar?
-        </h1>
-        {OPCIONES.map((o) => (
+        <nav aria-labelledby="como-entrar" className="flex flex-col gap-3">
+          <h1 id="como-entrar" className="m-0 text-base font-semibold text-tinta-suave">
+            ¿Cómo quieres entrar?
+          </h1>
+          {OPCIONES.map((o) => (
+            <Link
+              key={o.a}
+              to={o.a}
+              className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-foreground no-underline transition-colors hover:border-foreground hover:text-foreground"
+            >
+              <span className={`flex size-11 flex-none items-center justify-center rounded-xl ${o.fondo}`}>{o.icono}</span>
+              <span className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-bold">{o.titulo}</span>
+                <span className="text-[15px] text-tinta-suave">{o.detalle}</span>
+              </span>
+              <Icono className="size-5" stroke="var(--foreground)">
+                <path d="M9 6l6 6-6 6" />
+              </Icono>
+            </Link>
+          ))}
           <Link
-            key={o.a}
-            to={o.a}
-            className="flex min-h-[76px] items-center gap-3.5 rounded-[18px] border-[1.5px] border-linea bg-papel px-4 py-3.5 text-foreground no-underline transition-colors hover:border-foreground hover:text-foreground"
+            to="/entrar/punto"
+            className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-foreground"
           >
-            <span className={`flex size-11 flex-none items-center justify-center rounded-xl ${o.fondo}`}>{o.icono}</span>
-            <span className="flex flex-1 flex-col gap-0.5">
-              <span className="text-lg font-bold">{o.titulo}</span>
-              <span className="text-[15px] text-tinta-suave">{o.detalle}</span>
-            </span>
-            <Icono className="size-5" stroke="var(--foreground)">
-              <path d="M9 6l6 6-6 6" />
+            <Icono className="size-[18px]" stroke="var(--foreground)">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
             </Icono>
+            Punto de retiro en computador
           </Link>
-        ))}
-        <Link
-          to="/entrar/punto"
-          className="flex min-h-11 items-center justify-center gap-2 text-base font-semibold text-foreground"
-        >
-          <Icono className="size-[18px]" stroke="var(--foreground)">
-            <rect x="3" y="4" width="18" height="12" rx="2" />
-            <path d="M8 20h8M12 16v4" />
-          </Icono>
-          Punto de retiro en computador
-        </Link>
-      </nav>
+        </nav>
+      </div>
     </PantallaCelular>
   )
 }

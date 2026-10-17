@@ -12,7 +12,7 @@ export function MarcoEntidad({ entidadId, children }: { entidadId?: string; chil
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-bloque bg-bloque text-bloque-texto">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-3 px-4 py-2 sm:px-6">
-          <Link to="/entidad" className="flex min-h-11 items-center gap-2.5 text-bloque-texto no-underline hover:text-bloque-texto" aria-label="Tatú, tus programas">
+          <Link to="/" className="flex min-h-11 items-center gap-2.5 text-bloque-texto no-underline hover:text-bloque-texto" aria-label="Tatú, volver a elegir rol">
             <img src="/brand/tatu-logo-oscuro.svg" alt="" className="size-9 rounded-lg" />
             <span className="ancho text-2xl font-extrabold">Tatú</span>
           </Link>
