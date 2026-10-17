@@ -67,7 +67,7 @@ export function SubirPersonas({ alTerminar }: { alTerminar: () => void }) {
     const r: Resultado = { agregadas: 0, yaEstaban: 0, fallidas: [] }
     for (const [i, p] of listas.entries()) {
       setAvance(i + 1)
-      const cuerpo: BeneficiarioEntrada = { cedula: p.cedula, billetera: p.billetera, nombre: p.nombre, pin: p.pin, cobraCon: p.cobraCon }
+      const cuerpo: BeneficiarioEntrada = { documento: p.cedula, billetera: p.billetera, nombre: p.nombre, pin: p.pin, cobraCon: p.cobraCon }
       try {
         await http.post('/beneficiarios', cuerpo)
         r.agregadas++

@@ -34,7 +34,7 @@ export function FormularioPersona({ alRegistrar }: { alRegistrar: (b: Beneficiar
     if (!form.billetera.trim()) return setError('Escribe la wallet de la persona.')
     if (form.pin && !/^\d{4}$/.test(form.pin)) return setError('El PIN son 4 números.')
     const cuerpo: BeneficiarioEntrada = {
-      cedula,
+      documento: cedula,
       billetera: form.billetera.trim(),
       nombre: form.nombre.trim() || undefined,
       pin: form.pin || undefined,
