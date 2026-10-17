@@ -58,6 +58,29 @@ describe('POST /beneficiarios', () => {
     expect(r.cuerpo.error.codigo).toBe('PersonaExiste')
   })
 
+  it('quien quedó a medias (en Tatú pero no en la liquidación) se completa al registrarla otra vez', async () => {
+    await registrar()
+    e.simulador.reiniciar()
+    expect(e.simulador.buscar([CEDULA])).toEqual([])
+
+    const r = await registrar({ nombre: 'Rosa M. Díaz', pin: '5151' })
+    expect(r.status).toBe(201)
+    expect(r.cuerpo).toMatchObject({ documento: CEDULA, nombre: 'Rosa M. Díaz', billetera: WALLET, estadoCuenta: 'Verificada', tienePin: true })
+    expect(e.simulador.validarPin(CEDULA, '5151')).toBe(true)
+    expect(await e.contar('beneficiario')).toBe(1)
+    expect(await e.contar('cuenta_beneficiario')).toBe(1)
+    expect((await registrar()).status).toBe(409)
+  })
+
+  it('al completarla con llave Bre-B registra la llave y conserva su cuenta', async () => {
+    await registrar()
+    e.simulador.reiniciar()
+    const r = await registrar({ cobraCon: 'llaveCedula' })
+    expect(r.status).toBe(201)
+    expect(e.puente.obtener('cedula', CEDULA)).toMatchObject({ billetera: WALLET, documentoTitular: CEDULA })
+    expect(await e.contar('cuenta_beneficiario')).toBe(1)
+  })
+
   it('una billetera ya usada por otra persona: 409 BilleteraEnUso con su nombre', async () => {
     await registrar()
     const r = await registrar({ documento: '1000000011', nombre: 'Otra' })

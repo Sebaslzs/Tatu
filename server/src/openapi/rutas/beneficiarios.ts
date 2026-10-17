@@ -49,7 +49,7 @@ export function rutasBeneficiarios(): Json {
           201: ok('Persona registrada.', ref('Beneficiario'), BENEFICIARIO_EJEMPLO),
           400: entradaInvalida,
           404: falla('404 · La billetera no existe.', 'BilleteraNoEncontrada', 'No encontramos esa billetera'),
-          409: falla('409 · La cédula ya está registrada (`PersonaExiste`) o la billetera es de otra persona (`BilleteraEnUso`).', 'PersonaExiste', 'Esa cédula ya está registrada'),
+          409: falla('409 · La cédula ya está registrada y en la liquidación (`PersonaExiste`; si solo estaba en Tatú, el registro la completa) o la billetera es de otra persona (`BilleteraEnUso`).', 'PersonaExiste', 'Esa cédula ya está registrada'),
           503: falla('503 · La liquidación no respondió; no se guarda nada.', 'LiquidacionNoResponde', 'No pudimos consultar tu pago; intenta en un momento'),
         },
       },

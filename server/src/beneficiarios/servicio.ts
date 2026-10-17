@@ -64,10 +64,13 @@ export class ServicioBeneficiarios {
 
   async registrar(entrada: EntradaPersona): Promise<VistaBeneficiario> {
     const { uow, liquidacion, puente, billeteras } = this.deps
-    if (await uow.repos.beneficiarios.porCedula(entrada.documento)) throw conflicto('PersonaExiste', YA_EXISTE)
+    // Quien está en Tatú pero no en la liquidación quedó a medias: el registro lo completa
+    const existente = await uow.repos.beneficiarios.porCedula(entrada.documento)
+    if (existente && (await liquidacion.personas([entrada.documento])).has(entrada.documento)) throw conflicto('PersonaExiste', YA_EXISTE)
     const wallet = await resolverBilletera(billeteras, entrada.billetera, 'No encontramos esa billetera')
     const conLlave = entrada.cobraCon === 'llaveCedula'
-    const otra = conLlave ? undefined : await uow.repos.cuentas.vigentePorBilletera(wallet.url)
+    const vigente = existente ? await uow.repos.cuentas.vigenteDe(existente.id) : undefined
+    const otra = conLlave || vigente ? undefined : await uow.repos.cuentas.vigentePorBilletera(wallet.url)
     if (otra) {
       const duena = await uow.repos.beneficiarios.obtener(otra.beneficiarioId)
       const nombres = duena ? await this.nombres([duena.numeroDocumento]) : new Map<string, Persona>()
@@ -85,8 +88,9 @@ export class ServicioBeneficiarios {
     let persona: FilaBeneficiario
     try {
       persona = await uow.transaccion(async (repos) => {
-        const nueva = await repos.beneficiarios.crear(entrada.documento)
-        if (conLlave) return nueva
+        const nueva = existente ?? (await repos.beneficiarios.crear(entrada.documento))
+        // Con llave no se enlaza cuenta; quien ya tiene una vigente la conserva
+        if (conLlave || vigente) return nueva
         const cuentaId = (this.deps.nuevoId ?? randomUUID)()
         await repos.cuentas.crear({ id: cuentaId, beneficiarioId: nueva.id, billetera: wallet.url, estado: 'Verificada', verificadaEn: this.deps.reloj().toISOString() })
         await repos.eventos.registrar({
