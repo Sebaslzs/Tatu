@@ -6,12 +6,18 @@ import type { FilaCobro } from '../db/repositorios/cobros.ts'
 import { actorBeneficiario } from '../db/repositorios/eventos.ts'
 import type { UnidadDeTrabajo } from '../db/unidadDeTrabajo.ts'
 import type { PuertoLiquidacion } from '../liquidacion/contrato.ts'
-import type { Confirmacion } from './esquemas.ts'
+import type { Confirmacion, MetodoBiometrico } from './esquemas.ts'
 import { mensajePinIncorrecto } from './mensajes.ts'
 import { actorDe, type MovimientosCobro } from './movimientos.ts'
 import type { PagadorCobros } from './pagador.ts'
 import { rn07EvaluarPin, rn12Vencio } from './reglas.ts'
 import type { VistaCobro, VistasCobro } from './vista.ts'
+
+/** La línea de tiempo dice cómo se verificó la persona en el punto. */
+const TEXTO_VERIFICADO: Record<MetodoBiometrico, string> = {
+  rostro: 'Identidad verificada con el rostro. Enviando el pago al punto.',
+  huella: 'Identidad verificada con la huella. Enviando el pago al punto.',
+}
 
 export interface DependenciasConfirmacion {
   uow: UnidadDeTrabajo
@@ -56,7 +62,7 @@ export class ConfirmacionCobro {
       throw conflicto('EstadoNoPermite', 'Este cobro no está esperando el PIN')
     }
 
-    if ('metodo' in confirmacion) return this.pagar(c, { verificacion: confirmacion.metodo })
+    if ('metodo' in confirmacion) return this.pagar(c, { verificacion: confirmacion.metodo, texto: TEXTO_VERIFICADO[confirmacion.metodo] })
 
     const persona = (await uow.repos.beneficiarios.obtener(c.beneficiarioId))!
     const valido = await liquidacion.validarPin(persona.numeroDocumento, confirmacion.pin)
@@ -86,7 +92,7 @@ export class ConfirmacionCobro {
   }
 
   /** Punto de no retorno (CA-12.01). Si la versión ya cambió, no se paga dos veces (CA-14.03). */
-  private async pagar(c: FilaCobro, detalle: { verificacion: string }): Promise<{ status: number; cobro: VistaCobro }> {
+  private async pagar(c: FilaCobro, detalle: { verificacion: string; texto?: string }): Promise<{ status: number; cobro: VistaCobro }> {
     const { movimientos, vistas, pagador } = this.deps
     if (await movimientos.mover(c, 'Pagando', {}, detalle, actorBeneficiario(c.beneficiarioId))) pagador.disparar(c.id)
     return { status: 202, cobro: await vistas.una(await movimientos.exigir(c.id)) }

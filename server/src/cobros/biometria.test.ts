@@ -35,7 +35,8 @@ describe('confirmar con rostro o huella', () => {
     await confirmar(c.id, { metodo: 'huella' })
     const eventos = await e.repos.eventos.de('cobro', c.id)
     const pagando = eventos.find((ev) => ev.estadoNuevo === 'Pagando')
-    expect(pagando?.detalle).toMatchObject({ verificacion: 'huella' })
+    expect(pagando?.detalle).toMatchObject({ verificacion: 'huella', texto: 'Identidad verificada con la huella. Enviando el pago al punto.' })
+    expect((eventos.find((ev) => ev.estadoNuevo === 'PorConfirmar')?.detalle as { texto?: string } | undefined)?.texto).toBe('Esperando que la persona verifique su identidad.')
     expect(JSON.stringify(eventos)).not.toMatch(/foto|imagen|plantilla/i)
   })
 
