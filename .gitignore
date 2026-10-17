@@ -32,4 +32,3 @@ tatu-prototipo-2.html
 
 # Runtime de MediaPipe: lo copia web/scripts/copiar-mediapipe.mjs desde node_modules
 web/public/mediapipe/wasm/
-AI_USAGE.md
