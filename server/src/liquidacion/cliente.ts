@@ -33,8 +33,8 @@ export class ClienteLiquidacion implements PuertoLiquidacion {
     return { cedulas: r.cedulas, total: Number(r.total) }
   }
 
-  async pago(programaId: string, cedula: string): Promise<ConsultaPago> {
-    const ruta = `/programas/${encodeURIComponent(programaId)}/pagos/${encodeURIComponent(cedula)}`
+  async pago(programaId: string, documento: string): Promise<ConsultaPago> {
+    const ruta = `/programas/${encodeURIComponent(programaId)}/pagos/${encodeURIComponent(documento)}`
     const { status, cuerpo } = await this.pedir(ruta)
     if (status === 404) return { tipo: 'noExiste' }
     const p = leer(Pago, cuerpo)
@@ -44,23 +44,23 @@ export class ClienteLiquidacion implements PuertoLiquidacion {
   async personas(cedulas: readonly string[]): Promise<Map<string, Persona>> {
     const unicas = [...new Set(cedulas)]
     if (!unicas.length) return new Map()
-    const { cuerpo } = await this.pedir(`/personas?cedulas=${encodeURIComponent(unicas.join(','))}`)
-    return new Map(leer(Personas, cuerpo).map((p) => [p.cedula, p]))
+    const { cuerpo } = await this.pedir(`/personas?documentos=${encodeURIComponent(unicas.join(','))}`)
+    return new Map(leer(Personas, cuerpo).map((p) => [p.documento, p]))
   }
 
-  async validarPin(cedula: string, pin: string): Promise<boolean> {
-    const { cuerpo } = await this.pedir('/pin/validar', 'POST', { cedula, pin })
+  async validarPin(documento: string, pin: string): Promise<boolean> {
+    const { cuerpo } = await this.pedir('/pin/validar', 'POST', { documento, pin })
     return leer(RespuestaPin, cuerpo).valido
   }
 
-  async inscribir(cedula: string, nombre: string, pin?: string): Promise<Persona> {
-    const { status, cuerpo } = await this.pedir('/personas', 'POST', { cedula, nombre, ...(pin ? { pin } : {}) })
+  async inscribir(documento: string, nombre: string, pin?: string): Promise<Persona> {
+    const { status, cuerpo } = await this.pedir('/personas', 'POST', { documento, nombre, ...(pin ? { pin } : {}) })
     if (status !== 200) throw new LiquidacionNoResponde()
     return leer(Persona, cuerpo)
   }
 
-  async ponerPin(cedula: string, pin: string): Promise<boolean> {
-    const { status } = await this.pedir(`/personas/${encodeURIComponent(cedula)}/pin`, 'POST', { pin })
+  async ponerPin(documento: string, pin: string): Promise<boolean> {
+    const { status } = await this.pedir(`/personas/${encodeURIComponent(documento)}/pin`, 'POST', { pin })
     if (status === 404) return false
     if (status !== 200) throw new LiquidacionNoResponde()
     return true

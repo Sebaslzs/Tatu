@@ -3,7 +3,7 @@
 // las cifras se guardan en el evento de cierre antes de revocar el permiso: después ya no se pueden leer.
 import { ErrorApi, conflicto } from '../comun/errores.ts'
 import { log } from '../comun/log.ts'
-import { monto, type Monto } from '../comun/montos.ts'
+import { monedaCodigo, monto, type MonedaCodigo, type Monto } from '../comun/montos.ts'
 import { errorOpApi } from '../comun/openPayments.ts'
 import { detalleDe, ultimoHaciaEn } from '../db/repositorios/eventos.ts'
 import type { FilaCobro } from '../db/repositorios/cobros.ts'
@@ -33,6 +33,7 @@ export interface PorCanal {
 
 export interface VistaTablero {
   programa: VistaPrograma
+  moneda: MonedaCodigo
   autorizado: Monto
   cobrado: Monto
   fuente: Fuente
@@ -50,6 +51,7 @@ export interface VistaTablero {
   cobros: VistaCobro[]
   /** Solo en un programa Cerrado: las cifras guardadas al cerrar. */
   cierre: { autorizado: Monto; cobrado: Monto; nuncaSalio: Monto; cerradoEn: string } | null
+  actualizado: string
 }
 
 export interface DependenciasTablero {
@@ -117,6 +119,7 @@ export class ServicioTablero {
 
     return {
       programa,
+      moneda: monedaCodigo(moneda),
       autorizado: m(autorizado),
       cobrado: m(cobrado.valor),
       fuente: cobrado.fuente,
@@ -132,6 +135,7 @@ export class ServicioTablero {
       rechazadosYFallidos: lista.filter((c) => c.estado === 'Rechazado' || c.estado === 'Fallido').length,
       cobros: lista.map((c) => vistas.vista(c, ctx, { eventos: false })),
       cierre: cierre && { autorizado: m(cierre.autorizado), cobrado: m(cierre.cobrado), nuncaSalio: m(cierre.nuncaSalio), cerradoEn: cierre.cerradoEn },
+      actualizado: new Date().toISOString(),
     }
   }
 

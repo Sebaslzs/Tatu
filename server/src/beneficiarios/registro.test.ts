@@ -19,14 +19,14 @@ beforeEach(async () => {
 })
 
 const registrar = (extra: Record<string, unknown> = {}) =>
-  e.pedir('POST', '/beneficiarios', { cedula: CEDULA, billetera: '$ilp.interledger-test.dev/prueba-rosa', nombre: 'Rosa Díaz', pin: '4444', ...extra })
+  e.pedir('POST', '/beneficiarios', { documento: CEDULA, billetera: '$ilp.interledger-test.dev/prueba-rosa', nombre: 'Rosa Díaz', pin: '4444', ...extra })
 
 describe('POST /beneficiarios', () => {
   it('registra la cédula con su cuenta Verificada y la inscribe en la liquidación', async () => {
     const { status, cuerpo } = await registrar()
     expect(status).toBe(201)
-    expect(cuerpo).toMatchObject({ cedula: CEDULA, nombre: 'Rosa Díaz', billetera: WALLET, moneda: COP, estadoCuenta: 'Verificada', tienePin: true })
-    expect(e.simulador.buscar([CEDULA])).toEqual([{ cedula: CEDULA, nombre: 'Rosa Díaz', tienePin: true }])
+    expect(cuerpo).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', billetera: WALLET, moneda: { assetCode: 'COP', assetScale: 2 }, estadoCuenta: 'Verificada', tienePin: true })
+    expect(e.simulador.buscar([CEDULA])).toEqual([{ documento: CEDULA, nombre: 'Rosa Díaz', tienePin: true }])
     expect(e.simulador.validarPin(CEDULA, '4444')).toBe(true)
   })
 
@@ -47,7 +47,7 @@ describe('POST /beneficiarios', () => {
   it('con cobraCon=llaveCedula registra la llave Bre-B y no enlaza cuenta', async () => {
     const { cuerpo } = await registrar({ cobraCon: 'llaveCedula' })
     expect(cuerpo).toMatchObject({ billetera: null, estadoCuenta: null })
-    expect(e.puente.obtener('cedula', CEDULA)).toMatchObject({ billetera: WALLET, cedulaTitular: CEDULA, nombreTitular: 'Rosa Díaz' })
+    expect(e.puente.obtener('cedula', CEDULA)).toMatchObject({ billetera: WALLET, documentoTitular: CEDULA, nombreTitular: 'Rosa Díaz' })
     expect(await e.contar('cuenta_beneficiario')).toBe(0)
   })
 
@@ -60,14 +60,14 @@ describe('POST /beneficiarios', () => {
 
   it('una billetera ya usada por otra persona: 409 BilleteraEnUso con su nombre', async () => {
     await registrar()
-    const r = await registrar({ cedula: '1000000011', nombre: 'Otra' })
+    const r = await registrar({ documento: '1000000011', nombre: 'Otra' })
     expect(r.status).toBe(409)
     expect(r.cuerpo.error).toMatchObject({ codigo: 'BilleteraEnUso', mensaje: 'Esa billetera ya está registrada para Rosa Díaz' })
   })
 
   it('una billetera que no existe: 404; la cédula con formato inválido: 400', async () => {
     expect((await registrar({ billetera: '$ilp.interledger-test.dev/no-existe' })).status).toBe(404)
-    expect((await registrar({ cedula: '12-ab' })).status).toBe(400)
+    expect((await registrar({ documento: '12-ab' })).status).toBe(400)
     expect(await e.contar('beneficiario')).toBe(0)
   })
 
@@ -75,7 +75,7 @@ describe('POST /beneficiarios', () => {
     const sin = await crearEntorno({ entorno: { LIQUIDACION_URL: 'http://127.0.0.1:9/api/liquidacion', LIQUIDACION_TIMEOUT_MS: '500' } })
     try {
       sin.billeteras.registrar(WALLET, COP)
-      const r = await sin.pedir('POST', '/beneficiarios', { cedula: CEDULA, billetera: WALLET })
+      const r = await sin.pedir('POST', '/beneficiarios', { documento: CEDULA, billetera: WALLET })
       expect(r.status).toBe(503)
       expect(await sin.contar('beneficiario')).toBe(0)
     } finally {
@@ -100,7 +100,7 @@ describe('GET /beneficiarios y PIN', () => {
     await registrar()
     const { cuerpo } = await e.pedir('GET', '/beneficiarios')
     expect(cuerpo).toHaveLength(1)
-    expect(cuerpo[0]).toMatchObject({ cedula: CEDULA, nombre: 'Rosa Díaz', estadoCuenta: 'Verificada', moneda: COP, billeteraCorta: '…/prueba-rosa' })
+    expect(cuerpo[0]).toMatchObject({ documento: CEDULA, nombre: 'Rosa Díaz', estadoCuenta: 'Verificada', moneda: { assetCode: 'COP', assetScale: 2 }, billeteraCorta: '…/prueba-rosa' })
     const demo = (await e.pedir('GET', '/beneficiarios/demo')).cuerpo
     expect(demo).toEqual([{ nombre: 'Rosa Díaz', etiqueta: 'C.C. de prueba 10', documento: CEDULA }])
   })
@@ -122,7 +122,7 @@ describe('GET /beneficiarios y PIN', () => {
     await registrar({ pin: undefined })
     const { status, cuerpo } = await e.pedir('POST', `/beneficiarios/${CEDULA}/pin`, { pin: '5555' })
     expect(status).toBe(200)
-    expect(cuerpo).toEqual({ cedula: CEDULA, tienePin: true })
+    expect(cuerpo).toEqual({ documento: CEDULA, tienePin: true })
     expect(e.simulador.validarPin(CEDULA, '5555')).toBe(true)
   })
 

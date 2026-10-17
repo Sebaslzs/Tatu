@@ -15,6 +15,12 @@ export const Moneda = z.strictObject({
   assetScale: z.number().int().min(0).meta({ description: 'Decimales de la moneda: $1 = 10^assetScale unidades mínimas.', examples: [2] }),
 })
 
+/** La moneda como la nombra Endpoints.md, en los campos que la web aún no consume. */
+export const MonedaCodigo = z.strictObject({
+  codigo: z.string().regex(/^[A-Z]{3}$/).meta({ description: 'Código ISO 4217 de la moneda.', examples: ['COP'] }),
+  escala: z.number().int().min(0).meta({ description: 'Decimales de la moneda: $1 = 10^escala unidades mínimas.', examples: [2] }),
+})
+
 export const Monto = z.strictObject({
   valor: z.string().regex(/^\d+$/).meta({ description: 'Entero en unidades mínimas, como texto. $230.000,00 COP = `"23000000"`.', examples: ['23000000'] }),
   ...Moneda.shape,
@@ -55,6 +61,7 @@ export const Programa = z.strictObject({
 export const ResumenLiquidacion = z.strictObject({
   cedulas: Resumen.shape.cedulas,
   total: Monto.meta({ description: 'Total de la liquidación en la moneda del programa; será el tope al autorizar.' }),
+  moneda: MonedaCodigo,
 })
 
 export const Autorizacion = z.strictObject({
@@ -93,7 +100,7 @@ export const ConfigPublica = z.strictObject({
 
 export const Cuenta = z.strictObject({
   id: uuid('Identificador de la cuenta.'),
-  cedula: z.string().meta({ examples: ['1000000002'] }),
+  documento: z.string().meta({ examples: ['1000000002'] }),
   estado: z.enum(['SinEnlazar', 'PorVerificar', 'Verificada']),
   billetera: z.url().meta({ description: 'Billetera a la que llega el pago.' }),
   billeteraCorta: z.string().meta({ examples: ['…/prueba-luis'] }),
@@ -114,7 +121,8 @@ export const LlaveConsultada = z.strictObject({
 })
 
 export const Beneficiario = z.strictObject({
-  cedula: z.string(),
+  documento: z.string(),
+  cedula: z.string().meta({ description: 'Igual a `documento`; la web ya conectada lee este nombre.' }),
   nombre: z.string().meta({ description: 'Lo trae la liquidación; Tatú no lo guarda. Si no responde: «Persona 1234».' }),
   billetera: z.string().nullable(),
   billeteraCorta: z.string().nullable(),
@@ -124,7 +132,7 @@ export const Beneficiario = z.strictObject({
   registrado: z.string(),
 })
 
-export const PinRegistrado = z.strictObject({ cedula: z.string(), tienePin: z.literal(true) })
+export const PinRegistrado = z.strictObject({ documento: z.string(), tienePin: z.literal(true) })
 
 export const BilleteraResuelta = z.strictObject({
   id: z.url().meta({ description: 'Dirección normalizada de la billetera.', examples: ['https://ilp.interledger-test.dev/prueba-ana'] }),
@@ -149,11 +157,12 @@ export const PagoPendiente = z.strictObject({
     tipo: z.enum(['subsidio', 'bono']),
   }),
   monto: Monto,
+  moneda: MonedaCodigo,
   vigenciaFin: z.string().meta({ description: 'Día en que vence, en hora de Bogotá.', examples: ['2026-12-31'] }),
 })
 
 export const PagosPunto = z.strictObject({
-  persona: z.strictObject({ nombre: z.string(), tienePin: z.boolean() }),
+  persona: z.strictObject({ nombre: z.string(), etiqueta: z.string().meta({ examples: ['C.C. de prueba 3'] }), tienePin: z.boolean() }),
   pagos: z.array(PagoPendiente),
 })
 
@@ -175,10 +184,11 @@ export const Cobro = z.strictObject({
   programa: z.strictObject({ id: uuid('Programa cobrado.'), nombre: z.string() }),
   canal: z.enum(['cuenta', 'retiro', 'compra']),
   punto: z.strictObject({ id: uuid('Punto del cobro.'), nombre: z.string(), billeteraCorta: z.string() }).nullable(),
-  cuenta: z.strictObject({ billeteraCorta: z.string() }).nullable(),
+  cuenta: z.strictObject({ billetera: z.string(), billeteraCorta: z.string() }).nullable(),
   persona: z.strictObject({
     nombre: z.string(),
-    cedula: z.string().meta({ description: 'Cédula enmascarada, nunca completa.', examples: ['******0003'] }),
+    cedula: z.string().meta({ description: 'Cédula enmascarada, nunca completa; la web ya conectada la lee.', examples: ['******0003'] }),
+    etiqueta: z.string().meta({ description: 'Cómo se muestra la persona sin revelar su cédula.', examples: ['C.C. de prueba 3'] }),
     novedad: z.boolean(),
   }),
   monto: Monto.nullable(),
@@ -221,7 +231,7 @@ export const PuntoDeRetiro = z.strictObject({
 })
 
 export const ResumenBeneficiario = z.strictObject({
-  persona: z.strictObject({ nombre: z.string(), cedula: z.string(), tienePin: z.boolean() }),
+  persona: z.strictObject({ nombre: z.string(), documento: z.string(), cedula: z.string(), tienePin: z.boolean() }),
   pagos: z.array(PagoPendiente).meta({ description: 'CA-08.01: subsidios y bonos pendientes.' }),
   pago: PagoPendiente.nullable(),
   liquidacionDisponible: z.boolean(),
@@ -238,6 +248,7 @@ export const PorCanal = z.strictObject({
 
 export const Tablero = z.strictObject({
   programa: Programa,
+  moneda: MonedaCodigo,
   autorizado: Monto.meta({ description: 'El tope aprobado (lo que la entidad autorizó).' }),
   cobrado: Monto.meta({ description: 'Lo cobrado hasta ahora (CA-15.01).' }),
   fuente: z.enum(['banco', 'plataforma']).meta({
@@ -256,13 +267,28 @@ export const Tablero = z.strictObject({
     .strictObject({ autorizado: Monto, cobrado: Monto, nuncaSalio: Monto, cerradoEn: z.string() })
     .nullable()
     .meta({ description: 'Solo en un programa Cerrado: las cifras guardadas al cerrar, antes de revocar el permiso (CA-17.03).' }),
+  actualizado: z.string().meta({ description: 'Cuándo se armó esta vista.' }),
 })
 
 export { Coincidencia, Llave, Pago, Persona, RespuestaPin, Resolucion, Resumen }
 
+export const Estado = z.strictObject({
+  pagosReales: z.boolean().meta({ description: '`true` si están las credenciales de Open Payments y los pagos mueven dinero de prueba de verdad.' }),
+  faltan: z.array(z.string()).meta({ description: 'Qué variables impiden pagar de verdad.' }),
+  openPayments: z.strictObject({ billeteraCliente: z.string().nullable(), llave: z.string().nullable() }),
+  programasConTokenFalso: z.number().int(),
+  verificacionCuenta: z.enum(['subject', 'simulada']),
+  baseDeDatos: z.strictObject({
+    tipo: z.enum(['postgres', 'pglite']),
+    donde: z.string().meta({ description: 'Servidor y base, nunca la contraseña.' }),
+  }),
+  puenteBreB: z.strictObject({ simulado: z.boolean(), responde: z.boolean() }),
+})
+
 /** Modelos que van a `components.schemas`, por nombre. */
 export const MODELOS = {
   Moneda,
+  MonedaCodigo,
   Monto,
   Error: ErrorApi,
   Entidad,
@@ -298,4 +324,5 @@ export const MODELOS = {
   ResumenBeneficiario,
   PorCanal,
   Tablero,
+  Estado,
 } as const

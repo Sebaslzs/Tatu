@@ -19,13 +19,13 @@ describe('nombres y PIN', () => {
   it('devuelve el nombre y si tiene PIN de varias cédulas; las que no están, no vienen', async () => {
     const r = await cliente.personas(['1000000001', '1000000002', '9999999999'])
     expect([...r.values()]).toEqual([
-      { cedula: '1000000001', nombre: 'Ana Pérez', tienePin: true },
-      { cedula: '1000000002', nombre: 'Luis Gómez', tienePin: true },
+      { documento: '1000000001', nombre: 'Ana Pérez', tienePin: true },
+      { documento: '1000000002', nombre: 'Luis Gómez', tienePin: true },
     ])
   })
 
   it('no devuelve el PIN ni su hash', async () => {
-    const { cuerpo } = await e.pedir('GET', '/liquidacion/personas?cedulas=1000000001')
+    const { cuerpo } = await e.pedir('GET', '/liquidacion/personas?documentos=1000000001')
     expect(JSON.stringify(cuerpo)).not.toMatch(/1111|hash|pin"/)
   })
 
@@ -41,13 +41,13 @@ describe('nombres y PIN', () => {
   })
 
   it('un pedido inválido responde «no válido» sin error', async () => {
-    const { status, cuerpo } = await e.pedir('POST', '/liquidacion/pin/validar', { cedula: 'x', pin: 'abc' })
+    const { status, cuerpo } = await e.pedir('POST', '/liquidacion/pin/validar', { documento: 'x', pin: 'abc' })
     expect(status).toBe(200)
     expect(cuerpo).toEqual({ valido: false })
   })
 
   it('el simulador guarda solo el hash del PIN', () => {
-    const sim = new LiquidacionSimulada([{ cedula: '1000000001', nombre: 'Ana', monto: 1, pin: '1234' }])
+    const sim = new LiquidacionSimulada([{ documento: '1000000001', nombre: 'Ana', monto: 1, pin: '1234' }])
     expect(JSON.stringify([...(sim as unknown as { personas: Map<string, unknown> }).personas.values()])).not.toContain('1234')
   })
 })
@@ -55,7 +55,7 @@ describe('nombres y PIN', () => {
 describe('inscribir y cambiar el PIN', () => {
   it('inscribe a una persona nueva, con su PIN', async () => {
     const p = await cliente.inscribir('1000000051', 'Rosa Díaz', '4444')
-    expect(p).toEqual({ cedula: '1000000051', nombre: 'Rosa Díaz', tienePin: true })
+    expect(p).toEqual({ documento: '1000000051', nombre: 'Rosa Díaz', tienePin: true })
     expect(await cliente.validarPin('1000000051', '4444')).toBe(true)
   })
 
@@ -79,15 +79,15 @@ describe('inscribir y cambiar el PIN', () => {
   })
 
   it.each([
-    ['una cédula inválida', '/liquidacion/personas', { cedula: 'x', nombre: 'A' }],
-    ['un nombre vacío', '/liquidacion/personas', { cedula: '1000000053', nombre: '' }],
+    ['una cédula inválida', '/liquidacion/personas', { documento: 'x', nombre: 'A' }],
+    ['un nombre vacío', '/liquidacion/personas', { documento: '1000000053', nombre: '' }],
     ['un PIN de 3 dígitos', '/liquidacion/personas/1000000001/pin', { pin: '123' }],
   ])('%s es 400', async (_caso, ruta, cuerpo) => {
     expect((await e.pedir('POST', ruta, cuerpo)).status).toBe(400)
   })
 
   it('consultar más de 500 cédulas o una inválida es 400', async () => {
-    expect((await e.pedir('GET', '/liquidacion/personas?cedulas=abc')).status).toBe(400)
+    expect((await e.pedir('GET', '/liquidacion/personas?documentos=ab%24')).status).toBe(400)
   })
 
   it('sin query de cédulas responde lista vacía', async () => {

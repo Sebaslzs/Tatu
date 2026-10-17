@@ -1,6 +1,7 @@
 // Lo que el punto consulta (HU-10, CA-10.01): qué subsidios puede pagarle hoy a una cédula, los
 // cobros que ha hecho y su caja. Una cédula que no existe responde igual que una sin pagos: no se
 // filtra si existía.
+import { etiquetaDe } from '../comun/etiqueta.ts'
 import { ErrorApi, noEncontrado } from '../comun/errores.ts'
 import { inicioDeHoyEnBogota, type Reloj } from '../comun/fechas.ts'
 import { monto, type Moneda, type Monto } from '../comun/montos.ts'
@@ -17,7 +18,7 @@ import { vistaPunto, type VistaPunto } from './servicio.ts'
 export type PeriodoCaja = 'hoy' | '7d' | 'todo'
 
 export interface PagosParaElPunto {
-  persona: { nombre: string; tienePin: boolean }
+  persona: { nombre: string; etiqueta: string; tienePin: boolean }
   pagos: PagoPendiente[]
 }
 
@@ -60,19 +61,19 @@ export class ConsultasPunto {
   }
 
   /** CA-10.01: el punto digita la cédula y ve «Pago disponible» con la persona y sus pagos. */
-  async pagosDe(puntoId: string, cedula: string): Promise<PagosParaElPunto> {
+  async pagosDe(puntoId: string, documento: string): Promise<PagosParaElPunto> {
     const punto = await this.exigirPunto(puntoId)
-    const persona = await this.uow.repos.beneficiarios.porCedula(cedula)
+    const persona = await this.uow.repos.beneficiarios.porCedula(documento)
     // Igual que un cobro con una cédula desconocida: no se dice si existe
     if (!persona) throw new ErrorApi(404, 'SinPagoDisponible', 'Esta cédula no tiene pagos disponibles')
     const [{ pagos, liquidacionDisponible }, personas] = await Promise.all([
       this.pagosPendientes.de(persona, { soloQueReciben: true, puntoId: punto.id }),
-      this.vistas.personas([cedula]),
+      this.vistas.personas([documento]),
     ])
     if (!pagos.length && !liquidacionDisponible) throw new LiquidacionNoResponde()
     if (!pagos.length) throw new ErrorApi(404, 'SinPagoDisponible', MOTIVOS.SinPagoDisponible.mensaje)
-    const p = personas.get(cedula)
-    return { persona: { nombre: p?.nombre ?? `Persona ${cedula.slice(-4)}`, tienePin: p?.tienePin ?? false }, pagos }
+    const p = personas.get(documento)
+    return { persona: { nombre: p?.nombre ?? `Persona ${documento.slice(-4)}`, etiqueta: etiquetaDe(persona), tienePin: p?.tienePin ?? false }, pagos }
   }
 
   /** Los cobros del punto, del más reciente al más antiguo, en el periodo pedido. */

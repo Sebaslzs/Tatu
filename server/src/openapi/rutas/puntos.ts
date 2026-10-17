@@ -45,11 +45,11 @@ export function rutasPuntos(): Json {
       parameters: [
         parametroUuid('id', 'Identificador del punto.'),
         {
-          name: 'cedula',
+          name: 'documento',
           in: 'query',
           required: true,
-          description: 'Cédula digitada en caja (5 a 12 dígitos).',
-          schema: { type: 'string', pattern: '^\\d{5,12}$' },
+          description: 'Cédula digitada en caja.',
+          schema: { type: 'string', pattern: '^[A-Za-z0-9]{3,20}$' },
           example: '1000000003',
         },
       ],

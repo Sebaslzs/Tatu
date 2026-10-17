@@ -8,6 +8,7 @@ import { rutasBeneficiarios } from './beneficiarios/rutas.ts'
 import { rutasBilleteras } from './billeteras/rutas.ts'
 import { rutasCuentas } from './cuentas/rutas.ts'
 import { rutasEntidades } from './entidades/rutas.ts'
+import { rutasEstado } from './estado.ts'
 import { rutasExtras } from './extras.ts'
 import { routerLiquidacion } from './liquidacion/router.ts'
 import { construirDocumentoOpenApi } from './openapi/documento.ts'
@@ -36,6 +37,7 @@ export function crearApp(c: Contenedor) {
   api.use('/liquidacion', routerLiquidacion(c.simuladorLiquidacion))
   api.use('/puente', routerPuente(c.simuladorPuente))
   api.use(rutasExtras(c.config))
+  api.use(rutasEstado(c.configCompleta))
   api.use(rutasDocumentacion(construirDocumentoOpenApi()))
   api.use(rutaNoEncontrada)
 

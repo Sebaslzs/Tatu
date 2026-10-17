@@ -11,7 +11,7 @@ const COBRO_EJEMPLO = {
   canal: 'retiro',
   punto: { id: '33333333-3333-4333-8333-333333333333', nombre: 'Tienda Marta', billeteraCorta: '…tatu-punto1' },
   cuenta: null,
-  persona: { nombre: 'Jorge Ruiz', cedula: '******0003', novedad: false },
+  persona: { nombre: 'Jorge Ruiz', documento: '******0003', novedad: false },
   monto: { valor: '23000000', assetCode: 'COP', assetScale: 2 },
   totalCompra: null,
   moneda: { assetCode: 'COP', assetScale: 2 },
@@ -48,7 +48,7 @@ export function rutasCobros(): Json {
         requestBody: {
           required: true,
           content: contenidoJson(entrada, {
-            cedula: '1000000003',
+            documento: '1000000003',
             canal: 'retiro',
             puntoId: '33333333-3333-4333-8333-333333333333',
             llaveIdempotencia: '2f4e9a3c-6f7e-4c43-9d70-7d9ee1b0c0a1',

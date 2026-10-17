@@ -11,6 +11,7 @@ import { ServicioCobros } from './cobros/servicio.ts'
 import { SolicitudCobro } from './cobros/solicitud.ts'
 import { VistasCobro } from './cobros/vista.ts'
 import type { PuertoBilleteras } from './comun/billeteras.ts'
+import { esUuid } from './comun/parametros.ts'
 import { relojDelSistema, type Reloj } from './comun/fechas.ts'
 import type { Config } from './config.ts'
 import type { PuertoVerificacionCuenta } from './cuentas/puertos.ts'
@@ -39,6 +40,7 @@ import { ServicioPuntos } from './puntos/servicio.ts'
 
 export interface Contenedor {
   config: ConfigPublica
+  configCompleta: Config
   uow: UnidadDeTrabajo
   programas: ServiciosProgramas
   puntos: ServicioPuntos
@@ -81,6 +83,10 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
     piezas.liquidacion ?? new ClienteLiquidacion({ baseUrl: config.LIQUIDACION_URL, timeoutMs: config.LIQUIDACION_TIMEOUT_MS })
   const puente = piezas.puente ?? new ClientePuente({ baseUrl: config.PUENTE_URL, timeoutMs: config.PUENTE_TIMEOUT_MS })
 
+  // La liquidación simulada paga el «monto por persona» de cada programa (atajo de la demo)
+  const simuladorLiquidacion = piezas.simuladorLiquidacion ?? new LiquidacionSimulada()
+  simuladorLiquidacion.montoPorPrograma = async (programaId) => (!esUuid(programaId) ? null : (await uow.repos.programas.obtener(programaId))?.montoPorPersona ?? null)
+
   // Programas
   const lector = new LectorProgramas(uow)
   const transiciones = new Transiciones({ uow, lector, permisos, reloj, aprobacionTtlMs: config.APROBACION_TTL_MIN * 60_000 })
@@ -120,10 +126,11 @@ export function crearContenedor(piezas: PiezasContenedor): Contenedor {
 
   return {
     config,
+    configCompleta: config,
     uow,
     token,
     billeteras,
-    simuladorLiquidacion: piezas.simuladorLiquidacion ?? new LiquidacionSimulada(),
+    simuladorLiquidacion: simuladorLiquidacion,
     simuladorPuente: piezas.simuladorPuente ?? new PuenteSimulado(),
     cuentas,
     beneficiarios: new ServicioBeneficiarios({ uow, liquidacion, puente, billeteras, reloj }),

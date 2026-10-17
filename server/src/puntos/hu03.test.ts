@@ -142,8 +142,8 @@ describe('GET /puntos y pagos en caja', () => {
 
   it('GET /puntos/:id/pagos: punto inexistente 404; cédula inválida 400', async () => {
     const puntoId = (await registrar()).cuerpo.id
-    expect((await e.pedir('GET', `/puntos/00000000-0000-4000-8000-000000000000/pagos?cedula=1000000001`)).status).toBe(404)
-    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?cedula=abc`)).status).toBe(400)
-    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?cedula=1000000077`)).status).toBe(404)
+    expect((await e.pedir('GET', `/puntos/00000000-0000-4000-8000-000000000000/pagos?documento=1000000001`)).status).toBe(404)
+    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?documento=ab%24`)).status).toBe(400)
+    expect((await e.pedir('GET', `/puntos/${puntoId}/pagos?documento=1000000077`)).status).toBe(404)
   })
 })
